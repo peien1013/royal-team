@@ -292,6 +292,22 @@ body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);back
 .bdg{width:20px;height:20px;display:inline-block;vertical-align:middle;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}
 h2 .bdg{width:28px;height:28px}
 .bdg-tag{display:inline-block;font-size:12px;line-height:1.5;padding:0 7px;border-radius:999px;background:#EEF2FF;color:#3730A3;font-weight:700;vertical-align:middle}
+/* 徽章閃閃發亮（2026-11-24 使用者：選了之後名字後面會出現、會閃閃發亮）：光從左上掃到右下＋外圈金光＋小星星 */
+.bdg-s{position:relative;display:inline-block;line-height:0;vertical-align:middle}
+.bdg-s::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.95) 50%,transparent 70%) no-repeat;background-size:250% 100%;background-position:150% 0;
+  -webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;animation:bdg-shine 3.4s ease-in-out infinite;pointer-events:none}
+.bdg-s.is-tag::after{display:none}
+.bdg-tag.te{position:relative;overflow:hidden}
+.bdg-tag.te::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat;background-size:250% 100%;background-position:150% 0;animation:bdg-shine 3.4s ease-in-out infinite;pointer-events:none}
+.bdg-s img.bdg{animation:bdg-glow 3.4s ease-in-out infinite}
+.bdg-s::before{content:"✦";position:absolute;top:-6px;right:-4px;font-size:9px;line-height:1;color:#FFD54A;text-shadow:0 0 3px #fff;opacity:0;animation:bdg-star 3.4s ease-in-out infinite;pointer-events:none;z-index:1}
+.bdgs .bdg-s+.bdg-s::before,.bdgs .bdg-s+.bdg-s::after,.bdgs .bdg-s+.bdg-s img.bdg{animation-delay:.5s}
+@keyframes bdg-shine{0%,45%{background-position:150% 0}75%,100%{background-position:-50% 0}}
+@keyframes bdg-glow{0%,100%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}60%{filter:drop-shadow(0 0 4px rgba(255,205,60,.95)) brightness(1.12)}}
+@keyframes bdg-star{0%,50%,100%{opacity:0;transform:scale(.4) rotate(0)}65%{opacity:1;transform:scale(1.2) rotate(45deg)}80%{opacity:0;transform:scale(.6) rotate(90deg)}}
+.bdg-tag.te{background:linear-gradient(135deg,#8A5A00,#F6D365 45%,#B07800);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);letter-spacing:.5px;box-shadow:0 0 0 1px #E8C25A inset}
+h2 .bdg-tag.te{font-size:15px;padding:1px 9px}
+@media (prefers-reduced-motion: reduce){.bdg-s::after,.bdg-s::before,.bdg-s img.bdg,.bdg-tag.te::after{animation:none}}
 .tb-dot{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:999px;background:#DC2626;color:#fff;font-size:13px;font-weight:800;line-height:1}
 .card.apply-banner{background:#ECFDF5;border:2px solid #10B981;color:#065F46;font-weight:700;margin-bottom:10px}
 .apply-banner b{font-size:20px}
@@ -1387,7 +1403,8 @@ const MockApi = {
   async getHome(){ await this._wait(); const me=this._me(), joined = mockJoined(me), T = todayStr();
     return { me:mockMe(me), activity:MockDB.activity, joined, reg:mockRegStatus(me), todayDone: MockDB.posts.some(p=>p.authorId===me.id && p.status==='active' && !p.courseId && p.actionDate===T),
       progress: joined ? computeDays(me.id, MockDB.activity) : null, honors:mockHonorBoard().strip, dreams:mockDreamsHome(), teamCount: mockDownline(me.id).length,
-      badges: S.role==='admin' ? Object.fromEntries(MockDB.members.filter(m=>m.rank||m.coe).map(m=>[m.id, { r:m.rank||'', c:m.coe||0 }])) : undefined }; },
+      badges: Object.fromEntries(MockDB.members.map(m=>{ const r = S.role==='admin' || RANKS.some(x=>x.k===m.rank && (x.img||x.te)) ? (m.rank||'') : '';
+        return [m.id, { r, c:m.coe||0 }]; }).filter(([,b])=>b.r||b.c)) }; },
   async applyUplines(){ await this._wait(); return MockDB.members.map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color })).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')); },
   async getTeam(){ await this._wait(); const act = MockDB.activity, me = this._me();
     const rows = mockDownline(me.id).map(d=>{ const m = MockDB.byId[d.id], j = mockJoined(m), x = j ? computeDays(d.id, act) : null;
@@ -1442,6 +1459,10 @@ const MockApi = {
   async adminHonorAdd(memberId, title){ await this._wait(); title = String(title||'').replace(/\s+/g,' ').trim(); if (!title) throw new Error('TITLE_REQUIRED');
     if (!MockDB.byId[memberId]) throw new Error('NOT_FOUND'); const h = { id:uid('H'), memberId, title:title.slice(0,30), date:todayStr(), status:'active' }; MockDB.honors.push(h); return { ok:true, honorId:h.id }; },
   async adminHonorRemove(honorId){ await this._wait(); const h = MockDB.honors.find(x=>x.id===honorId); if (!h) throw new Error('NOT_FOUND'); h.status='removed'; return { ok:true }; },
+  async meBadgeSet(patch){ await this._wait(); const m = this._me();
+    if (patch.rank !== undefined) { if (patch.rank && !RANKS.some(r=>r.k===patch.rank && (r.img||r.te))) throw new Error('BAD_REQUEST'); m.rank = patch.rank; }
+    if (patch.coe !== undefined) m.coe = +patch.coe || 0;
+    return { ok:true, r:m.rank||'', c:m.coe||0 }; },
   async adminSetCoe(memberId, coe){ await this._wait(); const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND'); m.coe = +coe||0; return { ok:true, coe:m.coe }; },
   async adminHonorRank(memberId, rank){ await this._wait(); const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND'); m.rank = String(rank||'').trim().slice(0,12); return { ok:true, rank:m.rank }; },
   async logout(){ await sleep(200); return {ok:true}; },
@@ -1791,6 +1812,7 @@ const GasApi = {
   adminHonorRemove(honorId){ return this.call('admin.honor.remove', {honorId}, {retry:0}); },
   adminHonorRank(memberId, rank){ return this.call('admin.honor.rank', {memberId, rank}, {retry:0}); },
   adminSetCoe(memberId, coe){ return this.call('admin.coe.set', {memberId, coe}, {retry:0}); },
+  meBadgeSet(patch){ return this.call('me.badge.set', patch, {retry:0}); },
   courseRegister(courseId, count=1, requestId){ return this.call('course.register', {courseId, count, requestId}, {retry:2}); },   // 同一個請求編號重送不會多買
   courseCancel(ticketId){ return this.call('course.cancel', {ticketId}); },
   ticketHolder(ticketId, holder){ return this.call('ticket.holder', {ticketId, holder}); },
@@ -1825,7 +1847,7 @@ const QC_DROP = {
   'post.create':['growth:me','courses'],   // 我的日誌列表：發文後直接把新的一篇放進去（見 submitPost） 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
   'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
   'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
-  'reg.apply':['growth:me'], 'team.addDown':[], 'team.removeDown':[]
+  'reg.apply':['growth:me'], 'team.addDown':[], 'team.removeDown':[], 'me.badge.set':['honors']
 };
 const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
@@ -2358,8 +2380,11 @@ function setNav(){
   requestAnimationFrame(fitTopTitle);
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse' || S.sub==='adminRoster');
 }
-/* ---------- 名字後面的徽章：聘階＋創業名人（2026-11-24 使用者給圖；只有管理員看得到） ---------- */
+/* ---------- 名字後面的徽章：聘階＋創業名人（2026-11-24 使用者給圖）
+   20:27 使用者改：夥伴自己選（各選一個最高的），名字後面大家都看得到、會閃閃發亮；管理員也能改。
+   「直銷商」「自用客戶」文字標籤只有管理員看得到（後端只給管理員） ---------- */
 const RANKS = [
+  { k:'TE', full:'總裁級品牌大使・寰宇領袖', tag:'TE', te:true, alias:['總裁級品牌大使','寰宇領袖','總裁'] },   // 圖片還沒給：先用金色字
   { k:'藍鑽', full:'執行總監級品牌大使', img:'badges/rank-bluediamond.png', alias:['藍鑽石'] },
   { k:'鑽石', full:'資深總監級品牌大使', img:'badges/rank-diamond.png', alias:[] },
   { k:'綠寶', full:'總監級品牌大使', img:'badges/rank-emerald.png', alias:['綠寶石'] },
@@ -2373,18 +2398,46 @@ const COE = [null,
   { n:'一階創業名人', old:'百萬', img:'badges/coe1.png' }, { n:'二階創業名人', old:'五百萬', img:'badges/coe2.png' },
   { n:'三階創業名人', old:'千萬', img:'badges/coe3.png' }, { n:'四階創業名人', old:'兩千萬', img:'badges/coe4.png' }];
 const rankOf = t => { t = String(t||'').trim(); return t ? RANKS.find(r => r.k===t || r.full===t || r.alias.includes(t)) || null : null; };
+const shiny = (img, alt, title) => `<span class="bdg-s" style="--m:url('${img}')"><img class="bdg" src="${img}" alt="${esc(alt)}" title="${esc(title)}"></span>`;
 function badgeHTML(id){
-  const b = isAdminMe() && S.badges && S.badges[id]; if (!b) return '';   // 只有管理員看得到
-  const r = rankOf(b.r), c = COE[b.c]; let h = '';
-  if (r) h += r.img ? `<img class="bdg" src="${r.img}" alt="${r.k}" title="${r.k}・${r.full}">` : `<span class="bdg-tag" title="${esc(r.full)}">${r.tag}</span>`;
+  const b = S.badges && S.badges[id]; if (!b) return '';
+  const r = rankOf(b.r), c = COE[b.c]; let h = '';   // 先聘階、再創業名人（例：TE＋五百萬）
+  if (r) h += r.img ? shiny(r.img, r.k, `${r.k}・${r.full}`)
+    : r.te ? `<span class="bdg-s is-tag"><span class="bdg-tag te" title="${esc(r.full)}">${r.tag}</span></span>`
+    : `<span class="bdg-tag" title="${esc(r.full)}">${r.tag}</span>`;
   else if (b.r) h += `<span class="bdg-tag">${esc(b.r)}</span>`;
-  if (c) h += `<img class="bdg" src="${c.img}" alt="${c.n}" title="${c.n}（${c.old}）">`;
+  if (c) h += shiny(c.img, c.n, `${c.n}（${c.old}）`);
   return h ? `<span class="bdgs">${h}</span>` : '';
+}
+/** 我的帳號：我的徽章（自己選聘階、創業名人） */
+function myBadgeCardHTML(){
+  const b = (S.badges && S.badges[S.me.id]) || { r:'', c:0 }, r = rankOf(b.r), c = COE[b.c];
+  const showR = r && (r.img || r.te);
+  return `<div class="card" id="my-badge"><h3>🏅 我的徽章</h3>
+    <div class="muted mb">選好之後，動態牆上你的名字後面就會出現閃亮的徽章，大家都看得到。</div>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
+      <button class="btn btn-ghost btn-sm" data-act="my-rank">${showR ? rankIcon(r) + esc(r.k) + '・' + esc(r.full) : '選我的聘階'}</button>
+      <button class="btn btn-ghost btn-sm" data-act="my-coe">${c ? `<img class="bdg" src="${c.img}" alt=""> ${c.n}（${c.old}）` : '選我的創業名人'}</button></div>
+    <div class="hint">各選一個目前最高的；升階了再回來改。</div></div>`;
+}
+const rankIcon = r => r.img ? `<img class="bdg" src="${r.img}" alt=""> ` : r.te ? '<span class="bdg-tag te">TE</span> ' : '';
+/** 夥伴自己選：只列有徽章的聘階（TE～主任），各選一個最高的 */
+async function pickMyRank(cur){
+  const v = await choiceBox(`選你目前<b>最高</b>的聘階（只能選一個）`, [
+    ...RANKS.filter(r=>r.img||r.te).map(r=>({ v:r.k, label:`${rankIcon(r)}${r.k}・${r.full}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
+    { v:'__clear', label:'先不要顯示聘階', cls:'btn-outline' }], { html:true });
+  return !v ? null : v==='__clear' ? '' : v;
+}
+async function pickMyCoe(cur){
+  const v = await choiceBox(`選你目前<b>最高</b>的創業名人（只能選一個）`, [
+    ...[1,2,3,4].map(n=>({ v:String(n), label:`<img class="bdg" src="${COE[n].img}" alt=""> ${COE[n].n}（${COE[n].old}）`, cls: cur===n ? 'btn-primary' : 'btn-ghost', html:true })),
+    { v:'0', label:'先不要顯示創業名人', cls:'btn-outline' }], { html:true });
+  return !v ? null : +v;
 }
 /** 管理員：選聘階（回傳名稱；'' 清掉；null 取消） */
 async function pickRank(cur){
   const v = await choiceBox(`選聘階${cur?'（目前：'+cur+'）':''}`, [
-    ...RANKS.map(r=>({ v:r.k, label:`${r.img?`<img class="bdg" src="${r.img}" alt=""> `:''}${r.k}・${r.full}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
+    ...RANKS.map(r=>({ v:r.k, label:`${rankIcon(r)}${r.k}・${r.full}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
     { v:'__clear', label:'清掉聘階', cls:'btn-outline' }]);
   return !v ? null : v==='__clear' ? '' : v;
 }
@@ -3232,8 +3285,9 @@ function renderAccount(main){
   const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
   main.innerHTML = `
     <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
-      <h2 style="margin:0">${esc(me.name)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+      <h2 style="margin:0">${esc(me.name)}${badgeHTML(me.id)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
+    ${me.role==='admin' ? '' : myBadgeCardHTML()}
     <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
     <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
     <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
@@ -4123,10 +4177,10 @@ function drawTickets(){
     <div class="tk-btns">${t.fee&&!t.paid&&!t.cancelReqAt?`<button class="btn btn-primary btn-sm" data-act="tk-pay" data-id="${t.ticketId}">確認收款・開 QR</button>`:''}
     ${t.checkedInAt?'':`<button class="btn ${t.cancelReqAt?'btn-primary':'btn-ghost'} btn-sm" data-act="tk-more" data-id="${t.ticketId}">${t.cancelReqAt?'處理申請':'其他'}</button>`}</div></div>`).join('') || '<div class="muted">沒有符合的票</div>';
 }
-function choiceBox(msg, options){
+function choiceBox(msg, options, opt={}){
   return new Promise(res=>{
     const bg = document.createElement('div'); bg.className='dialog-bg';
-    bg.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><p>${esc(msg)}</p><div style="display:grid;gap:10px">${options.map(o=>`<button class="btn ${o.cls||'btn-primary'}" data-r="${o.v}">${o.html ? o.label : esc(o.label)}</button>`).join('')}<button class="btn btn-outline" data-r="">取消</button></div></div>`;
+    bg.innerHTML = `<div class="dialog" role="dialog" aria-modal="true"><p>${opt.html ? msg : esc(msg)}</p><div style="display:grid;gap:10px">${options.map(o=>`<button class="btn ${o.cls||'btn-primary'}" data-r="${o.v}">${o.html ? o.label : esc(o.label)}</button>`).join('')}<button class="btn btn-outline" data-r="">取消</button></div></div>`;
     bg.addEventListener('click', e=>{ const b=e.target.closest('[data-r]'); if(b||e.target===bg){ bg.remove(); res(b?b.dataset.r:''); } });
     document.body.appendChild(bg);
   });
@@ -4471,6 +4525,14 @@ document.addEventListener('click', async e=>{
         S.badges = S.badges || {}; const nb = { r: act==='set-rank' ? v : cur.r, c: act==='set-coe' ? v : cur.c };
         if (nb.r || nb.c) S.badges[id] = nb; else delete S.badges[id];
         QuickCache.dropPrefix('home'); toast('已更新','ok'); if (S.sub==='adminMember') renderAdminMember($('#main')); }
+      catch(err){ toast(errText(err),'err'); } break; }
+    case 'my-rank': case 'my-coe': { const id = S.me.id, cur = (S.badges && S.badges[id]) || { r:'', c:0 };
+      const v = act==='my-rank' ? await pickMyRank(cur.r) : await pickMyCoe(cur.c); if (v === null) break;
+      try { const r = await api.meBadgeSet(act==='my-rank' ? { rank:v } : { coe:v });
+        S.badges = S.badges || {}; const nb = { r: r.r, c: r.c };
+        if (nb.r || nb.c) S.badges[id] = nb; else delete S.badges[id];
+        QuickCache.dropPrefix('home'); toast((act==='my-rank' ? v : v > 0) ? '✨ 好了！動態牆上你的名字後面會出現徽章' : '已拿掉','ok');
+        if ($('#my-badge')) renderAccount($('#main')); }
       catch(err){ toast(errText(err),'err'); } break; }
     case 'dream-edit': S.dreamBack = S.sub; go(S.tab, {sub:'dreamEdit'}); break;
     case 'dream-tick': dreamTick(+el.dataset.i); break;
