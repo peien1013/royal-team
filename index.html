@@ -454,7 +454,7 @@ button.stat:active{transform:scale(.98)}
 /* 排版：短字一行顯示；長句平均分行，避免最後一行只剩一兩個字（使用者貼文、留言除外） */
 .btn,.btn-sm,.pill,.nav span,.stat .k,.lbl,.chipbar button,.acad-switch button,.acad-switch small,.sched-title b,.sched-title span,.when,.teacher,.nw{white-space:nowrap}
 .pill{max-width:100%;overflow:hidden;text-overflow:ellipsis}
-body{word-break:keep-all;overflow-wrap:break-word;line-break:strict}
+body{overflow-wrap:break-word;line-break:strict}   /* 2026-11-25 拿掉 keep-all：iPhone Safari 會把中文標點當成字、整段黏住後硬斷；改用 .ph 分段 */
 h1,h2,h3,p,.hint,.muted,.small,.notice,.announce,.toast,.dialog p,.sheet-b,.mt,.venue,.onsite-info,.sched-row .t,.scan-res .sub,.scan-tip,.login .sub,.ml-row b,.tk-row b{text-wrap:balance}
 .uc,.post-text,.cmt .bubble,.cmt .bubble div,textarea,input{text-wrap:wrap;word-break:normal;overflow-wrap:anywhere}
 .ml-row b{display:block}.scan-demo button{white-space:nowrap}
