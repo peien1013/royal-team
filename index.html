@@ -218,14 +218,15 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .mrow .info{flex:1;min-width:0}
 /* 首頁「進入教室」（2026-11-24 使用者：不用多做任何動作，直接進會議室的感覺） */
 .class-banner{background:linear-gradient(135deg,#0B5FA5,#1E88E5);color:#fff;border-radius:18px;padding:14px 16px;margin:0 0 12px;box-shadow:0 6px 18px rgba(11,95,165,.25)}
-.class-banner.live{background:linear-gradient(135deg,#0E7A3E,#18A957);box-shadow:0 6px 18px rgba(14,122,62,.3);animation:cb-pulse 2.4s ease-in-out infinite}
+.class-banner.live{background:linear-gradient(135deg,#0E7A3E,#18A957);box-shadow:0 6px 18px rgba(14,122,62,.3);position:relative}
+.class-banner.live::before{content:"";position:absolute;inset:-3px;border-radius:21px;box-shadow:0 0 0 4px rgba(24,169,87,.55),0 6px 26px rgba(24,169,87,.6);opacity:0;animation:cb-pulse 2.4s ease-in-out infinite;pointer-events:none}
 .class-banner .cb-tag{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:2px 10px;font-weight:800;font-size:14px}
 .class-banner b{display:block;font-size:19px;line-height:1.35;margin:6px 0 2px}
 .class-banner .cb-sub{opacity:.92;font-size:15px}
 .class-banner .btn-class{background:#fff;color:#0B5FA5;font-size:21px;font-weight:800;min-height:62px;margin-top:10px;border:0;width:100%;display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:14px}
 .class-banner.live .btn-class{color:#0E7A3E}
-@keyframes cb-pulse{0%,100%{box-shadow:0 6px 18px rgba(14,122,62,.3)}50%{box-shadow:0 6px 26px rgba(24,169,87,.6)}}
-@media (prefers-reduced-motion: reduce){.class-banner.live{animation:none}}
+@keyframes cb-pulse{0%,100%{opacity:0}50%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.class-banner.live::before{animation:none}}
 /* 後台課程管理 */
 .cs-row{align-items:flex-start}.cs-row.is-hidden{opacity:.55}
 .cs-btns{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}.cs-btns .btn{width:auto;white-space:nowrap}
@@ -278,7 +279,7 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);background-attachment:fixed}
 .bubbles{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
 .bubbles i{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.95),rgba(180,214,243,.35) 60%,rgba(11,114,196,.10));
-  box-shadow:inset -6px -8px 18px rgba(11,114,196,.08);animation:floaty 18s ease-in-out infinite}
+  box-shadow:inset -6px -8px 18px rgba(11,114,196,.08)}   /* 2026-11-25 變快：背景氣泡不再飄動 */
 .bubbles i:nth-child(1){width:150px;height:150px;left:-40px;top:12%}
 .bubbles i:nth-child(2){width:90px;height:90px;right:-20px;top:32%;animation-delay:-5s;animation-duration:22s}
 .bubbles i:nth-child(3){width:60px;height:60px;left:18%;top:68%;animation-delay:-9s}
@@ -288,8 +289,7 @@ body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);back
 
 /* 頂部：漂浮的藍色膠囊 */
 .topbar{margin:calc(env(safe-area-inset-top) + 8px) 10px 0;top:calc(env(safe-area-inset-top) + 8px);border-radius:24px;padding:8px 14px;
-  background:linear-gradient(135deg,rgba(11,114,196,.96),rgba(10,94,163,.96));box-shadow:0 10px 28px rgba(11,90,160,.28);
-  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  background:linear-gradient(135deg,rgba(11,114,196,.97),rgba(10,94,163,.97));box-shadow:0 10px 28px rgba(11,90,160,.28)}   /* 2026-11-25 變快：拿掉毛玻璃（背景本來就不透明，看不出差別） */
 .topbar .logo{box-shadow:0 0 0 3px rgba(255,255,255,.35)}
 /* 有衝刺班時：深藍底＋金屬金框，像重要活動的看板，跟藍色的打卡按鈕分開 */
 .topbar.event{border:3px solid transparent;overflow:hidden;
@@ -311,30 +311,32 @@ h2 .bdg{width:28px;height:28px}
 /* 徽章閃閃發亮（2026-11-24 使用者：選了之後名字後面會出現、會閃閃發亮）：光從左上掃到右下＋外圈金光＋小星星 */
 .bdg-s{position:relative;display:inline-block;line-height:0;vertical-align:middle}
 .bdg-s::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.95) 50%,transparent 70%) no-repeat;background-size:250% 100%;background-position:150% 0;
-  -webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;animation:bdg-shine 3.4s ease-in-out infinite;pointer-events:none}
+  -webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;pointer-events:none}
 .bdg-s.is-tag::after{display:none}
 .bdg-tag.te{position:relative;overflow:hidden}
-.bdg-tag.te::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat;background-size:250% 100%;background-position:150% 0;animation:bdg-shine 3.4s ease-in-out infinite;pointer-events:none}
-.bdg-s img.bdg{animation:bdg-glow 3.4s ease-in-out infinite}
-.bdg-s::before{content:"✦";position:absolute;top:-6px;right:-4px;font-size:9px;line-height:1;color:#FFD54A;text-shadow:0 0 3px #fff;opacity:0;animation:bdg-star 3.4s ease-in-out infinite;pointer-events:none;z-index:1}
-.bdgs .bdg-s+.bdg-s::before,.bdgs .bdg-s+.bdg-s::after,.bdgs .bdg-s+.bdg-s img.bdg{animation-delay:.5s}
+.bdg-tag.te::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.9) 50%,transparent 70%) no-repeat;background-size:250% 100%;background-position:150% 0;pointer-events:none}
+.bdg-s.vis .bdg-tag.te::after{animation:bdg-shine 3.4s ease-in-out infinite}
+.bdg-s img.bdg{filter:drop-shadow(0 1px 2px rgba(176,130,30,.45))}
+.bdg-s::before{content:"✦";position:absolute;top:-6px;right:-4px;font-size:9px;line-height:1;color:#FFD54A;text-shadow:0 0 3px #fff;opacity:0;pointer-events:none;z-index:1}
+/* 2026-11-25 變快：只有畫面上看得到的徽章才閃（.vis 由 IntersectionObserver 加上），不再用很耗電的 filter 動畫 */
+.bdg-s.vis::after{animation:bdg-shine 3.4s ease-in-out infinite}.bdg-s.vis::before{animation:bdg-star 3.4s ease-in-out infinite}
+.bdgs .bdg-s+.bdg-s::before,.bdgs .bdg-s+.bdg-s::after{animation-delay:.5s}
 @keyframes bdg-shine{0%,45%{background-position:150% 0}75%,100%{background-position:-50% 0}}
-@keyframes bdg-glow{0%,100%{filter:drop-shadow(0 1px 1px rgba(0,0,0,.25))}60%{filter:drop-shadow(0 0 4px rgba(255,205,60,.95)) brightness(1.12)}}
 @keyframes bdg-star{0%,50%,100%{opacity:0;transform:scale(.4) rotate(0)}65%{opacity:1;transform:scale(1.2) rotate(45deg)}80%{opacity:0;transform:scale(.6) rotate(90deg)}}
 .bdg-tag.te{background:linear-gradient(135deg,#8A5A00,#F6D365 45%,#B07800);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);letter-spacing:.5px;box-shadow:0 0 0 1px #E8C25A inset}
 h2 .bdg-tag.te{font-size:15px;padding:1px 9px}
 .my-bdgs{display:flex;gap:12px;align-items:center;margin:0 0 12px}
 .bdg-big{width:56px;height:56px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
 .bdg-big-te{font-size:22px;padding:6px 14px}
-@media (prefers-reduced-motion: reduce){.bdg-s::after,.bdg-s::before,.bdg-s img.bdg,.bdg-tag.te::after{animation:none}}
+@media (prefers-reduced-motion: reduce){.bdg-s::after,.bdg-s::before,.bdg-tag.te::after{animation:none!important}}
 .tb-dot{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:999px;background:#DC2626;color:#fff;font-size:13px;font-weight:800;line-height:1}
 .card.apply-banner{background:#ECFDF5;border:2px solid #10B981;color:#065F46;font-weight:700;margin-bottom:10px}
 .apply-banner b{font-size:20px}
 .topbar .tb-admin{background:linear-gradient(180deg,#D4A62A,#B8860B);color:#fff;font-weight:800;white-space:nowrap;flex:0 0 auto}
 .topbar.event .tb-btn{background:rgba(242,214,136,.16);color:#FFF1C9}
-.topbar.event::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;
+.topbar.event::after{content:'';position:absolute;top:0;bottom:0;left:0;width:30%;pointer-events:none;will-change:transform;
   background:linear-gradient(100deg,transparent,rgba(255,240,190,.20),transparent);animation:tb-sheen 7s ease-in-out infinite}
-@keyframes tb-sheen{0%,70%{left:-40%}100%{left:130%}}
+@keyframes tb-sheen{0%,70%{transform:translateX(-135%)}100%{transform:translateX(435%)}}   /* 用 transform（手機顯示晶片處理），不用 left */
 @media (prefers-reduced-motion:reduce){.topbar.event::after{animation:none;display:none}}
 .demo-strip{margin:8px auto 0;width:max-content;max-width:calc(100% - 24px);border-radius:999px;border:0;padding:4px 14px;font-size:14px;
   background:rgba(255,246,217,.92);box-shadow:0 4px 12px rgba(160,120,0,.12)}
@@ -399,13 +401,14 @@ input.inp,textarea.inp,select.inp{border-radius:20px}
 
 /* 底部選單：漂浮膠囊 */
 .nav{left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding-bottom:0;border:0;border-radius:32px;
-  background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  background:rgba(255,255,255,.97);   /* 2026-11-25 變快：拿掉毛玻璃 */
   box-shadow:0 14px 36px rgba(16,70,120,.22),0 2px 6px rgba(16,70,120,.08);max-width:580px;margin:0 auto}
 .nav-in{height:var(--nav-h)}
 .nav .post-btn span.circle{width:70px;height:70px;margin-top:-38px;border:5px solid #fff;background:radial-gradient(circle at 35% 30%,#3FA2EE,#0B72C4 70%);
   box-shadow:0 10px 24px rgba(11,114,196,.45)}
-.nav .post-btn:not(.done) span.circle{animation:breathe 2.6s ease-in-out infinite}
-@keyframes breathe{0%,100%{box-shadow:0 10px 24px rgba(11,114,196,.45),0 0 0 0 rgba(11,114,196,.35)}50%{box-shadow:0 10px 24px rgba(11,114,196,.45),0 0 0 10px rgba(11,114,196,0)}}
+.nav .post-btn span.circle{position:relative}
+.nav .post-btn:not(.done) span.circle::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:4px solid rgba(11,114,196,.35);opacity:0;pointer-events:none;animation:breathe 2.6s ease-out infinite}
+@keyframes breathe{0%{opacity:.9;transform:scale(.96)}70%,100%{opacity:0;transform:scale(1.28)}}   /* 打卡鈕的呼吸光圈：只動透明度和大小 */
 .nav .post-btn.done span.circle{background:radial-gradient(circle at 35% 30%,#3CC67F,#17894F 70%)}
 
 /* 留言、彈出視窗、提示：氣泡 */
@@ -2616,22 +2619,41 @@ if (window.matchMedia) { const mq = matchMedia('(min-width:1024px)'); const f = 
 const GLUE_SKIP = '.uc,.post-text,.cmt,textarea,input,script,style,svg';
 const PHRASE_SKIP = GLUE_SKIP + ',.ph,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
 const PH_RE = /[^，。、；：！？]+[，。、；：！？]*[」』）》〉】\u2060]*|[，。、；：！？]+/g;
-/** 說明文字依標點切成一小段一小段，換行只發生在段落之間 */
-function phraseText(t){
-  const v = t.nodeValue; if (!v || v.length < 10 || !/[\u4e00-\u9fff]/.test(v) || !/[，。、；：！？]/.test(v)) return;
-  const el = t.parentElement; if (!el || el.closest(PHRASE_SKIP)) return;
-  const cs = getComputedStyle(el); if (cs.whiteSpace !== 'normal' || /flex|grid/.test(cs.display)) return;
-  const parts = v.match(PH_RE); if (!parts || parts.length < 2 || parts.join('') !== v) return;
+/** 說明文字依標點切成一小段一小段，換行只發生在段落之間。
+ *  2026-11-25 變快：一次收集、先讀完所有樣式再一起改（以前一個一個改，手機要重排好多次） */
+const PH_CJK = /[一-鿿]/, PH_PUN = /[，。、；：！？]/;
+let PH_Q = [], PH_T = false;
+function queuePhrase(t){ PH_Q.push(t); if (!PH_T) { PH_T = true; queueMicrotask(flushPhrase); } }
+function flushPhrase(){
+  PH_T = false; const q = PH_Q; PH_Q = []; const cand = [], ok = new Map();
+  for (const t of q) {
+    const v = t.nodeValue; if (!t.isConnected || !v || v.length < 10 || !PH_CJK.test(v) || !PH_PUN.test(v)) continue;
+    const el = t.parentElement; if (!el || el.closest(PHRASE_SKIP)) continue; cand.push([t, el]);
+  }
+  if (!cand.length) return;
+  for (const [, el] of cand) if (!ok.has(el)) { const cs = getComputedStyle(el); ok.set(el, cs.whiteSpace === 'normal' && !/flex|grid/.test(cs.display)); }
+  for (const [t, el] of cand) if (ok.get(el)) splitPhrase(t);
+}
+function splitPhrase(t){
+  const v = t.nodeValue, parts = v.match(PH_RE); if (!parts || parts.length < 2 || parts.join('') !== v) return;
   const frag = document.createDocumentFragment();
   parts.forEach(x => { const sp = document.createElement('span'); sp.className = 'ph'; sp.textContent = x; frag.appendChild(sp); });
   t.replaceWith(frag);
 }
+/* 徽章只有在畫面上看得到時才閃 */
+const BDG_IO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('vis', e.isIntersecting))) : null;
+function watchBadges(n){
+  if (n.nodeType !== 1) return;
+  const list = n.classList.contains('bdg-s') ? [n] : n.querySelectorAll('.bdg-s');
+  list.forEach(b => BDG_IO ? BDG_IO.observe(b) : b.classList.add('vis'));
+}
+function unwatchBadges(n){ if (!BDG_IO || n.nodeType !== 1) return; (n.classList.contains('bdg-s') ? [n] : n.querySelectorAll('.bdg-s')).forEach(b => BDG_IO.unobserve(b)); }
 function glueText(root){
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const list = []; while (w.nextNode()) list.push(w.currentNode);
   list.forEach(t => {
     const el = t.parentElement; if (!el || el.closest(GLUE_SKIP)) return;
-    try { if (t.isConnected) queueMicrotask(() => { if (t.isConnected) phraseText(t); }); } catch(_){}
+    queuePhrase(t);
     const v = t.nodeValue; if (!/[「『（《〈【」』）》〉】]|\d[ \u00A0]?[天人篇堂次個月年日週分時元張代階]|^[ \u00A0]?[天人篇堂次個月年日週分時元張代階]/.test(v)) return;
     const nv = v.replace(/([「『（《〈【])\u2060?/g, '$1\u2060').replace(/\u2060?([」』）》〉】])/g, '\u2060$1')
       .replace(/(\d) (?=[天人篇堂次個月年日週分時元張代階])/g, '$1\u00A0')                   // 「3 天」「7 人」不拆成兩行
@@ -2639,9 +2661,10 @@ function glueText(root){
     if (nv !== v) t.nodeValue = nv;
   });
 }
-new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
-  if (n.nodeType === 1) glueText(n); else if (n.nodeType === 3 && n.parentElement) glueText(n.parentElement);
-}))).observe(document.documentElement, { childList: true, subtree: true });
+new MutationObserver(ms => ms.forEach(m => {
+  m.addedNodes.forEach(n => { if (n.nodeType === 1) { glueText(n); watchBadges(n); } else if (n.nodeType === 3 && n.parentElement) glueText(n.parentElement); });
+  m.removedNodes.forEach(unwatchBadges);
+})).observe(document.documentElement, { childList: true, subtree: true });
 /* 放在別的網頁框裡看（手機上的預覽視窗）時，如果外框把整頁拉長、自己捲動，底部選單就固定不住：
    這時在上方提醒改用全螢幕。正式版從桌面打開不會遇到。 */
 function watchNavVisible(){
@@ -3142,6 +3165,7 @@ async function renderProgress(main){
   if (S.homeDirty || S.homeStale || CONFIG.MODE !== 'live'){   // 剛發完日誌、報名被核准等：等最新的打卡天數，不先顯示舊的
     main.innerHTML = SKEL;
     if (S.me && CONFIG.MODE === 'live' && !QuickCache.get('myposts')) QuickCache.fetch('myposts', () => api.getFeed({ cursor:0, limit:200, authorId:S.me.id })).catch(()=>{});   // 同時拿，不用排隊
+    if (S.me && CONFIG.MODE === 'live' && !QuickCache.fresh('growth:me', QC_RECENT)) QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});   // 2026-11-25 變快：我的成長也同時拿
     try { await (S.homeDirty || loadHome()); } catch(e){ if (!S.me) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; } }
     if (S.navSeq !== seq) return;
     setNav(); return drawProgress(main);
