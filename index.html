@@ -282,6 +282,7 @@ body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);back
 .topbar.event .logo{box-shadow:0 0 0 2px #E9C766,0 0 0 5px rgba(233,199,102,.28)}
 .topbar.event .tb-text small{color:#F2D688;opacity:1;letter-spacing:1px;font-weight:700}
 .topbar.event h1{color:#FFF7DF}
+.topbar .tb-admin{background:linear-gradient(180deg,#D4A62A,#B8860B);color:#fff;font-weight:800;white-space:nowrap;flex:0 0 auto}
 .topbar.event .tb-btn{background:rgba(242,214,136,.16);color:#FFF1C9}
 .topbar.event::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;
   background:linear-gradient(100deg,transparent,rgba(255,240,190,.20),transparent);animation:tb-sheen 7s ease-in-out infinite}
@@ -2113,8 +2114,8 @@ async function enterWithSession(r){
   store(SESSION_KEY, S.session);
   document.body.style.background='';
   try { await loadHome(); } catch(e) { if (!S.session) return; return renderLogin('start', {msg:errText(e)}); }
-  renderShell(); go('home'); prefetchPages();
-  if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip')) setTimeout(showInstallTip, 1500);
+  renderShell(); goStart(); prefetchPages();
+  if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip') && !(S.sub==='admin')) setTimeout(showInstallTip, 1500);
 }
 /** 第一次進 APP、還沒放到桌面：跳一次說明（關掉就不再跳，「我的帳號」裡也找得到） */
 function showInstallTip(){
@@ -2258,6 +2259,7 @@ async function enterApp(method){   // 示範模式
 function renderShell(){
   $('#app').innerHTML = `<div class="shell" id="shell">
     <header class="topbar"><img class="logo" src="${LOGO}" alt=""><div class="tb-text"><small id="tb-sub" class="hidden">皇家團隊</small><h1 id="tb-title">皇家團隊</h1></div>
+      <button class="tb-btn tb-admin hidden" id="tb-admin" data-act="open-admin" aria-label="管理後台">🛠 後台</button>
       <button class="tb-btn hidden" id="tb-back" data-act="back">‹ 返回</button></header>
     <main id="main"></main></div>
     <nav class="nav" aria-label="主選單"><div class="nav-in">
@@ -2281,8 +2283,17 @@ function updateCheckinBtn(){
 function setNav(){
   updateCheckinBtn(); setTopTitle();
   $$('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===S.tab && !S.sub));
-  $('#tb-back').classList.toggle('hidden', !S.sub); requestAnimationFrame(fitTopTitle);
+  $('#tb-back').classList.toggle('hidden', !S.sub);
+  { const ab = $('#tb-admin'); if (ab) ab.classList.toggle('hidden', !!S.sub || !isAdminMe()); }   // 管理員：每一頁右上角都有「後台」，一按就到
+  requestAnimationFrame(fitTopTitle);
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse');
+}
+const isAdminMe = () => CONFIG.MODE==='live' ? !!(S.me && S.me.role==='admin') : S.role==='admin';
+/** 打開 APP 時先到哪一頁：管理員用電腦（螢幕寬）或網址加 #admin → 直接到後台；其他 → 首頁 */
+function goStart(){
+  const wantAdmin = isAdminMe() && (location.hash==='#admin' || (!isStandalone() && window.matchMedia && matchMedia('(min-width: 900px) and (pointer: fine)').matches));
+  if (location.hash==='#admin') history.replaceState(null, '', location.pathname + location.search);
+  go(wantAdmin ? 'account' : 'home', wantAdmin ? {sub:'admin'} : {});
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
 function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
@@ -4427,7 +4438,7 @@ document.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.matche
     const last = CONFIG.MODE==='live' ? store('royal_home_last') : null;
     if (last && last.me) {   // 秒開：先用上一次的首頁，背景再更新
       applyHome(last); api._prefetch = { at:Date.now(), feed:last.feed };
-      document.body.style.background=''; renderShell(); go('home');
+      document.body.style.background=''; renderShell(); goStart();
       const before = JSON.stringify(last);
       loadHome().then(() => {
         setTopTitle(); setNav();
@@ -4442,7 +4453,7 @@ document.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.matche
     }
     renderLogin('busy', {text:'載入中…'});
     try { await loadHome(); } catch(e) { if (S.session) renderLogin('start', {msg:errText(e)}); return; }
-    document.body.style.background=''; renderShell(); go('home'); prefetchPages();
+    document.body.style.background=''; renderShell(); goStart(); prefetchPages();
   } else renderLogin('start');
 })();
 // iPhone 主畫面 APP：從 LINE 切回來時，繼續領登入結果
