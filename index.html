@@ -78,6 +78,7 @@ h2{font-size:22px} h3{font-size:19px}
 .btn-sm{min-height:46px;font-size:17px;border-radius:12px;width:auto}
 .row{display:flex;gap:10px;align-items:center}
 a.btn{text-decoration:none}
+a.btn.is-wait{opacity:.6;pointer-events:none}
 .row > .btn{flex:1}
 .muted{color:var(--muted)}
 .small{font-size:15px}
@@ -1965,7 +1966,10 @@ function renderLogin(step='start', extra={}){
       ${cta ? `<div class="install-cta"><div class="ic-n">第 1 步</div><b>先把 APP 放到手機桌面</b><div class="muted small">放好之後，從桌面的金色「皇家」圖示打開再登入</div>
         <button class="btn btn-gold" data-act="install-guide">📲 教我放到手機桌面</button></div><div class="ic-n">第 2 步</div>` : ''}
       ${(()=>{ const p = CONFIG.MODE==='live' ? prepLineLogin() : null;
-        return p ? `<a class="btn btn-line" href="${esc(p.url)}" data-act="login-line">用 LINE 登入</a>` : '<button class="btn btn-line" data-act="login-line">用 LINE 登入</button>'; })()}
+        if (!p) return '<button class="btn btn-line" data-act="login-line">用 LINE 登入</button>';
+        if (p.ok) return `<a class="btn btn-line" id="line-a" href="${esc(p.url)}" data-act="login-line">用 LINE 登入</a>`;
+        p.ready.then(() => { const a = $('#line-a'); if (!a) return; if (p.ok) a.href = p.url; a.classList.remove('is-wait'); a.removeAttribute('aria-disabled'); a.textContent = '用 LINE 登入'; });
+        return '<a class="btn btn-line is-wait" id="line-a" data-act="login-line" aria-disabled="true">LINE 準備中…</a>'; })()}
       <button class="btn btn-outline" data-act="login-email">沒有 LINE？用 Email 登入</button>
       ${CONFIG.MODE==='live' ? '<div class="hint center">第一次使用也是按這裡，登入後填資料申請加入。</div>'
         : ''}</div>`;
@@ -2006,7 +2010,7 @@ function renderLogin(step='start', extra={}){
     const av = avatarHTML({name:A.name||'？', avatarUrl:S.applyAvatar||A.picture||'', color:'#B9C6D3'},'xl');
     let body = '';
     if (A.step===1) body = `<h2 style="margin:0 0 4px">你的真實姓名</h2>
-      <div class="muted">管理員要核對是誰，請填<b>身分證上的全名</b>，不要填暱稱或 LINE 名稱。</div>
+      <div class="muted">請填<b>身分證上的全名</b>，不要填暱稱或 LINE 名稱，大家才認得你。</div>
       <label class="lbl" for="ap-name">真實姓名<span class="req">必填</span></label><input class="inp" id="ap-name" autocomplete="name" placeholder="例如：王小美" maxlength="30" value="${esc(A.name)}">
       ${A.loginName?`<div class="hint">你登入用的名稱是「${esc(A.loginName)}」，這個不一定是本名喔。</div>`:''}
       <label class="lbl">大頭照<span class="muted small" style="font-weight:400">（可不放，之後也能換）</span></label>
@@ -2026,13 +2030,13 @@ function renderLogin(step='start', extra={}){
       <div id="ap-err" class="notice err hidden"></div>
       <button class="btn btn-primary mt" data-act="ap-next">${A.uplineId||A.uplineText?'下一步':'跳過，下一步'}</button>
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
-    else body = `<h2 style="margin:0 0 4px">確認資料</h2><div class="muted">送出後由管理員審核，通過就能使用。</div>
+    else body = `<h2 style="margin:0 0 4px">確認資料</h2><div class="muted">${S.apAuto===false?'送出後由管理員審核，通過就能使用。':'送出後就可以開始使用了 🎉'}</div>
       <div class="card center mt" style="box-shadow:none;border:2px solid var(--line)"><div style="display:flex;justify-content:center">${av}</div><div style="font-size:24px;font-weight:800;margin-top:8px">${esc(A.name)}</div>
         <div class="muted">TW 帳號：${esc(A.tw)}</div>${owner?'':`<div class="muted">上線：${A.uplineName||A.uplineText?esc(A.uplineName||A.uplineText):'（沒有填，管理員會幫你設定）'}</div>`}</div>
       <div class="notice info small mt privacy">🔒 <b>個人資料說明</b>：你填的姓名、大頭照、TW 帳號和登入用的 LINE／Email，只用在皇家團隊的活動管理（審核、打卡、課程報名與繳費）。
         其他夥伴只看得到你的姓名和大頭照；TW 帳號、Email 只有你和管理員看得到。資料存在管理員的 Google 帳號，不會提供給團隊以外的人。想刪除資料請洽管理員。按下面的按鈕送出，就表示你同意以上說明。</div>
       <div id="ap-err" class="notice err hidden"></div>
-      <button class="btn btn-primary mt" data-act="apply-send" data-ticket="${esc(A.ticket)}">送出申請</button>
+      <button class="btn btn-primary mt" data-act="apply-send" data-ticket="${esc(A.ticket)}">${S.apAuto===false?'送出申請':'送出，加入皇家團隊'}</button>
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
     app.innerHTML = `<div class="login" style="justify-content:flex-start">${head}${dots}${body}</div>`;
     if (A.step===3) (async () => {
@@ -2074,19 +2078,24 @@ function prepLineLogin(force){
   const st = randStr(16), nonce = randStr(16), secret = randStr(24);
   const q = new URLSearchParams({ response_type:'code', client_id:CONFIG.LINE_CHANNEL_ID, redirect_uri:CONFIG.APP_URL, state:st, scope:'profile openid', nonce, bot_prompt:'normal' });
   const p = { state:st, nonce, secret, at:Date.now(), ok:false, url:'https://access.line.me/oauth2/v2.1/authorize?' + q.toString() };
-  p.ready = sha256Hex(secret).then(h => api.lineStart({ state:st, nonce, secretHash:h })).then(() => { p.ok = true; }, () => { p.ok = false; });
+  p.ready = sha256Hex(secret).then(h => api.lineStart({ state:st, nonce, secretHash:h })).then(() => { p.ok = true; p.done = true; }, () => { p.ok = false; p.done = true; });
   return LINE_PREP = p;
 }
 /** 按下「用 LINE 登入」：準備好了就讓連結自己打開（不攔）；還沒好才用舊方法 */
 function lineLinkTapped(e){
   const p = LINE_PREP;
   if (p && p.ok && Date.now() - p.at < 13*60000) {
-    store('royal_line_pending', { state:p.state, secret:p.secret, at:Date.now() });
+    const pend = { state:p.state, secret:p.secret, at:Date.now() };
+    store('royal_line_pending', pend);
     LINE_PREP = null;
-    setTimeout(()=>{ if (!document.hidden && !S.session && location.pathname) renderLogin('busy', {text:'正在打開 LINE…（確認完請回到這個畫面）', cancel:true}); }, 1200);
+    // 連結打開 LINE APP 之後，這個畫面還留著（主畫面 APP 不一定會收到「切回來」的通知）：
+    // 一定要自己開始等 LINE 的結果，不然會一直卡在「等待」（2026-11-24 使用者回報）
+    setTimeout(()=>{ if (!S.session && store('royal_line_pending')) pollLine(pend); }, 1500);
     return;   // 不擋：讓手機自己用連結打開 LINE
   }
-  e.preventDefault(); startLineLogin();
+  e.preventDefault();
+  if (p && !p.done) { toast('LINE 準備中，請等一下再按'); return; }   // 還沒準備好：不要用程式跳過去（那樣會出現要打帳號密碼的網頁）
+  startLineLogin();
 }
 /** 舊方法（備用）：先跟後端登記，再跳到 LINE */
 async function startLineLogin(){
@@ -2131,7 +2140,7 @@ async function pollLine(pend){
 /** 登入結果：已核准→進入；第一次→填申請；審核中→等待 */
 async function handleAuth(r){
   if (r.status === 'ok') return enterWithSession(r);
-  if (r.status === 'new') return renderLogin('apply', {ticket:r.ticket, suggestedName:r.suggestedName, suggestedPicture:r.suggestedPicture||''});
+  if (r.status === 'new') { S.apAuto = r.auto !== false; return renderLogin('apply', {ticket:r.ticket, suggestedName:r.suggestedName, suggestedPicture:r.suggestedPicture||''}); }
   if (r.status === 'pending') return renderLogin('wait');
   return renderLogin('rejected');
 }
@@ -3741,6 +3750,7 @@ const inLineApp = () => / Line\//i.test(navigator.userAgent);
     if (CONFIG.MODE !== 'live' || !inLineApp() || window.self !== window.top) return;
     const u = new URL(location.href);
     if (u.searchParams.get('openExternalBrowser') === '1' || sessionStorage.getItem('royal_line_escape')) return;
+    if (u.searchParams.get('state') && (u.searchParams.get('code') || u.searchParams.get('error'))) return;   // LINE 確認完回來：就在這裡完成登入，不要再跳出去（不然會用兩次、出現錯誤）
     sessionStorage.setItem('royal_line_escape', '1');
     u.searchParams.set('openExternalBrowser', '1'); location.replace(u.toString());
   } catch(_){}
