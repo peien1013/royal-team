@@ -608,6 +608,39 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .hp-top .avatar{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold-line)}
 .hp-name{font-size:21px;font-weight:800;line-height:1.3}
 .pill.rank{background:var(--gold-soft);color:var(--gold-dark);border:1px solid var(--gold-line)}
+.btn-gold{background:linear-gradient(180deg,#D4A62A,#B8860B);color:#fff;border:0;box-shadow:0 4px 12px rgba(184,134,11,.3)}
+.btn-xl{min-height:64px;font-size:20px}
+.install-cta{background:var(--gold-soft);border:2px solid var(--gold-line);border-radius:16px;padding:14px;margin-bottom:6px;text-align:center;display:grid;gap:6px}
+.install-cta b{font-size:18px}
+.ic-n{display:inline-block;justify-self:center;margin:4px auto 2px;padding:2px 12px;border-radius:999px;background:var(--brand);color:#fff;font-size:13px;font-weight:700}
+.login>.ic-n{display:block;width:max-content}
+.ig-step{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.ig-step:last-of-type{border-bottom:0}
+.ig-n{flex:0 0 34px;height:34px;border-radius:50%;background:var(--brand);color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center}
+.ig-b{flex:1;min-width:0}
+.ig-t{font-size:18px;line-height:1.5;margin:4px 0 8px}
+.mk{background:#F3F4F6;border:1px solid #D1D5DB;border-radius:12px;font-size:18px;color:#374151}
+.mk-bar{display:flex;justify-content:space-around;align-items:center;padding:8px 6px}
+.mk-bar span{min-width:36px;text-align:center;padding:4px 6px;border-radius:8px}
+.mk-top{justify-content:space-between;gap:8px;padding:8px 10px}
+.mk-top b{font-size:16px}
+.mk-url{flex:1;text-align:left!important;font-size:14px;color:#6B7280;background:#fff;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mk-list div{padding:10px 14px;border-bottom:1px solid #E5E7EB;font-size:16px;display:flex;justify-content:space-between}
+.mk-list div:last-child{border-bottom:0}
+.mk .hi{background:#FFF3C4;outline:3px solid #F59E0B;border-radius:8px;font-weight:800;color:#92400E;animation:mkpulse 1.4s ease-in-out infinite}
+@keyframes mkpulse{0%,100%{outline-color:#F59E0B}50%{outline-color:rgba(245,158,11,.25)}}
+.mk-cap{font-size:14px;color:#92400E;margin-top:4px}
+.mk-home{display:flex;padding:12px;background:linear-gradient(160deg,#1e3a5f,#4b6b8f)}
+.mk-app{display:flex;flex-direction:column;align-items:center;gap:4px;color:#fff;font-size:13px}
+.mk-app img{width:56px;height:56px;border-radius:14px;background:#fff;outline:3px solid #F59E0B}
+.tree-sum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tree-line{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden}
+.tree-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--gold-soft)}
+.tree-node{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 0;border-top:1px solid var(--line)}
+.tree-node .tg,.tree-head .tg{flex:0 0 34px;height:34px;border:0;background:none;font-size:18px;color:var(--muted);cursor:pointer}
+.tree-node .nm,.tree-head .nm{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:none;border:0;text-align:left;cursor:pointer;font-size:17px;padding:0}
+.tree-node .gen{font-size:12px;color:#fff;background:var(--brand);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.tree-node .cnt,.tree-head .cnt{font-size:13px;color:var(--muted);white-space:nowrap}
 .fee-what{display:grid;gap:6px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:12px;padding:10px 12px;font-weight:600}
 .fee-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 .fee-banner .btn{width:auto;min-height:40px}
@@ -1605,6 +1638,7 @@ const MockApi = {
     const n = k => rows.filter(r=>r.state===k).length;
     return { month:ym, months:[ymAddJs(todayStr().slice(0,7),-1), todayStr().slice(0,7), ymAddJs(todayStr().slice(0,7),1)], fee:300, dueDay:5, enforce:false, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
   async adminFeeSet(id, month, to){ await this._wait(); return { ok:true, state:to }; },
+  async adminTree(){ await this._wait(); return { members: MockDB.members.filter(m=>m.status!=='pending').map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, up:m.uplineId||'', role:m.role||'member', joined:'', upText:'' })) }; },
   async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
   async adminDashboard(){
     await this._wait();
@@ -1744,6 +1778,7 @@ const GasApi = {
   adminCheckin(courseId, code, payNow, method){ return this.call('admin.checkin', {courseId, code, payNow:!!payNow, method}, {retry:1}); },
   adminDashboard(activityId){ return this.call('admin.dashboard', activityId ? {activityId} : {}); },
   getFee(){ return this.call('fee.get', {}); },
+  adminTree(){ return this.call('admin.tree', {}); },
   feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
   adminFeeList(month){ return this.call('admin.fee.list', month ? {month} : {}); },
   adminFeeSet(memberId, month, to){ return this.call('admin.fee.set', {memberId, month, to}, {retry:0}); },
@@ -1896,8 +1931,11 @@ function renderLogin(step='start', extra={}){
   const head = `<img class="logo-big" src="${LOGO}" alt="皇家團隊"><h1>皇家團隊 APP</h1><div class="sub">行動日誌・團隊動態・皇家學院</div>`;
   const msg = extra.msg ? `<div class="notice ${extra.ok?'ok':'err'} mb">${esc(extra.msg)}</div>` : '';
   if (step==='start') {
+    const cta = CONFIG.MODE==='live' && !['installed','desktop'].includes(installEnv());   // 手機、還沒放到桌面：先放桌面再登入
     const lineTip = inLineApp() ? `<div class="notice info mb small">你現在是在 LINE 裡面打開。請按右上角「⋯」→「<b>用預設瀏覽器開啟</b>」，才能把 APP 加到手機桌面。</div>` : '';
     app.innerHTML = `<div class="login">${head}${msg}${lineTip}
+      ${cta ? `<div class="install-cta"><div class="ic-n">第 1 步</div><b>先把 APP 放到手機桌面</b><div class="muted small">放好之後，從桌面的金色「皇家」圖示打開再登入</div>
+        <button class="btn btn-gold" data-act="install-guide">📲 教我放到手機桌面</button></div><div class="ic-n">第 2 步</div>` : ''}
       <button class="btn btn-line" data-act="login-line">用 LINE 登入</button>
       <button class="btn btn-outline" data-act="login-email">沒有 LINE？用 Email 登入</button>
       ${CONFIG.MODE==='live' ? '<div class="hint center">第一次使用也是按這裡，登入後填資料申請加入。</div>'
@@ -2056,11 +2094,7 @@ async function enterWithSession(r){
 /** 第一次進 APP、還沒放到桌面：跳一次說明（關掉就不再跳，「我的帳號」裡也找得到） */
 function showInstallTip(){
   store('royal_install_tip', Date.now());
-  const bg = document.createElement('div'); bg.className='sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>把「皇家」放到手機桌面</h3><button data-x>關閉</button></div>
-    <div class="sheet-b">${installCardHTML().replace(/^<div class="card">/,'<div>')}<button class="btn btn-outline mt" data-x>先不要，之後在「我的帳號」也找得到</button></div></div>`;
-  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
-  document.body.appendChild(bg);
+  openInstallGuide(true);
 }
 let sessionLostShown = false;
 function onSessionLost(code){
@@ -3598,18 +3632,109 @@ let installEvt = null;
 window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; });
 const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
 const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+/* ---------- 後台：整個團隊樹狀圖（每條線從頭往下，第幾代、下面幾人；還沒設定上線的人另外列） ---------- */
+async function adminTreeSheet(){
+  let d; try { d = await api.adminTree(); } catch(err){ return toast(errText(err),'err'); }
+  const kids = {}, total = {};
+  d.members.forEach(m=>{ (kids[m.up||''] = kids[m.up||''] || []).push(m); });
+  const cnt = id => { if (total[id] != null) return total[id]; total[id] = 0; let n = 0; (kids[id]||[]).forEach(c=>{ n += 1 + cnt(c.id); }); return total[id] = n; };
+  const byName = (a,b) => a.name.localeCompare(b.name, 'zh-Hant'), order = (a,b) => (cnt(b.id)-cnt(a.id)) || byName(a,b);
+  const roots = kids[''] || [], heads = roots.filter(m=>(kids[m.id]||[]).length).sort(order), loners = roots.filter(m=>!(kids[m.id]||[]).length).sort(byName);
+  const open = new Set(heads.map(h=>h.id));   // 一開始：每條線展開第 1 代
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const node = (m, depth, seen) => {
+    if (seen.has(m.id)) return ''; seen.add(m.id);
+    const ch = (kids[m.id]||[]).slice().sort(order), on = open.has(m.id);
+    return `<div class="tree-node" style="padding-left:${Math.min(depth-1,7)*18}px">${ch.length?`<button class="tg" data-tg="${m.id}" aria-label="${on?'收起':'展開'}">${on?'▾':'▸'}</button>`:'<span class="tg"></span>'}
+      <button class="nm" data-mem="${m.id}">${avatarHTML(m)}<span class="uc">${esc(m.name)}</span><span class="gen">第 ${depth} 代</span></button>${ch.length?`<span class="cnt">下面 ${cnt(m.id)} 人</span>`:''}</div>
+      ${on ? ch.map(c=>node(c, depth+1, seen)).join('') : ''}`;
+  };
+  const draw = () => {
+    const seen = new Set(), body = $('.sheet-b', bg) || null, top = body ? body.scrollTop : 0;
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>🌳 團隊樹狀圖</h3><button data-x>關閉</button></div>
+      <div class="sheet-b"><div class="tree-sum"><span class="pill brand">${heads.length} 條線</span><span class="pill gray">共 ${d.members.length} 人</span>${loners.length?`<span class="pill pend">還沒分線 ${loners.length} 人</span>`:''}</div>
+        <div class="row mb" style="flex-wrap:wrap"><button class="btn btn-outline btn-sm" data-all="1">全部展開</button><button class="btn btn-outline btn-sm" data-all="0">全部收起</button></div>
+        <div class="muted small mb">點 ▸ 展開下線；點名字可以看他的資料、改上線。</div>
+        ${heads.length ? heads.map(h=>{ seen.add(h.id); const on = open.has(h.id), ch = (kids[h.id]||[]).slice().sort(order);
+          return `<div class="tree-line"><div class="tree-head"><button class="tg" data-tg="${h.id}" aria-label="${on?'收起':'展開'}">${on?'▾':'▸'}</button>
+            <button class="nm" data-mem="${h.id}">${avatarHTML(h)}<b class="uc">${esc(h.name)}</b></button><span class="cnt">下面 ${cnt(h.id)} 人</span></div>
+            ${on ? ch.map(c=>node(c, 1, seen)).join('') : ''}</div>`; }).join('') : '<div class="notice info">還沒有人設定上下線。</div>'}
+        ${loners.length ? `<div class="card mt" style="box-shadow:none;border:1px solid var(--line)"><h3>還沒設定上線（${loners.length} 人）</h3><div class="muted small mb">如果他是最上面的頭就不用設；不是的話，點名字 →「👥 設定上線」。</div>
+          <div class="mlist">${loners.map(m=>`<button class="mrow" data-mem="${m.id}"><div class="who">${avatarHTML(m)}<div class="info"><b>${esc(m.name)}</b>${m.upText?`<div class="muted small">申請時寫的上線：${esc(m.upText)}</div>`:''}</div></div><span class="muted">›</span></button>`).join('')}</div></div>` : ''}
+      </div></div>`;
+    const nb = $('.sheet-b', bg); if (nb) nb.scrollTop = top;
+  };
+  bg.addEventListener('click', e=>{
+    if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); return; }
+    const tg = e.target.closest('[data-tg]'); if (tg) { const id = tg.dataset.tg; open.has(id) ? open.delete(id) : open.add(id); draw(); return; }
+    const all = e.target.closest('[data-all]'); if (all) { open.clear(); if (all.dataset.all==='1') d.members.forEach(m=>{ if ((kids[m.id]||[]).length) open.add(m.id); }); draw(); return; }
+    const mb = e.target.closest('[data-mem]'); if (mb) { bg.remove(); S.admin.memberId = mb.dataset.mem; S.admin.calMonth = null; S.admin.calSel = null; go('account', {sub:'adminMember'}); }
+  });
+  document.body.appendChild(bg); draw();
+}
+
+/* ---------- 放到手機桌面：自動判斷手機和瀏覽器，只顯示要按的步驟（2026-11-24 使用者：光是放到主畫面就有點困難） ---------- */
+function installEnv(){
+  const ua = navigator.userAgent;
+  if (isStandalone()) return 'installed';
+  if (inLineApp()) return 'line';
+  if (/FBAN|FBAV|Instagram|MicroMessenger/i.test(ua)) return 'inapp';
+  if (isIOS()) return /CriOS/i.test(ua) ? 'ios-chrome' : /FxiOS|EdgiOS|OPiOS/i.test(ua) ? 'ios-other' : 'ios-safari';
+  if (/Android/i.test(ua)) return /SamsungBrowser/i.test(ua) ? 'android-samsung' : 'android';
+  return 'desktop';
+}
+/** 小插圖：手機上的按鈕列，要按的那顆會閃 */
+const MK = {
+  safariBar: `<div class="mk mk-bar"><span>‹</span><span>›</span><span class="hi">⬆︎</span><span>📖</span><span>⧉</span></div><div class="mk-cap">↑ 畫面<b>最下面</b>中間的「分享」</div>`,
+  shareSheet: `<div class="mk mk-list"><div>拷貝</div><div>加入閱讀列表</div><div>加入書籤</div><div class="hi">加入主畫面 <span>⊞</span></div></div>`,
+  addConfirm: `<div class="mk mk-bar mk-top"><span>取消</span><b>加入主畫面</b><span class="hi">新增</span></div><div class="mk-cap">↑ 右上角的「新增」</div>`,
+  chromeIosBar: `<div class="mk mk-bar mk-top"><span class="mk-url">🔒 peien1013.github.io</span><span class="hi">⬆︎</span></div><div class="mk-cap">↑ 網址列<b>右邊</b>的「分享」</div>`,
+  androidBar: `<div class="mk mk-bar mk-top"><span class="mk-url">🔒 peien1013.github.io</span><span class="hi">⋮</span></div><div class="mk-cap">↑ <b>右上角</b>的「⋮」</div>`,
+  androidMenu: `<div class="mk mk-list"><div>新分頁</div><div>書籤</div><div>分享…</div><div class="hi">加到主畫面／安裝應用程式</div></div>`,
+  samsungBar: `<div class="mk mk-bar"><span>‹</span><span>›</span><span>⌂</span><span>⧉</span><span class="hi">≡</span></div><div class="mk-cap">↑ <b>右下角</b>的「≡」選單</div>`,
+  samsungMenu: `<div class="mk mk-list"><div>書籤</div><div class="hi">新增頁面至 → 主螢幕</div><div>設定</div></div>`,
+  lineBar: `<div class="mk mk-bar mk-top"><span>✕</span><span class="mk-url">皇家團隊 APP</span><span class="hi">⋯</span></div><div class="mk-cap">↑ <b>右上角</b>的「⋯」</div>`,
+  lineMenu: `<div class="mk mk-list"><div>分享</div><div>複製連結</div><div class="hi">用預設瀏覽器開啟</div></div>`
+};
+const OPEN_STEP = { t:'回到手機桌面，按金色「<b>皇家</b>」圖示打開，再用 LINE 登入', mk:`<div class="mk mk-home"><span class="mk-app"><img src="${LOGO}" alt=""><small>皇家</small></span></div>` };
+function installStepsHTML(){
+  const env = installEnv(), step = (n, x) => `<div class="ig-step"><div class="ig-n">${n}</div><div class="ig-b"><div class="ig-t">${x.t}</div>${x.mk||''}${x.hint?`<div class="hint">${x.hint}</div>`:''}</div></div>`;
+  const list = a => a.map((x,i)=>step(i+1,x)).join('');
+  const copy = '<button class="btn btn-outline mt" data-act="copy-app-link">📋 複製 APP 網址</button>';
+  if (env==='installed') return '<div class="notice ok">已經放到手機桌面了 👍 之後從桌面的「皇家」圖示打開就好。</div>';
+  if (env==='line') return `<div class="notice info mb">你現在是在 <b>LINE 裡面</b>打開，要先換到手機的瀏覽器：</div>${list([
+    { t:'按右上角的「<b>⋯</b>」', mk:MK.lineBar },
+    { t:'按「<b>用預設瀏覽器開啟</b>」', mk:MK.lineMenu, hint:'iPhone 會用 Safari 打開，安卓會用 Chrome 打開' },
+    { t:'打開之後，再按一次「📲 教我放到手機桌面」，照新的步驟做' }])}${copy}`;
+  if (env==='inapp' || env==='ios-other') return `<div class="notice info mb">${env==='inapp'?'這個 APP 裡面的瀏覽器不能放到桌面。':'iPhone 請用 <b>Safari</b> 打開才能放到桌面。'}</div>${list([
+    { t:'按下面的按鈕複製網址' }, { t:`打開 ${isIOS()?'<b>Safari</b>':'<b>Chrome</b>'}，在網址列貼上、前往` }, { t:'再按一次「📲 教我放到手機桌面」' }])}${copy}`;
+  if (env==='ios-safari') return list([
+    { t:'按畫面最下面的「<b>分享</b>」按鈕 ⬆︎', mk:MK.safariBar, hint:'找不到的話：先按右下角的「⋯」，再按「分享」' },
+    { t:'往下滑，按「<b>加入主畫面</b>」', mk:MK.shareSheet },
+    { t:'按右上角的「<b>新增</b>」', mk:MK.addConfirm }, OPEN_STEP]);
+  if (env==='ios-chrome') return list([
+    { t:'按網址列右邊的「<b>分享</b>」按鈕 ⬆︎', mk:MK.chromeIosBar },
+    { t:'往下滑，按「<b>加入主畫面</b>」', mk:MK.shareSheet, hint:'找不到「加入主畫面」：請改用 Safari 打開（按下面複製網址）' },
+    { t:'按右上角的「<b>新增</b>」', mk:MK.addConfirm }, OPEN_STEP]) + copy;
+  const oneTap = installEvt ? '<button class="btn btn-gold btn-xl mb" data-act="install">📲 一鍵放到手機桌面</button><div class="muted center mb">按了沒反應，再照下面的步驟做：</div>' : '';
+  if (env==='android-samsung') return oneTap + list([
+    { t:'按右下角的「<b>≡</b>」選單', mk:MK.samsungBar }, { t:'按「<b>新增頁面至</b>」→「<b>主螢幕</b>」', mk:MK.samsungMenu }, { t:'按「<b>新增</b>」' }, OPEN_STEP]);
+  if (env==='android') return oneTap + list([
+    { t:'按右上角的「<b>⋮</b>」', mk:MK.androidBar }, { t:'按「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」', mk:MK.androidMenu }, { t:'按「<b>安裝</b>」或「<b>新增</b>」' }, OPEN_STEP]);
+  return oneTap + '<div class="notice info">電腦上不用放到桌面。用電腦版 Chrome 的話，也可以按網址列右邊的「安裝」圖示，之後從電腦桌面打開。<br>手機請用手機打開這個網址，再照步驟做。</div>';
+}
+function openInstallGuide(first){
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>把「皇家」放到手機桌面</h3><button data-x>關閉</button></div>
+    <div class="sheet-b ig">${installStepsHTML()}${first?'<button class="btn btn-outline mt" data-x>先不要，之後在「我的帳號」也找得到</button>':''}</div></div>`;
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  document.body.appendChild(bg);
+}
+window.addEventListener('appinstalled', ()=>{ toast('已經放到手機桌面了 👍','ok'); document.querySelectorAll('.sheet-bg').forEach(x=>{ if (x.querySelector('.ig')) x.remove(); }); });
 function installCardHTML(){
   if (isStandalone()) return '';
-  if (isIOS()) return `<div class="card"><h3>📲 把「皇家」加到手機主畫面</h3>
-    <ol style="margin:8px 0 0;padding-left:22px;line-height:1.9">
-      <li>用 <b>Safari</b> 打開這個網址（LINE 裡打開的話，先按右下角「⋯」→「用 Safari 開啟」）</li>
-      <li>按下方中間的「分享」按鈕 <b>⬆︎</b></li>
-      <li>往下滑，按「<b>加入主畫面</b>」</li>
-      <li>右上角按「<b>新增</b>」</li></ol>
-    <div class="hint">之後從主畫面的金色「皇家」圖示打開就好。</div></div>`;
-  return `<div class="card"><h3>📲 把「皇家」加到手機主畫面</h3>
-    <button class="btn btn-primary mt" data-act="install">安裝到主畫面</button>
-    <div class="hint">如果按了沒反應：按 Chrome 右上角「⋮」→「加到主畫面」或「安裝應用程式」。</div></div>`;
+  return `<div class="card"><h3>📲 把「皇家」放到手機桌面</h3><div class="muted mb">放好之後，從桌面的金色「皇家」圖示打開就好，不用再找連結。</div>
+    <button class="btn btn-primary" data-act="install-guide">教我放到手機桌面</button></div>`;
 }
 
 /* =====================================================================
@@ -3658,6 +3783,8 @@ async function renderAdmin(main){
         : '<div class="muted">目前沒有現場課程。在課程表把「mode」填 onsite、填上地點和費用，就會出現在這裡。</div>'}</div></div>
       <div class="card"><h3>📋 ${act?esc(act.name):'活動'}參加名單</h3><div class="muted mb">${!act?'目前沒有活動。':s.joinMode==='all'?'這個活動設成<b>全部夥伴都算</b>（不用報名）。':s.joinMode==='admin'?`名單上有 <b>${s.registered}</b> 人。只有你加進名單的人才算、看「我的進度」；夥伴不能自己報名。`:`名單上有 <b>${s.registered}</b> 人。只有名單上的人算、看「我的進度」；夥伴也可以在 APP 裡自己報名，申請會出現在「待審核」。`}</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="reg-import">貼上 TW 名單</button><button class="btn btn-outline btn-sm" data-act="reg-manage">點名字加入／移出</button></div></div>
+      <div class="card"><h3>🌳 團隊樹狀圖</h3><div class="muted mb">每條線從最上面的頭往下排，一眼看出誰在哪條線、第幾代；還沒設定上線的人也列在最下面。</div>
+        <button class="btn btn-primary btn-sm" data-act="admin-tree">看團隊樹狀圖</button></div>
       <div class="card"><h3>🏆 榮譽名人榜</h3><div class="muted mb">活動達標的人會自動上榜；晉升、業績表揚在這裡加。</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="hon-add">＋ 新增榮譽</button><button class="btn btn-outline btn-sm" data-act="honors">看榮譽榜</button></div></div>
       <div class="card"><h3>待審核</h3><div id="rev" class="adm-scroll"></div></div>
@@ -4226,6 +4353,9 @@ document.addEventListener('click', async e=>{
       store(SESSION_KEY,null); S.session=null; S.feed={items:[],cursor:0,done:false,loading:false}; renderLogin('start',{msg:'已登出所有裝置。', ok:true}); } break;
     case 'open-admin': go('account',{sub:'admin'}); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt = null; } else toast('請按 Chrome 右上角「⋮」→「加到主畫面」'); break;
+    case 'install-guide': openInstallGuide(false); break;
+    case 'copy-app-link': { const u = location.origin + location.pathname; try { await navigator.clipboard.writeText(u); toast('已複製網址','ok'); } catch(_){ await promptBox('長按下面的網址複製', u, '好'); } break; }
+    case 'admin-tree': adminTreeSheet(); break;
     /* 後台 */
     case 'admin-member': S.admin.memberId=el.dataset.id; S.admin.calMonth=null; S.admin.calSel=null; go('account',{sub:'adminMember'}); break;
     case 'acal-prev': S.admin.calMonth=monthShift(S.admin.calMonth,-1); renderAdminMember($('#main')); break;
