@@ -1340,6 +1340,10 @@ const MockApi = {
     const j = rows.filter(r=>r.joined);
     return { act, rows, stats:{ total:rows.length, joined:j.length, todayDone:j.filter(r=>r.pr.todayDone).length, reached:j.filter(r=>r.pr.reached).length,
       danger:j.filter(r=>!r.pr.reachable).length, notToday:j.filter(r=>!r.pr.todayDone).length } }; },
+  async teamCandidates(){ await this._wait(); const me = this._me(); return MockDB.members.filter(m=>m.status==='approved' && !m.uplineId && m.id!==me.id && m.role!=='admin').map(m=>({id:m.id,name:m.name,avatarUrl:m.avatarUrl||'',color:m.color})); },
+  async teamAddDown(id){ await this._wait(); const m = MockDB.byId[id]; if (!m) throw new Error('NOT_FOUND'); if (m.uplineId) throw new Error('HAS_UPLINE'); m.uplineId = this._me().id; return {ok:true}; },
+  async teamRemoveDown(id){ await this._wait(); const m = MockDB.byId[id]; if (!m || m.uplineId !== this._me().id) throw new Error('FORBIDDEN'); m.uplineId = ''; return {ok:true}; },
+  async getProgress(){ const h = await this.getHome(); return { activity:h.activity, joined:h.joined, progress:h.progress }; },
   async getTeamMember(id){ await this._wait(); const me = this._me(), d = mockDownline(me.id).find(x=>x.id===id);
     if (!d && S.role!=='admin') throw new Error('FORBIDDEN'); const m = MockDB.byId[id], act = MockDB.activity, j = mockJoined(m);
     return { m:{ id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, depth:d?d.depth:0, uplineName:(MockDB.byId[m.uplineId]||{}).name||'' }, activity:act, joined:j,
@@ -1690,17 +1694,21 @@ const GasApi = {
   getHonors(){ return this.call('honor.list'); },
   getGrowth(memberId){ return this.call('growth.get', {memberId}); },
   dreamSave(p){ return this.call('dream.save', p, {retry:0}); },
-  adminRegList(){ return this.call('admin.reg.list'); },
+  adminRegList(activityId){ return this.call('admin.reg.list', activityId ? {activityId} : {}); },
   regApply(p){ return this.call('reg.apply', p||{}, {retry:0}); },
   applyUplines(ticket){ return this.call('apply.uplines', {ticket}); },
-  getTeam(){ return this.call('team.get'); },
+  getTeam(activityId){ return this.call('team.get', activityId ? {activityId} : {}); },
+  teamCandidates(){ return this.call('team.candidates'); },
+  teamAddDown(memberId){ return this.call('team.addDown', {memberId}, {retry:0}); },
+  teamRemoveDown(memberId){ return this.call('team.removeDown', {memberId}, {retry:0}); },
+  getProgress(activityId){ return this.call('progress.get', activityId ? {activityId} : {}); },
   getTeamMember(memberId){ return this.call('team.member', {memberId}); },
   getTeamFeed({cursor=0, limit=CONFIG.PAGE_SIZE}={}){ return this.call('team.feed', {cursor, limit}); },
   adminSetUpline(memberId, uplineId){ return this.call('admin.setUpline', {memberId, uplineId}, {retry:0}); },
   adminRename(memberId, name){ return this.call('admin.rename', {memberId, name}, {retry:0}); },
   adminRegReview(registrationId, ok){ return this.call('admin.reg.review', {registrationId, ok:!!ok}, {retry:0}); },
-  adminRegSet(memberId, on){ return this.call('admin.reg.set', {memberId, on:!!on}, {retry:0}); },
-  adminRegImport(tws){ return this.call('admin.reg.import', {tws}, {retry:0}); },
+  adminRegSet(memberId, on, activityId){ return this.call('admin.reg.set', {memberId, on:!!on, activityId}, {retry:0}); },
+  adminRegImport(tws, activityId){ return this.call('admin.reg.import', {tws, activityId}, {retry:0}); },
   honorQuote(quote, memberId){ return this.call('honor.quote', {quote, memberId}, {retry:0}); },
   adminHonorAdd(memberId, title){ return this.call('admin.honor.add', {memberId, title}, {retry:0}); },
   adminHonorRemove(honorId){ return this.call('admin.honor.remove', {honorId}, {retry:0}); },
@@ -1717,8 +1725,7 @@ const GasApi = {
   adminCourseTickets(courseId){ return this.call('admin.course.tickets', {courseId}); },
   adminTicketPay(ticketId, method, undo){ return this.call('admin.ticket.pay', {ticketId, method, undo:!!undo}, {retry:0}); },
   adminCheckin(courseId, code, payNow, method){ return this.call('admin.checkin', {courseId, code, payNow:!!payNow, method}, {retry:1}); },
-  getProgress(){ return this.call('progress.get'); },
-  adminDashboard(){ return this.call('admin.dashboard'); },
+  adminDashboard(activityId){ return this.call('admin.dashboard', activityId ? {activityId} : {}); },
   adminMember(id){ return this.call('admin.member', {memberId:id}); },
   adminReview(postId, decision){ return this.call('admin.review', {postId, decision}); },
   adminApprove(memberId, ok){ return this.call('admin.approve', {memberId, ok}); }
@@ -1732,7 +1739,7 @@ const QC_DROP = {
   'post.create':['growth:me','courses'],   // 我的日誌列表：發文後直接把新的一篇放進去（見 submitPost） 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
   'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
   'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
-  'reg.apply':['growth:me']
+  'reg.apply':['growth:me'], 'team.addDown':[], 'team.removeDown':[]
 };
 const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list'];
 const QuickCache = {
@@ -1749,9 +1756,11 @@ const QuickCache = {
     return (this.busy[kk] = p);
   },
   drop(keys){ keys.forEach(k => { const kk = this.key(k); delete this.mem[kk]; delete this.at[kk]; store(kk, null); }); },
+  dropPrefix(pre){ const kp = this.key(pre); Object.keys(this.mem).forEach(k => { if (k.indexOf(kp) === 0) { delete this.mem[k]; delete this.at[k]; } });
+    try { Object.keys(localStorage).filter(k => k.indexOf(kp) === 0).forEach(k => localStorage.removeItem(k)); } catch(_){} },
   afterChange(action){
     if (QC_DROP[action] || (/^admin\./.test(action) && !QC_ADMIN_READS.includes(action))) S.homeStale = true;   // 打卡天數、報名狀態可能變了
-    if (QC_DROP[action]) { this.drop(QC_DROP[action]); prefetchPages(300); }
+    if (QC_DROP[action]) { this.drop(QC_DROP[action]); if (/^team\./.test(action)) this.dropPrefix('team'); prefetchPages(300); }
     else if (/^admin\./.test(action) && !QC_ADMIN_READS.includes(action)) {   // 管理員改了資料：全部重新準備
       const keep = store('royal_home_last'); this.clear(); store('royal_home_last', keep); prefetchPages(300);
     }
@@ -1825,7 +1834,7 @@ function errText(e){
     CODE_WRONG:'驗證碼不對，請再輸入一次。', CODE_EXPIRED:'驗證碼過期了，請重新寄一次。', CODE_LOCKED:'錯太多次了，請重新寄驗證碼。',
     APPLY_EXPIRED:'申請頁停留太久，請重新登入一次再填。', NAME_REQUIRED:'請填寫姓名。', BAD_TW:'TW 帳號格式不對，只能有英文字母和數字。',
     NOT_FOUND:'找不到這筆資料，可能已經被刪除。', BAD_AMOUNT:'退費金額不能超過實際收到的錢。', COURSE_NOT_YET:'這堂課還沒上，上完課再來寫心得喔。', NOT_ONSITE:'這堂課沒有開放現場報名。', COURSE_ENDED:'這堂課已經結束了。',
-    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', BAD_UPLINE:'這位不能當上線，請選別人。' }[k]) || '發生問題，請稍後再試一次。';
+    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', HAS_UPLINE:'這位夥伴已經有上線了，要換上線請洽管理員。', BAD_DOWNLINE:'這位不能加成你的下線（可能是你的上線）。', BAD_UPLINE:'這位不能當上線，請選別人。' }[k]) || '發生問題，請稍後再試一次。';
 }
 
 /* =====================================================================
@@ -2081,7 +2090,7 @@ function setNav(){
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
 function applyHome(h){ S.me=h.me; S.act=h.activity; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
-  S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
+  S.acts = h.acts || []; S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
 function setTopTitle(){
@@ -2582,7 +2591,14 @@ async function renderProgress(main){
 }
 async function drawProgress(main){
   if (growthMode()) return renderGrowth(main);
-  const pr=S.progress, act=S.act;
+  let pr=S.progress, act=S.act;
+  const joinedActs = (S.acts||[]).filter(a=>a.joined);
+  if (joinedActs.length > 1 && S.progActId && act && S.progActId !== act.id) {   // 看另一個有參加的活動
+    const k = 'prog:' + S.progActId; if (!QuickCache.get(k)) main.innerHTML = SKEL;
+    try { const r = await qget(k, () => api.getProgress(S.progActId), () => drawProgress(main)); act = r.activity; pr = r.progress; }
+    catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  }
+  S.pAct = act; S.pPr = pr;   // 日曆按鈕用
   if (!S.calMonth) S.calMonth = todayStr().slice(0,7);
   if (!act || !pr) {
     main.innerHTML = `<button class="btn btn-primary mb" data-act="compose-today">＋ 發布今天的行動日誌</button>
@@ -2592,13 +2608,14 @@ async function drawProgress(main){
   }
   const pct = Math.min(100, Math.round(pr.valid/Math.max(1,act.threshold)*100));
   main.innerHTML = `
+    ${actChips(joinedActs, act, 'prog-act')}
     ${pr.todayDone?'':'<button class="btn btn-primary mb" data-act="compose-today">＋ 今天還沒打卡，現在打卡</button>'}
     <div class="card"><h2 class="act-name">${esc(act.name)}</h2>
-      <div class="muted small"><span class="nw">${mdZh(act.start)} ～ ${mdZh(act.end)}</span><wbr><span class="nw">・門檻 ${act.threshold} 天</span></div>
+      <div class="muted small"><span class="nw">${mdZh(act.start)} ～ ${mdZh(act.end)}</span><wbr><span class="nw">${act.threshold?`・門檻 ${act.threshold} 天`:'・只統計打卡天數'}</span></div>
       <div class="bar light" style="margin-top:12px"><i style="width:${pct}%"></i></div>
       <div class="stat-grid mt">
         <div class="stat ok"><div class="v">${pr.valid}<small>天</small></div><div class="k">✅ 有效打卡</div></div>
-        <div class="stat"><div class="v">${pr.need}<small>天</small></div><div class="k">🎯 還差幾天達標</div></div>
+        ${act.threshold?`<div class="stat"><div class="v">${pr.need}<small>天</small></div><div class="k">🎯 還差幾天達標</div></div>`:`<div class="stat"><div class="v">${pr.missing||0}<small>天</small></div><div class="k">📭 沒打卡的天數</div></div>`}
         <div class="stat"><div class="v">${pr.remaining}<small>天</small></div><div class="k">⏳ 活動剩餘</div></div>
         <div class="stat ${pr.todayDone?'ok':'bad'}"><div class="v word">${pr.todayDone?'✓ 已打卡':'還沒打卡'}</div><div class="k">📅 今天</div></div>
       </div>
@@ -2640,7 +2657,7 @@ async function loadMyPosts(){
 }
 function drawDayDetail(ds){
   const box = $('#day-detail'); if (!box) return;
-  const status = S.progress && S.progress.days[ds];
+  const pp = S.pPr || S.progress, status = pp && pp.days[ds];
   const st = status ? ST_LABEL[status] : null;
   const posts = (S.myPosts||[]).filter(p=>p.actionDate===ds);
   let html = `<div class="mt"><b>${fullZh(ds)}</b> ${st?`<span class="pill ${st[1]}">${st[0]}</span>`:''}</div>`;
@@ -2902,6 +2919,7 @@ function renderAccount(main){
   main.innerHTML = `
     <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
       <h2 style="margin:0">${esc(me.name)}</h2>${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+    <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
     <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
     <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
     <button class="card entry-card" data-act="dreams"><span>✨ 我們的夢想</span><span class="muted">我的夢想和夥伴的夢想版 ›</span></button>
@@ -3214,10 +3232,12 @@ async function drawTeamSummary(){
       <button class="tt bad" data-act="team" data-f="danger"><b>${st.danger}</b><span>快來不及</span></button></div>` : '<div class="muted mt">目前沒有進行中的衝刺班</div>'}</div>`;
 }
 async function renderTeam(main){
-  skelIfNew(main, 'team');
-  try { TEAM = await qget('team', () => api.getTeam(), () => renderTeam(main)); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  const tk = 'team:' + (S.teamActId || ''); skelIfNew(main, tk);
+  try { TEAM = await qget(tk, () => api.getTeam(S.teamActId), () => renderTeam(main)); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const st = TEAM.stats, act = TEAM.act;
-  main.innerHTML = `<div class="card"><h2 class="act-name">👥 我的團隊</h2><div class="muted">整條線 ${st.total} 人${act?`・參加衝刺班 ${st.joined} 人`:''}</div>
+  const hasD1 = TEAM.rows.some(r=>r.m.depth===1);
+  main.innerHTML = `${actChips(TEAM.acts, act, 'team-act')}<div class="card"><h2 class="act-name">👥 我的團隊</h2><div class="muted">整條線 ${st.total} 人${act?`・參加${esc(act.name)} ${st.joined} 人`:''}</div>
+    <div class="row mt" style="gap:8px;flex-wrap:wrap"><button class="btn btn-outline btn-sm" data-act="team-add">＋ 新增下線</button>${hasD1?`<button class="btn btn-ghost btn-sm" data-act="team-edit">${S.teamEdit?'✓ 完成':'✏️ 編輯直接下線'}</button>`:''}</div>
     ${act && st.joined ? `<div class="stat-grid mt">
       <div class="stat ok"><div class="v">${st.todayDone}<small>/${st.joined}</small></div><div class="k">✅ 今天已打卡</div></div>
       <div class="stat late"><div class="v">${st.notToday}</div><div class="k">⏰ 今天還沒打卡</div></div>
@@ -3228,6 +3248,14 @@ async function renderTeam(main){
 }
 function drawTeamList(){
   const box = $('#team-list'), chips = $('#team-chips'); if (!box || !TEAM) return;
+  if (S.teamEdit) {   // 編輯模式：只列直接下線，可以移除
+    chips.innerHTML = '<div class="muted">按「移除」把他從你的直接下線拿掉（他的下線會跟著他走）。</div>';
+    const d1 = TEAM.rows.filter(r=>r.m.depth===1).sort((a,b)=>a.m.name.localeCompare(b.m.name,'zh-Hant'));
+    box.innerHTML = d1.length ? d1.map(r=>`<div class="mrow tm-row">${avatarHTML(r.m)}<div class="tm-info"><b>${esc(r.m.name)}</b></div>
+      <button class="btn btn-outline btn-sm" style="width:auto;color:var(--bad)" data-act="team-rm" data-id="${r.m.id}" data-name="${esc(r.m.name)}">移除</button></div>`).join('')
+      : '<div class="muted mt">目前沒有直接下線</div>';
+    return;
+  }
   const f = S.teamFilter || 'all', rows = TEAM.rows;
   const defs = [['all','全部'],['today','今天還沒打卡'],['danger','快來不及'],['reached','已達標'],['d1','直接下線']];
   chips.innerHTML = defs.map(([k,l])=>`<button class="${f===k?'on':''}" data-act="team-f" data-f="${k}">${l}</button>`).join('');
@@ -3235,12 +3263,35 @@ function drawTeamList(){
     : f==='reached' ? r.joined && r.pr.reached : f==='d1' ? r.m.depth===1 : true)
     .sort((a,b)=> a.m.depth-b.m.depth || a.m.name.localeCompare(b.m.name,'zh-Hant'));
   box.innerHTML = pick.length ? pick.map(r=>{ const p = r.pr;
-    const tag = !r.joined ? '<span class="pill gray">沒參加衝刺班</span>' : p.reached ? '<span class="pill ok">🏆 已達標</span>' : !p.reachable ? '<span class="pill bad">⚠️ 快來不及</span>' : '';
+    const tag = !r.joined ? `<span class="pill gray">沒參加${TEAM.act?esc(TEAM.act.name):'活動'}</span>` : p.reached ? '<span class="pill ok">🏆 已達標</span>' : !p.reachable ? '<span class="pill bad">⚠️ 快來不及</span>' : '';
     return `<button class="mrow tm-row" data-act="tmember" data-id="${r.m.id}">${avatarHTML(r.m)}
       <div class="tm-info"><div><b>${esc(r.m.name)}</b> ${depthTag(r.m.depth)}</div>
         <div class="muted small">${r.m.depth>1?`上線 ${esc(r.m.uplineName)}・`:''}${r.joined?`<span class="nw">有效 ${p.valid} 天</span>・<span class="nw">還差 ${p.need} 天</span>`:''}</div>${tag}</div>
       ${r.joined?`<span class="tm-today ${p.todayDone?'ok':'no'}">${p.todayDone?'✓<small>今天</small>':'✗<small>今天</small>'}</span>`:''}</button>`; }).join('')
     : '<div class="muted mt">沒有符合的夥伴 🎉</div>';
+}
+/** 新增下線：從「還沒有上線的夥伴」點名字 */
+async function teamAddSheet(){
+  let list; try { list = await api.teamCandidates(); } catch(err){ return toast(errText(err),'err'); }
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>＋ 新增下線</h3><button data-x>關閉</button></div>
+    <div class="sheet-b"><div class="muted mb">點一下名字，就會加成你的直接下線。這裡只列出還沒有上線的夥伴。</div>
+      ${list.length ? `<div class="pick-grid">${list.map(m=>`<button data-id="${m.id}" data-name="${esc(m.name)}">${avatarHTML(m)}<span>${esc(m.name)}</span></button>`).join('')}</div>`
+        : '<div class="card center muted">目前沒有還沒有上線的夥伴</div>'}</div></div>`;
+  bg.addEventListener('click', async e=>{
+    if (e.target===bg || e.target.closest('[data-x]')) return bg.remove();
+    const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
+    if (!await confirmBox(`把「${b.dataset.name}」加為你的直接下線？`, '加入')) return;
+    b.disabled = true;
+    try { await api.teamAddDown(b.dataset.id); bg.remove(); toast(`已加入：${b.dataset.name}`,'ok'); afterTeamChange(); }
+    catch(err){ toast(errText(err),'err'); b.disabled = false; }
+  });
+  document.body.appendChild(bg);
+}
+function afterTeamChange(){
+  QuickCache.dropPrefix('team'); S.homeStale = true;
+  loadHome().then(setNav).catch(()=>{});
+  if (S.sub==='team') renderTeam($('#main'));
 }
 let TM = null;
 async function renderTeamMember(main){
@@ -3351,21 +3402,27 @@ async function renderDreamEdit(main){
     catch(err){ toast(errText(err),'err'); b.disabled = false; b.textContent = '儲存'; }
   });
 }
+/** 有兩個以上進行中的活動時，顯示切換鈕（後台、我的團隊、我的進度共用） */
+function actChips(acts, cur, act){
+  if (!acts || acts.length < 2) return '';
+  return `<div class="chipbar mb">${acts.map(a=>`<button class="${cur&&a.id===cur.id?'on':''}" data-act="${act}" data-id="${a.id}">${esc(a.name)}</button>`).join('')}</div>`;
+}
 /** 後台：參加名單（點名字加入／移出） */
 async function regManage(){
-  let d; try { d = await api.adminRegList(); } catch(err){ return toast(errText(err),'err'); }
+  const aid = S.admin.actId || (ADM && ADM.act && ADM.act.id);
+  let d; try { d = await api.adminRegList(aid); } catch(err){ return toast(errText(err),'err'); }
   const ms = d.members.slice().sort((a,b)=> (b.joined-a.joined) || a.name.localeCompare(b.name,'zh-Hant'));
   const bg = document.createElement('div'); bg.className='sheet-bg';
   const count = () => ms.filter(m=>m.joined).length;
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>參加名單（<span id="rg-n">${count()}</span> 人）</h3><button data-x>完成</button></div>
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${d.act?esc(d.act.name)+' ':''}參加名單（<span id="rg-n">${count()}</span> 人）</h3><button data-x>完成</button></div>
     <div class="sheet-b"><div class="muted mb">點一下名字：綠色＝有參加；再點一次移出。</div>
       <div class="pick-grid">${ms.map(m=>`<button data-id="${m.id}" class="${m.joined?'on':''}">${avatarHTML(m)}<span>${esc(m.name)}</span>${m.pending&&!m.joined?'<small class="pill pend">申請中</small>':''}</button>`).join('')}</div>
       ${d.unmatched.length?`<div class="hint mt">名單上還沒加入 APP 的 TW（加入後會自動對上）：${d.unmatched.map(esc).join('、')}</div>`:''}</div></div>`;
   bg.addEventListener('click', async e=>{
-    if (e.target===bg || e.target.closest('[data-x]')){ bg.remove(); if (S.sub==='admin') renderAdmin($('#main')); return; }
+    if (e.target===bg || e.target.closest('[data-x]')){ bg.remove(); QuickCache.dropPrefix('adm'); if (S.sub==='admin') renderAdmin($('#main')); return; }
     const b = e.target.closest('[data-id]'); if (!b || b.disabled) return;
     const m = ms.find(x=>x.id===b.dataset.id), on = !m.joined; b.disabled = true;
-    try { await api.adminRegSet(m.id, on); m.joined = on; m.pending = false; b.classList.toggle('on', on); const pp = $('.pill', b); if (pp) pp.remove(); $('#rg-n').textContent = count(); }
+    try { await api.adminRegSet(m.id, on, aid); m.joined = on; m.pending = false; b.classList.toggle('on', on); const pp = $('.pill', b); if (pp) pp.remove(); $('#rg-n').textContent = count(); }
     catch(err){ toast(errText(err),'err'); }
     b.disabled = false;
   });
@@ -3382,7 +3439,7 @@ function regImport(){
     if (!b || b.dataset.r==='0') return bg.remove();
     const v = $('#rg-in').value.trim(); if (!v) return;
     b.disabled = true; b.textContent = '加入中…';
-    try { const r = await api.adminRegImport(v); bg.remove(); toast(`已加入 ${r.added} 人${r.skipped?`，${r.skipped} 個重複略過`:''}`,'ok'); if (S.sub==='admin') renderAdmin($('#main')); }
+    try { const r = await api.adminRegImport(v, S.admin.actId || (ADM && ADM.act && ADM.act.id)); bg.remove(); toast(`已加入 ${r.added} 人${r.skipped?`，${r.skipped} 個重複略過`:''}`,'ok'); if (S.sub==='admin') renderAdmin($('#main')); }
     catch(err){ toast(errText(err),'err'); b.disabled = false; b.textContent = '加入名單'; }
   });
   document.body.appendChild(bg); setTimeout(()=>{ const x=$('#rg-in'); if (x) x.focus(); }, 50);
@@ -3422,9 +3479,9 @@ function installCardHTML(){
    ===================================================================== */
 let ADM = null;
 async function renderAdmin(main){
-  skelIfNew(main, 'adm');
+  const ak = 'adm:' + (S.admin.actId || ''); skelIfNew(main, ak);
   let cs = [];
-  try { [ADM, cs] = await Promise.all([qget('adm', () => api.adminDashboard(), () => renderAdmin(main)), qget('courses', () => api.getCourses()).catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  try { [ADM, cs] = await Promise.all([qget(ak, () => api.adminDashboard(S.admin.actId), () => renderAdmin(main)), qget('courses', () => api.getCourses()).catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const T0 = todayStr(), onsite = cs.filter(c=>(c.mode==='onsite'||c.mode==='hybrid') && diffDays(c.date,T0)<=30)
     .sort((a,b)=>{ const ua=a.date>=T0, ub=b.date>=T0; return ua!==ub ? (ua?-1:1) : (ua ? (a.date<b.date?-1:1) : (a.date<b.date?1:-1)); });
   const s = ADM.stats, act = ADM.act, rate = s.registered ? Math.round(s.todayDone/s.registered*100) : 0;
@@ -3434,8 +3491,9 @@ async function renderAdmin(main){
       ${CONFIG.MODE==='live'&&s.emailQuota!=null?`<div class="hint">今天還能寄 ${s.emailQuota} 封驗證信</div>`:''}
       ${s.driveLimitGB?`<div class="notice ${s.driveUsedGB/s.driveLimitGB>0.8?'err':'info'} small mt">雲端硬碟：已用 ${s.driveUsedGB} GB／共 ${s.driveLimitGB} GB（${Math.round(s.driveUsedGB/s.driveLimitGB*100)}%）${s.driveUsedGB/s.driveLimitGB>0.8?'，快滿了，建議升級 Google One 容量':''}</div>`:''}
       <div class="notice info small mt">已讀人數每 15 分鐘彙整一次；打卡天數在發文、修改、審核時立即更新。</div></div>
+    ${actChips(ADM.acts, act, 'adm-act')}
     <div class="admin-grid mb">
-      <div class="stat"><div class="v">${s.registered}</div><div class="k">報名人數</div></div>
+      <div class="stat"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></div>
       <div class="stat"><div class="v">${s.paid}</div><div class="k">已繳費</div></div>
       <div class="stat ok"><div class="v">${s.todayDone}</div><div class="k">今日已打卡</div></div>
       <div class="stat bad"><div class="v">${s.registered-s.todayDone}</div><div class="k">今日尚未打卡</div></div>
@@ -3927,6 +3985,14 @@ document.addEventListener('click', async e=>{
     case 'scope': if (S.scope !== el.dataset.s) { S.scope = el.dataset.s; S.feed = { items:[], cursor:0, done:false, loading:false }; renderHome($('#main')); } break;
     case 'team': S.teamFilter = el.dataset.f || S.teamFilter || 'all'; go(S.tab, {sub:'team'}); break;
     case 'team-f': S.teamFilter = el.dataset.f; drawTeamList(); break;
+    case 'team-act': S.teamActId = el.dataset.id; renderTeam($('#main')); break;
+    case 'team-add': teamAddSheet(); break;
+    case 'team-edit': S.teamEdit = !S.teamEdit; renderTeam($('#main')); break;
+    case 'team-rm': if (await confirmBox(`把「${el.dataset.name}」從你的直接下線移除？`, '移除', true)) {
+        try { await api.teamRemoveDown(el.dataset.id); toast(`已移除：${el.dataset.name}`,'ok'); afterTeamChange(); } catch(err){ toast(errText(err),'err'); } }
+      break;
+    case 'adm-act': S.admin.actId = el.dataset.id; renderAdmin($('#main')); break;
+    case 'prog-act': S.progActId = el.dataset.id; S.calSel = null; drawProgress($('#main')); break;
     case 'tmember': S.tmId = el.dataset.id; S.tmBack = S.sub; go(S.tab, {sub:'tmember'}); break;
     case 'tm-posts-more': S.tmAll = true; drawTmPosts(); break;
     case 'set-upline': setUpline(el.dataset.id); break;
@@ -3994,9 +4060,9 @@ document.addEventListener('click', async e=>{
     case 'submit': submitPost(); break;
     case 'cancel-edit': S.editing=null; S.draft=null; go('home'); break;
     /* 進度日曆 */
-    case 'cal-prev': S.calMonth=monthShift(S.calMonth,-1); $('#cal').innerHTML=calendarHTML(dayMap(S.progress),S.act,S.calMonth,S.calSel); break;
-    case 'cal-next': S.calMonth=monthShift(S.calMonth,1); $('#cal').innerHTML=calendarHTML(dayMap(S.progress),S.act,S.calMonth,S.calSel); break;
-    case 'cal-day': S.calSel=el.dataset.d; $('#cal').innerHTML=calendarHTML(dayMap(S.progress),S.act,S.calMonth,S.calSel); drawDayDetail(S.calSel); break;
+    case 'cal-prev': S.calMonth=monthShift(S.calMonth,-1); $('#cal').innerHTML=calendarHTML(dayMap(S.pPr||S.progress),S.pAct||S.act,S.calMonth,S.calSel); break;
+    case 'cal-next': S.calMonth=monthShift(S.calMonth,1); $('#cal').innerHTML=calendarHTML(dayMap(S.pPr||S.progress),S.pAct||S.act,S.calMonth,S.calSel); break;
+    case 'cal-day': S.calSel=el.dataset.d; $('#cal').innerHTML=calendarHTML(dayMap(S.pPr||S.progress),S.pAct||S.act,S.calMonth,S.calSel); drawDayDetail(S.calSel); break;
     /* 學院 */
     case 'zoom': toast('正式上線後，這裡會直接開啟 Zoom 會議'); break;
     case 'replay': toast('正式上線後，這裡會開啟回放影片'); break;
