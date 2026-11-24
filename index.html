@@ -119,7 +119,8 @@ img.avatar{object-fit:cover;display:block}
 .avatar-edit{display:flex;flex-direction:column;align-items:center;gap:10px;margin:6px 0 4px}
 .who{flex:1;min-width:0}
 .who .name{font-weight:700;font-size:18px;line-height:1.3}
-.who .meta{font-size:15px;color:var(--muted);line-height:1.4}
+.who .meta{font-size:15px;color:var(--muted);line-height:1.4;display:flex;flex-wrap:wrap;column-gap:0}
+.who .meta>span{white-space:nowrap}.who .meta>span+span::before{content:'・';margin:0 2px}
 .more-btn{border:0;background:none;width:44px;height:44px;border-radius:50%;font-size:24px;color:var(--muted)}
 .post-badges{padding:0 16px;display:flex;gap:6px;flex-wrap:wrap}
 .post-text{padding:8px 16px 12px;white-space:pre-wrap;word-break:break-word}
@@ -1642,14 +1643,15 @@ const GasApi = {
     let lastErr;
     for (let i = 0; i <= retry; i++) {
       try {
-        const ctl = new AbortController(), timer = setTimeout(()=>ctl.abort(), 45000);
+        const ctl = new AbortController(), timer = setTimeout(()=>ctl.abort(), 45000), t0 = performance.now();
         const res = await fetch(CONFIG.API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, signal:ctl.signal,
           body: JSON.stringify({ action, token: S.session && S.session.token, payload }) });
         clearTimeout(timer);
         if (!res.ok) throw new Error('NETWORK');
         let data; try { data = await res.json(); } catch(_) { throw new Error('NETWORK'); }
-        if (!data.ok) { const e = new Error(data.error || 'SERVER'); e.server = true; throw e; }
-        if (QC_CHANGES.test(action)) QuickCache.clear();   // 有改資料：手機記住的舊畫面作廢
+        if (!data.ok) { Perf.api(action, performance.now() - t0, data.ms, data.error); const e = new Error(data.error || 'SERVER'); e.server = true; throw e; }
+        Perf.api(action, performance.now() - t0, data.ms);
+        if (data.ok) QuickCache.afterChange(action);   // 有改資料：丟掉受影響的記憶，背景重新準備
         return data.result;
       } catch(e) {
         lastErr = (e.name === 'AbortError' || e instanceof TypeError) ? new Error('NETWORK') : e;
@@ -1724,42 +1726,83 @@ const GasApi = {
 const api = CONFIG.MODE === 'demo' ? MockApi : GasApi;
 
 /* ---------- 秒開：先顯示上一次的內容，背景再拿新的 ----------
-   每個登入的人分開記；有發文、報名、改夢想等改資料的動作時全部作廢；登出時清掉。 */
-const QC_CHANGES = /^(post\.(create|update|delete)|comment\.add|dream\.|course\.|ticket\.|honor\.|reg\.|member\.|admin\.)/;
+   每個登入的人分開記（key 前面有夥伴編號）；登出時全部清掉。
+   只有「改資料」的動作才丟掉相關的記憶（看資料的動作不會丟），丟掉後馬上在背景重新準備。 */
+const QC_DROP = {
+  'post.create':['growth:me','courses','myposts'], 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
+  'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
+  'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
+  'reg.apply':['growth:me']
+};
+const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list'];
 const QuickCache = {
-  mem: {}, busy: {},
+  mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
-  get(k){ const kk = this.key(k); if (kk in this.mem) return this.mem[kk]; const v = store(kk); if (v) this.mem[kk] = v; return v; },
-  put(k, v){ const kk = this.key(k); this.mem[kk] = v; store(kk, v); },
+  get(k){ if (CONFIG.MODE !== 'live') return null;   // 示範版不記
+    const kk = this.key(k); if (kk in this.mem) return this.mem[kk]; const v = store(kk); if (v) this.mem[kk] = v; return v; },
+  put(k, v){ const kk = this.key(k); this.mem[kk] = v; this.at[kk] = Date.now(); store(kk, v); },
+  fresh(k, ms){ const t = this.at[this.key(k)]; return !!t && Date.now() - t < ms; },   // 剛剛才從後端拿過
   fetch(k, fn){
     const kk = this.key(k);
     if (this.busy[kk]) return this.busy[kk];
     const p = fn().then(v => { this.put(k, v); return v; }).finally(() => { delete this.busy[kk]; });
     return (this.busy[kk] = p);
   },
+  drop(keys){ keys.forEach(k => { const kk = this.key(k); delete this.mem[kk]; delete this.at[kk]; store(kk, null); }); },
+  afterChange(action){
+    if (QC_DROP[action]) { this.drop(QC_DROP[action]); prefetchPages(300); }
+    else if (/^admin\./.test(action) && !QC_ADMIN_READS.includes(action)) {   // 管理員改了資料：全部重新準備
+      const keep = store('royal_home_last'); this.clear(); store('royal_home_last', keep); prefetchPages(300);
+    }
+  },
   clear(){
-    this.mem = {}; store('royal_home_last', null);
+    this.mem = {}; this.at = {}; store('royal_home_last', null);
     try { Object.keys(localStorage).filter(k => k.indexOf('qc:') === 0).forEach(k => localStorage.removeItem(k)); } catch(_){}
   }
 };
-/** 有記住的內容就先畫出來（不用等）；拿到新的、而且有變，才重畫一次（保持原本捲動位置） */
-async function quickRender(main, k, fn, draw){
-  const seq = S.navSeq, old = QuickCache.get(k);
-  if (old) draw(old); else main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  let fresh;
-  try { fresh = await QuickCache.fetch(k, fn); }
-  catch(e) { if (!old && S.navSeq === seq) main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
-  if (S.navSeq !== seq || !main.isConnected) return;          // 已經換到別頁
-  if (old && JSON.stringify(old) === JSON.stringify(fresh)) return;
-  const y = window.scrollY; draw(fresh); window.scrollTo(0, y);
+const QC_RECENT = 1000;   // 1 秒內剛拿過的不重拿（避免重畫時又再問一次）；其他時候都先顯示、背景再問新的
+/** 拿資料：有記住的先給（不用等），背景再拿新的；新的有變才 redraw() 一次。沒記住的才要等。 */
+async function qget(k, fn, redraw){
+  const seq = S.navSeq, old = QuickCache.get(k), t0 = performance.now();
+  if (old && QuickCache.fresh(k, QC_RECENT)) { Perf.page(k, 'cache', t0); return old; }
+  const p = QuickCache.fetch(k, fn);
+  if (!old) { const v = await p; Perf.page(k, 'wait', t0); return v; }
+  Perf.page(k, 'cache', t0);
+  p.then(v => {
+    if (S.navSeq !== seq || !redraw || JSON.stringify(v) === JSON.stringify(old)) return;
+    const a = document.activeElement;
+    if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return;   // 正在打字就不重畫
+    const y = window.scrollY; redraw(); window.scrollTo(0, y);
+  }).catch(()=>{});
+  return old;
 }
+const SKEL = '<div class="skeleton"></div><div class="skeleton"></div>';
+function skelIfNew(main, k){ if (!QuickCache.get(k)) main.innerHTML = SKEL; }
+/** 有記住的內容就先畫出來（不用等）；拿到新的、而且有變，才重畫一次 */
+async function quickRender(main, k, fn, draw){
+  const seq = S.navSeq;
+  if (!QuickCache.get(k)) main.innerHTML = SKEL;
+  let v;
+  try { v = await qget(k, fn, () => { if (main.isConnected) draw(QuickCache.get(k)); }); }
+  catch(e) { if (S.navSeq === seq) main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  if (S.navSeq === seq && main.isConnected) draw(v);
+}
+/* ---------- 量測：每次換頁、每個請求花多久（在網址後面加 #perf 會顯示在畫面下方） ---------- */
+const Perf = {
+  log: [],
+  api(action, waitMs, serverMs, err){ this.push({ type:'api', action, wait:Math.round(waitMs), server:serverMs ?? null, err:err||'' }); },
+  page(key, how, t0){ this.push({ type:'page', key, how, ms:Math.round(performance.now() - t0) }); },
+  push(x){ x.at = new Date().toTimeString().slice(0,8); this.log.push(x); if (this.log.length > 300) this.log.shift(); try { window.__perf = this.log; } catch(_){} if (location.hash === '#perf') this.show(); },
+  show(){ let b = document.getElementById('perf-box'); if (!b) { b = document.createElement('pre'); b.id='perf-box'; b.style.cssText='position:fixed;left:0;right:0;bottom:0;max-height:35vh;overflow:auto;margin:0;padding:6px;font:11px/1.3 monospace;background:rgba(0,0,0,.8);color:#9f9;z-index:9999'; document.body.appendChild(b); }
+    b.textContent = this.log.slice(-25).map(x => x.type==='api' ? `${x.at} 請求 ${x.action} 等待 ${x.wait}ms（後端 ${x.server??'?'}ms）${x.err}` : `${x.at} 頁面 ${x.key} ${x.how==='cache'?'立即顯示':'等待'} ${x.ms}ms`).join('\n'); }
+};
 /** 進首頁後，趁空檔先把「我的成長」「皇家學院」準備好 */
-function prefetchPages(){
+function prefetchPages(delay = 1200){
   if (CONFIG.MODE !== 'live' || !S.me) return;
   setTimeout(() => {
-    QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});
-    QuickCache.fetch('courses', () => api.getCourses()).catch(()=>{});
-  }, 1200);
+    if (!QuickCache.fresh('growth:me', QC_RECENT)) QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});
+    if (!QuickCache.fresh('courses', QC_RECENT)) QuickCache.fetch('courses', () => api.getCourses()).catch(()=>{});
+  }, delay);
 }
 // 管理員開通碼（只有第一次開通管理員時用）：記下來後馬上從網址拿掉，避免截圖或分享時外流
 try { const u = new URL(location.href), oc = u.searchParams.get('owner');
@@ -1885,7 +1928,7 @@ function renderLogin(step='start', extra={}){
       <button class="btn btn-primary mt" data-act="ap-next">${A.uplineId||A.uplineText?'下一步':'跳過，下一步'}</button>
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
     else body = `<h2 style="margin:0 0 4px">確認資料</h2><div class="muted">送出後由管理員審核，通過就能使用。</div>
-      <div class="card center mt" style="box-shadow:none;border:2px solid var(--line)">${av}<div style="font-size:24px;font-weight:800;margin-top:8px">${esc(A.name)}</div>
+      <div class="card center mt" style="box-shadow:none;border:2px solid var(--line)"><div style="display:flex;justify-content:center">${av}</div><div style="font-size:24px;font-weight:800;margin-top:8px">${esc(A.name)}</div>
         <div class="muted">TW 帳號：${esc(A.tw)}</div>${owner?'':`<div class="muted">上線：${A.uplineName||A.uplineText?esc(A.uplineName||A.uplineText):'（沒有填，管理員會幫你設定）'}</div>`}</div>
       <div class="notice info small mt privacy">🔒 <b>個人資料說明</b>：你填的姓名、大頭照、TW 帳號和登入用的 LINE／Email，只用在皇家團隊的活動管理（審核、打卡、課程報名與繳費）。
         其他夥伴只看得到你的姓名和大頭照；TW 帳號、Email 只有你和管理員看得到。資料存在管理員的 Google 帳號，不會提供給團隊以外的人。想刪除資料請洽管理員。按下面的按鈕送出，就表示你同意以上說明。</div>
@@ -2198,7 +2241,7 @@ function postHTML(p){
     <div class="post-h">
       ${avatarHTML(p.author)}
       <div class="who"><div class="name" data-act="person" data-id="${p.author.id}">${esc(p.author.name)}</div>
-        <div class="meta">${timeAgo(p.postedAt)}${p.isLate?'':' ・ 行動日 '+mdZh(p.actionDate)}${p.editedAt?' ・ <span class="edited">已編輯</span>':''}</div></div>
+        <div class="meta"><span>${timeAgo(p.postedAt)}</span>${p.isLate?'':`<span>行動日 ${mdZh(p.actionDate)}</span>`}${p.editedAt?'<span class="edited">已編輯</span>':''}</div></div>
       ${p.mine?`<button class="more-btn" data-act="post-menu" aria-label="更多">⋯</button>`:''}
     </div>
     ${badges.length?`<div class="post-badges">${badges.join('')}</div>`:''}
@@ -2359,7 +2402,7 @@ function renderCompose(main){
     ${d.photos.length < CONFIG.MAX_PHOTOS
       ? `<div class="photo-btns"><button class="btn btn-ghost" data-act="photo-cam">📷 拍照</button><button class="btn btn-ghost" data-act="photo-lib">🖼️ 從相簿選</button></div>`
       : ''}
-    <div class="hint">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張${d.photoInfo?'。'+esc(d.photoInfo):''}</div>
+    <div class="hint">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</div>
     <input type="file" id="f-cam" accept="image/*" capture="environment" class="hidden">
     <input type="file" id="f-lib" accept="image/*" multiple class="hidden">
     <div id="c-photo-busy" class="hint hidden">照片處理中…</div>
@@ -2576,7 +2619,7 @@ function notesHTML(n, act, admin){
 }
 async function loadMyPosts(){
   let r;
-  try { r = await api.getFeed({ cursor:0, limit:200, authorId:S.me.id }); }
+  try { r = await qget('myposts', () => api.getFeed({ cursor:0, limit:200, authorId:S.me.id }), () => { if ($('#my-posts')) loadMyPosts(); }); }
   catch(e) { const b=$('#my-posts'); if (b) b.innerHTML=`<div class="notice err">${esc(errText(e))}</div>`; return; }
   S.myPosts = r.items;
   const box = $('#my-posts'); if (!box) return;
@@ -2729,7 +2772,15 @@ function courseRegister(id){
 /** 我的入場 QR（學院用）：這堂課我所有有效的票 */
 function openTicket(id){
   const c = ACAD.find(x=>x.id===id); if (!c || !(c.myTickets||[]).length) return;
-  openTicketSheet(c, c.myTickets, { onChange: () => renderAcademy($('#main')), allowMore: true });
+  const opts = { onChange: () => renderAcademy($('#main')), allowMore: true };
+  openTicketSheet(c, c.myTickets, opts);
+  if (CONFIG.MODE==='live' && c.myTickets.some(t => !t.paid && t.status==='active')) {   // 還沒付款的票：順便問最新狀態（管理員可能剛確認收款）
+    QuickCache.fetch('courses', () => api.getCourses()).then(cs => {
+      const n = cs.find(x=>x.id===id), bg = $('.sheet-bg');
+      if (!n || !bg || JSON.stringify(n.myTickets) === JSON.stringify(c.myTickets)) return;
+      ACAD = cs; bg.remove(); openTicketSheet(n, n.myTickets, opts);
+    }).catch(()=>{});
+  }
 }
 const TK_TAB = { unpaid:'未付款', unused:'未使用', used:'已使用', void:'已失效' };
 function tkTab(t, c){
@@ -2811,8 +2862,8 @@ function openTicketSheet(c, tickets, opts={}){
 /* ---------- 我的票券（全部課程）：未付款／未使用／已使用／已失效 ---------- */
 let MYTK = null;
 async function renderMyTickets(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { MYTK = await api.getMyTickets(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  skelIfNew(main, 'tickets');
+  try { MYTK = await qget('tickets', () => api.getMyTickets(), () => renderMyTickets(main)); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const groups = {};   // 每堂課、每個分頁一組
   MYTK.tickets.forEach(t => { const c = MYTK.courses[t.courseId]; if (!c) return; const tb = tkTab(t, c); const k = tb+'|'+c.id;
     (groups[k] = groups[k] || { tab:tb, c, tickets:[] }).tickets.push(t); });
@@ -2900,8 +2951,8 @@ function startHonorAuto(){
 }
 let HONORS = null;
 async function renderHonors(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { HONORS = await api.getHonors(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  skelIfNew(main, 'honors');
+  try { HONORS = await qget('honors', () => api.getHonors(), () => renderHonors(main)); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   S.honors = HONORS.strip || [];
   const admin = isAdminNow(), meId = S.me && S.me.id;
   main.innerHTML = `<div class="honor-hero"><h2>🏆 榮譽名人榜</h2><p>恭喜每一位為目標全力以赴的夥伴</p>
@@ -3151,8 +3202,8 @@ async function drawTeamSummary(){
       <button class="tt bad" data-act="team" data-f="danger"><b>${st.danger}</b><span>快來不及</span></button></div>` : '<div class="muted mt">目前沒有進行中的衝刺班</div>'}</div>`;
 }
 async function renderTeam(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { TEAM = await api.getTeam(); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  skelIfNew(main, 'team');
+  try { TEAM = await qget('team', () => api.getTeam(), () => renderTeam(main)); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const st = TEAM.stats, act = TEAM.act;
   main.innerHTML = `<div class="card"><h2 class="act-name">👥 我的團隊</h2><div class="muted">整條線 ${st.total} 人${act?`・參加衝刺班 ${st.joined} 人`:''}</div>
     ${act && st.joined ? `<div class="stat-grid mt">
@@ -3181,8 +3232,8 @@ function drawTeamList(){
 }
 let TM = null;
 async function renderTeamMember(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { TM = await api.getTeamMember(S.tmId); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  const tk = 'tm:' + S.tmId; skelIfNew(main, tk);
+  try { TM = await qget(tk, () => api.getTeamMember(S.tmId), () => renderTeamMember(main)); } catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const m = TM.m, act = TM.activity, pr = TM.progress;
   if (!S.tmMonth || S.tmMonthId !== m.id){ S.tmMonth = todayStr().slice(0,7); S.tmMonthId = m.id; }
   S.tmAll = false;
@@ -3226,8 +3277,8 @@ async function setUpline(memberId){
 
 /** 我們的夢想：第一個是我的夢想，其他人的在後面（有打開「放到夥伴的夢想」的人） */
 async function renderDreams(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { const [, g] = await Promise.all([loadHome(), api.getGrowth()]); GROW = g; } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  skelIfNew(main, 'growth:me');
+  try { if (!S.me) await loadHome(); GROW = await qget('growth:me', () => api.getGrowth(), () => renderDreams(main)); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const meId = S.me && S.me.id, others = (S.dreams||[]).filter(d=>d.memberId!==meId);
   main.innerHTML = `<div class="dream-hero"><h2>✨ 我們的夢想</h2><p>看見彼此的夢想，一起往前走</p></div>
     <div id="my-dream">${dreamCardHTML(GROW.dream, true)}</div>
@@ -3359,9 +3410,9 @@ function installCardHTML(){
    ===================================================================== */
 let ADM = null;
 async function renderAdmin(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+  skelIfNew(main, 'adm');
   let cs = [];
-  try { [ADM, cs] = await Promise.all([api.adminDashboard(), api.getCourses().catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  try { [ADM, cs] = await Promise.all([qget('adm', () => api.adminDashboard(), () => renderAdmin(main)), qget('courses', () => api.getCourses()).catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const T0 = todayStr(), onsite = cs.filter(c=>(c.mode==='onsite'||c.mode==='hybrid') && diffDays(c.date,T0)<=30)
     .sort((a,b)=>{ const ua=a.date>=T0, ub=b.date>=T0; return ua!==ub ? (ua?-1:1) : (ua ? (a.date<b.date?-1:1) : (a.date<b.date?1:-1)); });
   const s = ADM.stats, act = ADM.act, rate = s.registered ? Math.round(s.todayDone/s.registered*100) : 0;
@@ -3464,8 +3515,8 @@ function drawReview(){
 }
 async function renderAdminMember(main){
   const id = S.admin.memberId;
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  let d; try { d = await api.adminMember(id); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  skelIfNew(main, 'adm:m:' + id);
+  let d; try { d = await qget('adm:m:' + id, () => api.adminMember(id), () => renderAdminMember(main)); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const m = d.m, act = d.activity, pr = d.progress || {valid:0,need:0,late:0,missing:0,days:{}};
   if (!S.admin.calMonth) S.admin.calMonth = todayStr().slice(0,7);
   main.innerHTML = `<div class="card"><div class="row">${avatarHTML(m,'lg')}
@@ -3488,9 +3539,9 @@ async function renderAdminMember(main){
 }
 let ADMC = null;
 async function renderAdminCourse(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+  const ck = 'adm:c:' + S.admin.courseId; skelIfNew(main, ck);
   let cs = [];
-  try { [ADMC, cs] = await Promise.all([api.adminCourseTickets(S.admin.courseId), api.getCourses().catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  try { [ADMC, cs] = await Promise.all([qget(ck, () => api.adminCourseTickets(S.admin.courseId), () => renderAdminCourse(main)), qget('courses', () => api.getCourses()).catch(()=>[])]); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   ADMC.closed = ADMC.closed || [];
   ADMC.others = cs.filter(x => (x.mode==='onsite'||x.mode==='hybrid') && x.id!==S.admin.courseId && x.date>=todayStr());
   const c = ADMC.course, st = ADMC.stats, f = S.admin.tf || 'all';
@@ -3857,7 +3908,7 @@ document.addEventListener('click', async e=>{
     case 'compose-date': S.editing=null; S.draft = newDraft({actionDate:el.dataset.d, dateMode: el.dataset.d===addDays(todayStr(),-1)?'yday':'other'}); go('compose'); break;
     /* 動態牆 */
     case 'feed-more': loadFeed(); break;
-    case 'feed-refresh': await loadFeed(true); toast('已更新'); break;
+    case 'feed-refresh': api._prefetch = null; await loadFeed(true); toast('已更新'); break;
     case 'honors': S.honBack = S.sub; go(S.tab, {sub:'honors'}); break;
     case 'person': if (el.dataset.id === (S.me && S.me.id)) { go('progress'); break; } S.personId = el.dataset.id; S.personBack = S.sub; go(S.tab, {sub:'person'}); break;
     case 'dreams': go(S.tab, {sub:'dreams'}); break;
