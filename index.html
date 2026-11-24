@@ -444,6 +444,10 @@ input.inp,textarea.inp,select.inp{border-radius:20px}
    一段太長放不下才在段落裡面換。（試過 word-break: keep-all，iPhone Safari 會把中文標點也當成字，反而斷得很怪） */
 .ph{display:inline-block;max-width:100%}
 .mrow>.who{display:flex;align-items:center;gap:12px}
+/* 後台選聘階：兩行（簡稱＋全名），不會跑出畫面（2026-11-25 使用者截圖） */
+.dialog{overflow-x:hidden}.dialog .btn{max-width:100%}
+.dialog .btn.pk-btn{white-space:normal;height:auto;min-height:58px;justify-content:flex-start;text-align:left;gap:12px;padding:8px 18px}
+.pk{display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;min-width:0}.pk small{font-size:13px;font-weight:600;opacity:.75;white-space:normal}
 .tree-set{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
 button.stat{font:inherit;text-align:left;cursor:pointer;width:100%;position:relative;-webkit-tap-highlight-color:transparent}
 button.stat::after{content:"看名單 ›";position:absolute;right:12px;bottom:12px;font-size:13px;font-weight:700;color:var(--tone);opacity:.7}
@@ -2566,13 +2570,13 @@ async function pickMyCoe(cur){
 /** 管理員：選聘階（回傳名稱；'' 清掉；null 取消） */
 async function pickRank(cur){
   const v = await choiceBox(`選聘階${cur?'（目前：'+cur+'）':''}`, [
-    ...RANKS.map(r=>({ v:r.k, label:`${rankIcon(r)}${r.k}・${r.full}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
+    ...RANKS.map(r=>({ v:r.k, label:`${rankIcon(r)}<span class="pk"><b>${r.te?'寰宇領袖':r.k}</b><small>${r.te?'總裁級品牌大使':esc(r.full)}</small></span>`, cls: (rankOf(cur)===r ? 'btn-primary' : 'btn-ghost') + ' pk-btn', html:true })),
     { v:'__clear', label:'清掉聘階', cls:'btn-outline' }]);
   return !v ? null : v==='__clear' ? '' : v;
 }
 async function pickCoe(cur){
   const v = await choiceBox(`選創業名人${cur?'（目前：'+COE[cur].n+'）':''}`, [
-    ...[1,2,3,4].map(n=>({ v:String(n), label:`<img class="bdg" src="${COE[n].img}" alt=""> ${COE[n].n}（${COE[n].old}）`, cls: cur===n ? 'btn-primary' : 'btn-ghost', html:true })),
+    ...[1,2,3,4].map(n=>({ v:String(n), label:`<img class="bdg" src="${COE[n].img}" alt=""><span class="pk"><b>${COE[n].old}</b><small>${COE[n].n}</small></span>`, cls: (cur===n ? 'btn-primary' : 'btn-ghost') + ' pk-btn', html:true })),
     { v:'0', label:'清掉創業名人', cls:'btn-outline' }]);
   return !v ? null : +v;
 }
