@@ -1729,7 +1729,7 @@ const api = CONFIG.MODE === 'demo' ? MockApi : GasApi;
    每個登入的人分開記（key 前面有夥伴編號）；登出時全部清掉。
    只有「改資料」的動作才丟掉相關的記憶（看資料的動作不會丟），丟掉後馬上在背景重新準備。 */
 const QC_DROP = {
-  'post.create':['growth:me','courses','myposts'], 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
+  'post.create':['growth:me','courses'],   // 我的日誌列表：發文後直接把新的一篇放進去（見 submitPost） 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
   'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
   'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
   'reg.apply':['growth:me']
@@ -1750,6 +1750,7 @@ const QuickCache = {
   },
   drop(keys){ keys.forEach(k => { const kk = this.key(k); delete this.mem[kk]; delete this.at[kk]; store(kk, null); }); },
   afterChange(action){
+    if (QC_DROP[action] || (/^admin\./.test(action) && !QC_ADMIN_READS.includes(action))) S.homeStale = true;   // 打卡天數、報名狀態可能變了
     if (QC_DROP[action]) { this.drop(QC_DROP[action]); prefetchPages(300); }
     else if (/^admin\./.test(action) && !QC_ADMIN_READS.includes(action)) {   // 管理員改了資料：全部重新準備
       const keep = store('royal_home_last'); this.clear(); store('royal_home_last', keep); prefetchPages(300);
@@ -2078,7 +2079,7 @@ function setNav(){
   $('#tb-back').classList.toggle('hidden', !S.sub); requestAnimationFrame(fitTopTitle);
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse');
 }
-async function loadHome(){ const h = await api.getHome(); applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
+async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
 function applyHome(h){ S.me=h.me; S.act=h.activity; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
   S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
@@ -2477,11 +2478,15 @@ async function submitPost(){
     } else {
       const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId });
       S.feed.items.unshift(p); if (S.feed.items.length>1) S.feed.cursor++;
+      const mp = QuickCache.get('myposts'); if (mp) QuickCache.put('myposts', { ...mp, items:[p, ...mp.items] });   // 我的日誌馬上看得到
+      if (S.myPosts) S.myPosts.unshift(p);
       const wasLate = p.isLate;
       toast(wasLate ? `補打卡完成！（${mdZh(p.actionDate)}）` : '發布成功！今天已打卡 ✓', 'ok');
     }
     S.draft = null; S.editing = null; store('royal_draft', null);
-    await loadHome(); go('home');
+    go('home');   // 新的一篇已經放進動態牆，不用等；打卡狀態背景更新
+    S.homeDirty = loadHome().finally(() => { S.homeDirty = null; });   // 打卡天數等在背景更新；「我的進度」會等它，不顯示舊數字
+    S.homeDirty.then(() => { setNav(); if (S.tab==='home' && !S.sub) { const y = window.scrollY; renderHome($('#main')); window.scrollTo(0, y); } }).catch(()=>{});
   } catch(e){
     btn.disabled = false; btn.textContent = S.editing ? '儲存修改' : '發布';
     showErr(errText(e));   // 同一個 clientRequestId 重送，不會變成兩篇
@@ -2559,6 +2564,13 @@ function monthShift(mo, n){ const [y,m]=mo.split('-').map(Number); const d=new D
 
 async function renderProgress(main){
   const seq = S.navSeq;
+  if (S.homeDirty || S.homeStale || CONFIG.MODE !== 'live'){   // 剛發完日誌、報名被核准等：等最新的打卡天數，不先顯示舊的
+    main.innerHTML = SKEL;
+    if (S.me && CONFIG.MODE === 'live' && !QuickCache.get('myposts')) QuickCache.fetch('myposts', () => api.getFeed({ cursor:0, limit:200, authorId:S.me.id })).catch(()=>{});   // 同時拿，不用排隊
+    try { await (S.homeDirty || loadHome()); } catch(e){ if (!S.me) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; } }
+    if (S.navSeq !== seq) return;
+    setNav(); return drawProgress(main);
+  }
   if (!S.me){
     main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
     try { await loadHome(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
