@@ -424,6 +424,16 @@ input.inp,textarea.inp,select.inp{border-radius:20px}
 .stat .k{color:var(--tone)!important;font-weight:800;font-size:clamp(13px,3.9vw,16px)!important;letter-spacing:.5px}
 .stat .v{color:var(--tone)!important;font-size:36px;line-height:1.05;margin-top:6px;font-variant-numeric:tabular-nums}
 .stat .v small{font-size:16px;font-weight:700;margin-left:4px;opacity:.75}
+/* 後台數字方塊可以點：點了看名單（2026-11-24 使用者） */
+.c-intro{white-space:pre-line;line-height:1.7}
+/* 2026-11-24 使用者：「分行分清楚、不要斷句、詞句完整一行」→ 畫面上的說明文字只在標點、空白處換行；
+   太長放不下才在中間換。夥伴自己寫的內容（貼文、留言、夢想、名字）照一般方式換行。 */
+body{word-break:keep-all;overflow-wrap:break-word}
+.uc,.post-text,.cmt .bubble,textarea,input,.mtable td{word-break:normal}
+button.stat{font:inherit;text-align:left;cursor:pointer;width:100%;position:relative;-webkit-tap-highlight-color:transparent}
+button.stat::after{content:"看名單 ›";position:absolute;right:12px;bottom:12px;font-size:13px;font-weight:700;color:var(--tone);opacity:.7}
+button.stat:active{transform:scale(.98)}
+.flash{animation:flash 1.6s ease-out}@keyframes flash{0%{box-shadow:0 0 0 4px var(--gold)}100%{box-shadow:0 0 0 0 transparent}}
 .stat .v.word{font-size:24px;margin-top:10px}
 .stat.ok{--tone:var(--ok)}.stat.bad{--tone:var(--bad)}.stat.pend{--tone:var(--pend)}.stat.late{--tone:var(--late)}
 .act-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(17px,5.2vw,22px)}
@@ -1730,7 +1740,7 @@ const MockApi = {
     const pendingRegs = [...MockDB.reg.pending.entries()].map(([id,v])=>{ const m = MockDB.byId[id]; return { id:v.id, memberId:id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw, at:v.at, fee:v.fee||0, payMethod:v.payMethod||'', last5:v.last5||'' }; });
     return { act, rows, pendingPosts, pendingRegs, applicants:MockDB.pendingApplicants,
       stats: { registered:rows.length, paid:rows.filter(r=>r.m.paid).length, todayDone:rows.filter(r=>r.pr.todayDone).length,
-               lateToday:todayLate.size, reached:rows.filter(r=>r.pr.reached).length, unreachable:rows.filter(r=>!r.pr.reachable).length,
+               lateToday:todayLate.size, lateIds:[...todayLate], reached:rows.filter(r=>r.pr.reached).length, unreachable:rows.filter(r=>!r.pr.reachable).length,
                pending: pendingPosts.length + MockDB.pendingApplicants.length + pendingRegs.length, hasList: MockDB.reg.ids.size + MockDB.reg.tws.size > 0, joinMode:act.joinMode } };
   },
   async staffCourses(){
@@ -2451,7 +2461,7 @@ function myBadgeCardHTML(){
   const b = (S.badges && S.badges[S.me.id]) || { r:'', c:0 }, r = rankOf(b.r), c = COE[b.c], showR = r && (r.img || r.te);
   const big = showR ? (r.img ? `<img class="bdg-big" src="${r.img}" alt="${esc(r.k)}">` : '<span class="bdg-tag te bdg-big-te">TE</span>') : '';
   return `<div class="card" id="my-badge"><h3>🏅 我的徽章</h3>
-    <div class="muted mb">選好之後，動態牆上你的名字後面就會出現閃亮的徽章，大家都看得到。</div>
+    <div class="muted mb">選好之後，名字後面會出現閃亮的徽章，<br>大家都看得到。</div>
     ${showR || c ? `<div class="my-bdgs">${big}${c ? `<img class="bdg-big" src="${c.img}" alt="${esc(c.old)}">` : ''}</div>` : ''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
       <button class="btn btn-ghost btn-sm" data-act="my-rank">${showR ? '換聘階徽章' : '選聘階徽章'}</button>
@@ -2524,8 +2534,10 @@ function glueText(root){
   const list = []; while (w.nextNode()) list.push(w.currentNode);
   list.forEach(t => {
     const el = t.parentElement; if (!el || el.closest(GLUE_SKIP)) return;
-    const v = t.nodeValue; if (!/[「『（《〈【」』）》〉】]/.test(v)) return;
-    const nv = v.replace(/([「『（《〈【])\u2060?/g, '$1\u2060').replace(/\u2060?([」』）》〉】])/g, '\u2060$1');
+    const v = t.nodeValue; if (!/[「『（《〈【」』）》〉】]|\d[ \u00A0]?[天人篇堂次個月年日週分時元張代階]|^[ \u00A0]?[天人篇堂次個月年日週分時元張代階]/.test(v)) return;
+    const nv = v.replace(/([「『（《〈【])\u2060?/g, '$1\u2060').replace(/\u2060?([」』）》〉】])/g, '\u2060$1')
+      .replace(/(\d) (?=[天人篇堂次個月年日週分時元張代階])/g, '$1\u00A0')                   // 「3 天」「7 人」不拆成兩行
+      .replace(/^ (?=[天人篇堂次個月年日週分時元張代階])/, '\u00A0');                        // <b>3</b> 天：粗體數字後面的單位也黏住
     if (nv !== v) t.nodeValue = nv;
   });
 }
@@ -2602,6 +2614,14 @@ function statusCardHTML(){
 function greet(){ const h=new Date().getHours(); return h<11?'早安':h<14?'午安':h<18?'午安':'晚安'; }
 
 /* ---------- 首頁最上面：今天有線上課 →「▶ 進入教室」大按鈕，打開 APP 按一下就進 Zoom ---------- */
+/** 課程說明：照打的分行顯示；「引號裡的字」、一串數字（會議 ID）不會被拆到兩行（2026-11-24 使用者：分行分清楚、不要斷行、完整詞句在同一行） */
+function introHTML(t){
+  const raw = String(t||'').replace(/\r/g,'').trim().replace(/(\d)[ 　]+(?=\d)/g, '$1 ');   // 925 7414 0214 → 不拆開
+  const re = /「[^」\n]{1,16}」|[A-Za-z][A-Za-z0-9.\- ]{0,20}[A-Za-z0-9]/g;                      // 「進入 Zoom 上課」、英文詞不拆開
+  let out = '', last = 0, m;
+  while ((m = re.exec(raw))) { out += esc(raw.slice(last, m.index)) + `<span class="nw">${esc(m[0])}</span>`; last = re.lastIndex; }
+  return out + esc(raw.slice(last));
+}
 const hm = t => { const m = String(t).match(/(\d{1,2})\s*[:：]\s*(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : null; };
 function classTimes(c){ const all = String(c.time||'').match(/\d{1,2}\s*[:：]\s*\d{2}/g) || [], st = all[0] ? hm(all[0]) : null;
   return { st, en: all[1] ? hm(all[1]) : (st!=null ? st + 150 : null) }; }   // 沒寫下課時間：當作上 2.5 小時
@@ -3122,7 +3142,7 @@ async function drawAcademy(main, cs){
       <div class="row" style="justify-content:space-between;align-items:center">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
       <div class="when mt"><span class="nw">${fullZh(c.date)}</span> <wbr><span class="nw">${esc(c.time)}</span></div>
       <h3 style="margin:4px 0 2px">${esc(c.title)}</h3><div class="teacher">講師：${esc(c.teacher)}</div>
-      ${c.intro?`<div class="mt">${esc(c.intro)}</div>`:''}
+      ${c.intro?`<div class="mt c-intro">${introHTML(c.intro)}</div>`:''}
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
       ${c.announce?`<div class="announce">📢 ${esc(c.announce)}</div>`:''}
@@ -3181,8 +3201,7 @@ async function drawSchedule(box, d){
         <div class="d"><b>${esc(r.date)}</b><small>${esc(r.dow)}</small>${isToday(r.date)?'<em>今天</em>':''}</div>
         <div class="t">${r.topic?esc(r.topic):'<span class="muted">待公布</span>'}${r.speaker?`<div class="sp">🎤 ${esc(r.speaker.split(/[、,，]/).map(x=>x.trim()).filter(Boolean).join('、'))}</div>`:''}</div></div>`).join('')}
     </div>`).join('')}
-    ${d.venues.length?`<div class="card"><h3 style="margin:0 0 6px">📍 上課地點</h3>${d.venues.map(v=>`<div class="venue">${esc(v)}</div>`).join('')}</div>`:''}
-    <div class="hint center">課表由皇家行事曆同步，最多約 10 分鐘更新一次</div>`;
+    ${d.venues.length?`<div class="card"><h3 style="margin:0 0 6px">📍 上課地點</h3>${d.venues.map(v=>`<div class="venue">${esc(v)}</div>`).join('')}</div>`:''}`;
 }
 function ticketPills(t){
   if (t.checkedInAt) return '<span class="pill ok">✓ 已入場</span>';
@@ -3433,7 +3452,7 @@ async function renderHonors(main){
       ${p.id===meId || admin ? `<div class="hp-acts">
         ${p.id===meId?`<button class="btn btn-ghost btn-sm" data-act="hon-quote" data-id="${p.id}">✏️ ${p.quote?'修改感言':'寫一句感言'}</button>`:''}
         ${admin?`<button class="btn btn-outline btn-sm" data-act="hon-manage" data-id="${p.id}">⚙️ 管理</button>`:''}</div>` : ''}
-    </div>`).join('') : `<div class="card center"><div style="font-size:40px">🏆</div><b>還沒有人上榜</b><div class="muted">活動達標的夥伴會自動出現在這裡${admin?'；晉升、業績表揚可以按上面的「新增榮譽」':''}。</div></div>`}`;
+    </div>`).join('') : `<div class="card center"><div style="font-size:40px">🏆</div><b>還沒有人上榜</b><div class="muted">活動達標的夥伴，<br>會自動出現在這裡。${admin?'<br>晉升、業績表揚，<br>按上面的「＋ 新增榮譽」。':''}</div></div>`}`;
 }
 async function refreshHonors(){
   if (S.sub==='honors') return renderHonors($('#main'));
@@ -3959,7 +3978,8 @@ function renderAdminCourseEdit(main){
       <div class="cs-two"><div><label class="lbl" for="cs-fee">費用（元）</label><input class="inp" id="cs-fee" type="number" inputmode="numeric" min="0" value="${+c.fee||0}"><div class="hint">0＝免費</div></div>
         <div><label class="lbl" for="cs-cap">名額</label><input class="inp" id="cs-cap" type="number" inputmode="numeric" min="0" value="${+c.capacity||0}"><div class="hint">0＝不限</div></div></div></div>
     <label class="lbl" for="cs-intro">課程說明<span class="muted small" style="font-weight:400">（可不填）</span></label>
-    <textarea class="inp" id="cs-intro" maxlength="600" placeholder="例如：會議 ID、密碼、上課要準備的東西">${esc(c.intro)}</textarea>
+    <textarea class="inp" id="cs-intro" maxlength="600" placeholder="一行寫一件事，例如：&#10;會議 ID：925 7414 0214&#10;密碼：123456">${esc(c.intro)}</textarea>
+    <div class="hint">一行寫一件事，按 Enter 換行；夥伴看到的會照你分的行。</div>
     ${isNew ? '' : `<label class="lbl" for="cs-replay">錄影回放連結<span class="muted small" style="font-weight:400">（上完課再貼）</span></label><input class="inp" id="cs-replay" inputmode="url" placeholder="https://…" value="${esc(c.replayUrl)}">`}
     <div id="cs-err" class="notice err hidden mt"></div>
     <button class="btn btn-primary mt" data-act="cs-save">${isNew ? '新增這堂課' : '儲存修改'}</button>
@@ -4006,6 +4026,45 @@ function rosterCSV(){
 }
 
 /* ---------- 後台：整個團隊樹狀圖（每條線從頭往下，第幾代、下面幾人；還沒設定上線的人另外列） ---------- */
+/* ---------- 後台數字方塊 → 點進去看名單（2026-11-24 使用者：「這邊讓我可以點選，點進去看名單？」） ---------- */
+function statListSheet(k){
+  if (!ADM) return;
+  if (k==='pending') {   // 待審核：直接捲到下面的「待審核」
+    const r = $('#rev'), c = r && r.closest('.card'); if (c) { c.scrollIntoView({behavior:'smooth', block:'start'}); c.classList.remove('flash'); void c.offsetWidth; c.classList.add('flash'); }
+    return;
+  }
+  const late = new Set(ADM.stats.lateIds || []), rows = ADM.rows.slice().sort((a,b)=>a.m.name.localeCompare(b.m.name,'zh-Hant'));
+  const pick = f => rows.filter(f), act = ADM.act, dep = act && act.feeMode==='deposit';
+  const G = {
+    reg:       [[act&&act.joinMode==='admin'?'參加名單':'報名名單', pick(()=>true)]],
+    paid:      [[dep?'已繳保證金':'已繳費', pick(r=>r.m.paid)], [dep?'還沒繳保證金':'還沒繳費', pick(r=>!r.m.paid)]],
+    done:      [['今天已打卡', pick(r=>r.pr.todayDone)]],
+    notyet:    [['今天還沒打卡', pick(r=>!r.pr.todayDone)]],
+    rate:      [['今天還沒打卡', pick(r=>!r.pr.todayDone)], ['今天已打卡', pick(r=>r.pr.todayDone)]],
+    late:      [['今天有補打卡', pick(r=>late.has(r.m.id))]],
+    reached:   [['已達標', pick(r=>r.pr.reached)]],
+    unreached: [['已無法達標', pick(r=>!r.pr.reached && !r.pr.reachable)], ['還有機會達標', pick(r=>!r.pr.reached && r.pr.reachable)]]
+  }[k]; if (!G) return;
+  const th = act ? act.threshold : 0;
+  const chip = r => `${r.pr.todayDone?'<span class="pill ok">今天已打卡</span>':'<span class="pill bad">今天未打卡</span>'}<span class="pill gray">有效 ${r.pr.valid}${th?'／'+th:''} 天</span>${late.has(r.m.id)?'<span class="pill late">今天補打卡</span>':''}${k==='paid'||k==='reg'?(r.m.paid?'<span class="pill gray">已繳</span>':'<span class="pill pend">未繳</span>'):''}`;
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const first = G[0][1];
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(G[0][0])}（${first.length} 人）</h3><button data-x>關閉</button></div>
+    <div class="sheet-b">${act?`<div class="muted small mb">${esc(act.name)}・今天 ${mdZh(todayStr())}・點名字可以看他的打卡紀錄</div>`:''}
+      ${G.map(([t, list], i)=>`${i||G.length>1?`<h3 class="mt" style="margin-bottom:6px">${esc(t)} <small class="muted">${list.length} 人</small></h3>`:''}
+        ${list.length ? `<div class="row mb" style="flex-wrap:wrap"><button class="btn btn-outline btn-sm" data-copy="${i}">複製這 ${list.length} 個名字</button></div>
+          <div class="mlist">${list.map(r=>`<button class="mrow" data-mem="${r.m.id}">${avatarHTML(r.m)}<div class="info"><b>${esc(r.m.name)}</b>${badgeHTML(r.m.id)}<div class="chips">${chip(r)}</div></div><span class="muted">›</span></button>`).join('')}</div>`
+          : '<div class="muted mb">目前沒有人。</div>'}`).join('')}
+    </div></div>`;
+  bg.addEventListener('click', async e=>{
+    if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); return; }
+    const cp = e.target.closest('[data-copy]');
+    if (cp) { const list = G[+cp.dataset.copy][1], txt = list.map(r=>r.m.name).join('、');
+      try { await navigator.clipboard.writeText(txt); toast(`已複製 ${list.length} 個名字，可以貼到 LINE 提醒大家`,'ok'); } catch(_){ toast('這個瀏覽器不允許複製','err'); } return; }
+    const mb = e.target.closest('[data-mem]'); if (mb) { bg.remove(); S.admin.memberId = mb.dataset.mem; S.admin.calMonth = null; S.admin.calSel = null; go('account', {sub:'adminMember'}); }
+  });
+  document.body.appendChild(bg);
+}
 async function adminTreeSheet(){
   let d; try { d = await api.adminTree(); } catch(err){ return toast(errText(err),'err'); }
   const kids = {}, total = {};
@@ -4130,15 +4189,15 @@ async function renderAdmin(main){
       <div class="notice info small mt">已讀人數每 15 分鐘彙整一次；打卡天數在發文、修改、審核時立即更新。</div></div>
     ${actChips(ADM.acts, act, 'adm-act')}
     <div class="admin-grid mb">
-      <div class="stat"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></div>
-      <div class="stat"><div class="v">${s.paid}</div><div class="k">${act&&act.feeMode==='deposit'?'已繳保證金':'已繳費'}</div></div>
-      <div class="stat ok"><div class="v">${s.todayDone}</div><div class="k">今日已打卡</div></div>
-      <div class="stat bad"><div class="v">${s.registered-s.todayDone}</div><div class="k">今日尚未打卡</div></div>
-      <div class="stat"><div class="v">${rate}%</div><div class="k">今日打卡率</div></div>
-      <div class="stat late"><div class="v">${s.lateToday}</div><div class="k">今日補打卡人數</div></div>
-      <div class="stat ok"><div class="v">${s.reached}</div><div class="k">目前已達標</div></div>
-      <div class="stat"><div class="v">${s.registered-s.reached}</div><div class="k">尚未達標<small>其中 ${s.unreachable} 人已無法達標</small></div></div>
-      <div class="stat pend"><div class="v">${s.pending}</div><div class="k">待審核</div></div>
+      <button class="stat" data-act="stat-list" data-k="reg"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></button>
+      <button class="stat" data-act="stat-list" data-k="paid"><div class="v">${s.paid}</div><div class="k">${act&&act.feeMode==='deposit'?'已繳保證金':'已繳費'}</div></button>
+      <button class="stat ok" data-act="stat-list" data-k="done"><div class="v">${s.todayDone}</div><div class="k">今日已打卡</div></button>
+      <button class="stat bad" data-act="stat-list" data-k="notyet"><div class="v">${s.registered-s.todayDone}</div><div class="k">今日尚未打卡</div></button>
+      <button class="stat" data-act="stat-list" data-k="rate"><div class="v">${rate}%</div><div class="k">今日打卡率</div></button>
+      <button class="stat late" data-act="stat-list" data-k="late"><div class="v">${s.lateToday}</div><div class="k">今日補打卡人數</div></button>
+      <button class="stat ok" data-act="stat-list" data-k="reached"><div class="v">${s.reached}</div><div class="k">目前已達標</div></button>
+      <button class="stat" data-act="stat-list" data-k="unreached"><div class="v">${s.registered-s.reached}</div><div class="k">尚未達標<small>其中 ${s.unreachable} 人已無法達標</small></div></button>
+      <button class="stat pend" data-act="stat-list" data-k="pending"><div class="v">${s.pending}</div><div class="k">待審核</div></button>
     </div>
     <div class="adm-body"><div class="adm-side">
     <div class="card"><h3>📋 夥伴總表</h3><div class="muted mb">每個人是誰、誰的下線、哪一條線、這個月月費、參加了哪些班，一張表看完。</div>
@@ -4756,6 +4815,7 @@ document.addEventListener('click', async e=>{
     case 'admin-tree': adminTreeSheet(); break;
     case 'admin-roster': go('account', {sub:'adminRoster'}); break;
     case 'admin-courses': go('account', {sub:'adminCourses'}); break;
+    case 'stat-list': statListSheet(el.dataset.k); break;
     case 'cs-new': openCourseEdit(null); break;
     case 'cs-edit': case 'cs-copy': { const c = (ADMCS && ADMCS.courses || []).find(x=>x.id===el.dataset.id); if (c) openCourseEdit(c, act==='cs-copy'); break; }
     case 'cs-allpast': S.csAllPast = true; renderAdminCourses($('#main')); break;
