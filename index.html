@@ -361,7 +361,11 @@ main{padding:14px 12px calc(var(--nav-h) + 48px + env(safe-area-inset-bottom))}
 .post-actions button{min-height:50px;border-radius:999px;background:#F2F6FA}
 .post-actions button.liked{background:var(--brand-soft)}
 .post-actions .rx-emoji{font-size:24px;line-height:1}
-.rx-sum{display:inline-flex;align-items:center;gap:4px}
+.rx-sum{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+.rx-who{display:inline-flex;margin-left:6px}
+.rx-who .avatar{width:24px;height:24px;font-size:12px;border:2px solid #fff;margin-left:-7px;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+.rx-who .avatar:first-child{margin-left:0}
+.rx-big{font-size:26px}
 .rx-sum .rx-icons{display:inline-flex}
 .rx-sum .rx-icons span{width:26px;height:26px;border-radius:50%;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:16px;
   box-shadow:0 1px 4px rgba(0,0,0,.15);margin-left:-6px}
@@ -426,10 +430,20 @@ input.inp,textarea.inp,select.inp{border-radius:20px}
 .stat .v small{font-size:16px;font-weight:700;margin-left:4px;opacity:.75}
 /* 後台數字方塊可以點：點了看名單（2026-11-24 使用者） */
 .c-intro{white-space:pre-line;line-height:1.7}
-/* 2026-11-24 使用者：「分行分清楚、不要斷句、詞句完整一行」→ 畫面上的說明文字只在標點、空白處換行；
-   太長放不下才在中間換。夥伴自己寫的內容（貼文、留言、夢想、名字）照一般方式換行。 */
-body{word-break:keep-all;overflow-wrap:break-word}
-.uc,.post-text,.cmt .bubble,textarea,input,.mtable td{word-break:normal}
+/* 月費：勾選月份 */
+.fee-quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:6px}
+.fee-quick .btn{flex-direction:column;min-height:62px;padding:6px 4px;gap:0;line-height:1.2}.fee-quick .btn small{font-size:12px;font-weight:600;opacity:.75}
+.fee-yr{font-weight:800;margin:14px 0 6px;color:var(--muted)}
+.fee-months{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.fee-m{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:62px;border:2px solid var(--line);border-radius:14px;background:#fff;font-weight:800;font-size:18px;cursor:pointer;position:relative;line-height:1.2;-webkit-tap-highlight-color:transparent}
+.fee-m input{position:absolute;opacity:0;pointer-events:none}
+.fee-m small{font-size:12px;font-weight:700;color:var(--muted)}
+.fee-m.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}.fee-m.on span::before{content:"✓ "}.fee-m.on small{color:var(--ok)}
+.fee-m.now{box-shadow:0 0 0 3px var(--brand-soft)}
+/* 2026-11-24 使用者：「分行分清楚、不要斷句、詞句完整一行」→ 說明文字切成一小段一小段（.ph），只在段落之間換行；
+   一段太長放不下才在段落裡面換。（試過 word-break: keep-all，iPhone Safari 會把中文標點也當成字，反而斷得很怪） */
+.ph{display:inline-block;max-width:100%}
+.mrow>.who{display:flex;align-items:center;gap:12px}
 button.stat{font:inherit;text-align:left;cursor:pointer;width:100%;position:relative;-webkit-tap-highlight-color:transparent}
 button.stat::after{content:"看名單 ›";position:absolute;right:12px;bottom:12px;font-size:13px;font-weight:700;color:var(--tone);opacity:.7}
 button.stat:active{transform:scale(.98)}
@@ -1408,13 +1422,14 @@ function mockMe(m){
    api：畫面只透過這裡拿資料。示範模式＝MockApi；正式＝GasApi
    ===================================================================== */
 const Demo = { failNext:false, slow:false, notJoined:false };
+function mockReactors(likes){ return [...likes.entries()].reverse().slice(0,40).map(([id,r])=>{ const m = MockDB.byId[id] || { name:'（已離開）', color:'#8A97A5' }; return { id, r, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color }; }); }
 function mockCounts(m){ const c={}; m.forEach(t=>{ c[t]=(c[t]||0)+1; }); return c; }
 function publicPost(p, meId){
   const a = MockDB.byId[p.authorId], c = p.courseId ? MockDB.courses.find(x=>x.id===p.courseId) : null;
   return { id:p.id, author:{id:a.id, name:a.name, color:a.color, avatarUrl:a.avatarUrl||''}, actionDate:p.actionDate, postedAt:p.postedAt,
     editedAt:p.editedAt, text:p.text, photoUrls: p.photoDatas || (p.photo ? p.photo.scenes.map(demoPhotoUrl) : []),
     isLate:p.isLate, review:p.review, course: c ? {id:c.id, title:c.title} : null,
-    likeCount:p.likes.size, liked:p.likes.has(meId), myReaction:p.likes.get(meId)||'', reactionCounts:mockCounts(p.likes), commentCount:p.comments.length, readCount:p.reads.size, mine:p.authorId===meId };
+    likeCount:p.likes.size, liked:p.likes.has(meId), myReaction:p.likes.get(meId)||'', reactionCounts:mockCounts(p.likes), reactors:mockReactors(p.likes), commentCount:p.comments.length, readCount:p.reads.size, mine:p.authorId===meId };
 }
 const MOCK_PAYINFO = '請轉帳到：○○銀行（012）帳號 1234-5678-9012，或當天現場付。管理員確認收到款項後，這裡就會出現入場 QR。';
 function mockTicketView(t, forMember=true){
@@ -1546,7 +1561,7 @@ const MockApi = {
     const p = MockDB.posts.find(x=>x.id===id), me=this._me();
     if (p.likes.get(me.id) === type) p.likes.delete(me.id); else p.likes.set(me.id, type);
     if (p.authorId!==me.id) p.reads.add(me.id);
-    return { liked:p.likes.has(me.id), myReaction:p.likes.get(me.id)||'', likeCount:p.likes.size, reactionCounts:mockCounts(p.likes), readCount:p.reads.size };
+    return { liked:p.likes.has(me.id), myReaction:p.likes.get(me.id)||'', likeCount:p.likes.size, reactionCounts:mockCounts(p.likes), reactors:mockReactors(p.likes), readCount:p.reads.size };
   },
   async getComments(id){
     await this._wait();
@@ -1701,11 +1716,16 @@ const MockApi = {
     return { summary:{ state:'paid', month:ym, fee:300, dueDay:5, next:{month:nx, state:'none'}, nextRemind:+T.slice(8)>=20 }, fee:300, dueDay:5,
       payInfo:'請轉帳到：○○銀行（012）帳號 1234-5678-9012，或把現金交給管理員。', months:[{month:ym,state:'paid',method:'cash',last5:''},{month:nx,state:'none',method:'',last5:''}] }; },
   async feeApply(){ await this._wait(); toast('示範版：不會真的送出','ok'); return this.getFee(); },
-  async adminFeeList(month){ await this._wait(); const ym = month || todayStr().slice(0,7), st = ['paid','pending','none','paid','exempt'];
-    const rows = MockDB.members.slice(1).map((m,i)=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw, state:st[i%5], method:st[i%5]==='pending'?'transfer':'', last5:st[i%5]==='pending'?'12345':'' }));
+  async adminFeeList(month){ await this._wait(); const now = todayStr().slice(0,7), ym = month || now, st = ['paid','pending','none','paid','exempt'];
+    const F = this._fee = this._fee || {};
+    MockDB.members.slice(1).forEach((m,i)=>{ if (!F[m.id]) { F[m.id] = {}; if (st[i%5]!=='none') F[m.id][now] = st[i%5]; } });
+    const range = Array.from({length:17}, (_,k)=>ymAddJs(now, k-2));
+    const rows = MockDB.members.slice(1).map(m=>{ const f = F[m.id], s1 = f[ym] || 'none';
+      return { id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw, state:s1, method:s1==='pending'?'transfer':'', last5:s1==='pending'?'12345':'', cov:{...f} }; });
     const n = k => rows.filter(r=>r.state===k).length;
-    return { month:ym, months:[ymAddJs(todayStr().slice(0,7),-1), todayStr().slice(0,7), ymAddJs(todayStr().slice(0,7),1)], fee:300, dueDay:5, enforce:false, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
-  async adminFeeSet(id, month, to){ await this._wait(); return { ok:true, state:to }; },
+    return { month:ym, months:[ymAddJs(now,-1), now, ymAddJs(now,1)], range, fee:300, dueDay:5, enforce:false, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
+  async adminFeeSet(id, month, to){ await this._wait(); const F = this._fee = this._fee || {}, f = F[id] = F[id] || {}, ms = Array.isArray(month) ? month : [month];
+    ms.forEach(k=>{ if (to==='none') delete f[k]; else f[k] = to; }); return { ok:true, state:to, states:Object.fromEntries(ms.map(k=>[k, to])) }; },
   async adminCourseAll(){ await this._wait();
     const list = MockDB.courses.map(c=>({ id:c.id, title:c.title, teacher:c.teacher||'', date:c.date, time:c.time||'', intro:c.intro||'', zoomUrl:c.zoom||'', replayUrl:c.replay||'',
       mode:c.mode||'online', venue:c.venue||'', fee:c.fee||0, capacity:c.capacity||0, hidden:!!c.hidden, taken:MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length }))
@@ -1878,7 +1898,7 @@ const GasApi = {
   adminDeleteMember(memberId){ return this.call('admin.member.delete', {memberId}, {retry:0}); },
   feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
   adminFeeList(month){ return this.call('admin.fee.list', month ? {month} : {}); },
-  adminFeeSet(memberId, month, to){ return this.call('admin.fee.set', {memberId, month, to}, {retry:0}); },
+  adminFeeSet(memberId, month, to, method){ return this.call('admin.fee.set', Array.isArray(month) ? {memberId, months:month, to, method} : {memberId, month, to, method}, {retry:0}); },
   adminDepositRefund(activityId, memberId, on){ return this.call('admin.deposit.refund', {activityId, memberId, on}, {retry:0}); },
   adminMember(id){ return this.call('admin.member', {memberId:id}); },
   adminReview(postId, decision){ return this.call('admin.review', {postId, decision}); },
@@ -2348,6 +2368,65 @@ function feeBannerHTML(){
   return '';
 }
 /** 後台：月費名單（點名字：已收／免繳／未繳） */
+/** 繳到哪個月：從這個月開始連續已繳／免繳的最後一個月（下個月以後才顯示） */
+function feeUntil(cov){
+  if (!cov) return ''; const now = todayStr().slice(0,7); let k = now, last = '';
+  while (cov[k]==='paid' || cov[k]==='exempt') { last = k; k = ymAddJs(k, 1); }
+  return last && last > now ? last : '';
+}
+/* ---------- 一個人的月費：勾選月份，一次記好幾個月（2026-11-25 使用者：有人年繳、月繳、季繳都不一樣，用勾選的就很快） ---------- */
+function feePersonSheet(d, r, onDone){
+  const now = todayStr().slice(0,7), range = d.range, cov = r.cov || {};
+  const orig = new Set(Object.keys(cov).filter(k=>cov[k]==='paid'||cov[k]==='exempt')), sel = new Set(orig);
+  let as = 'paid', method = r.state==='pending' && r.method==='transfer' ? 'transfer' : 'cash';
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const mz = k => `${+k.slice(5)} 月`;
+  const summary = () => {
+    const add = range.filter(k=>sel.has(k) && !orig.has(k)), del = range.filter(k=>!sel.has(k) && orig.has(k));
+    if (!add.length && !del.length) return '<span class="muted">還沒有變更。點月份勾選，或按上面的月繳、季繳、年繳。</span>';
+    return `${add.length?`<div><b>${as==='paid'?'記成已收':'記成免繳'} ${add.length} 個月</b>${as==='paid'?`（NT$${(add.length*d.fee).toLocaleString()}・${method==='transfer'?'轉帳':'現金'}）`:''}</div><div>${add.map(mz).join('、')}</div>`:''}
+      ${del.length?`<div class="mt"><b>改回還沒繳 ${del.length} 個月</b></div><div>${del.map(mz).join('、')}</div>`:''}`;
+  };
+  const draw = () => {
+    const years = [...new Set(range.map(k=>k.slice(0,4)))];
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${esc(r.name)}・月費</h3><button data-x>取消</button></div>
+      <div class="sheet-b">
+        ${r.state==='pending'?`<div class="notice info mb">夥伴說已經付了：<br>${r.method==='cash'?'要付現金':'轉帳・後五碼 '+esc(r.last5)}</div>`:''}
+        <div class="muted mb">勾選這次收到的月份。<br>年繳、季繳，按一下就幫你勾好。</div>
+        <div class="fee-quick">${[[1,'月繳'],[3,'季繳'],[6,'半年'],[12,'年繳']].map(([n,l])=>`<button class="btn btn-ghost" data-n="${n}">${l}<small>${n} 個月</small></button>`).join('')}</div>
+        ${years.map(y=>`<div class="fee-yr">${y} 年</div><div class="fee-months">${range.filter(k=>k.startsWith(y)).map(k=>{ const on = sel.has(k), was = cov[k];
+          return `<label class="fee-m${on?' on':''}${k===now?' now':''}"><input type="checkbox" data-k="${k}"${on?' checked':''}><span>${mz(k)}</span><small>${orig.has(k)?(was==='exempt'?'免繳':'已繳'):was==='pending'?'等確認':k===now?'這個月':'&nbsp;'}</small></label>`; }).join('')}</div>`).join('')}
+        <label class="lbl">勾的月份記成</label>
+        <div class="seg" id="fee-as"><button data-as="paid" class="${as==='paid'?'on':''}">✅ 已收</button><button data-as="exempt" class="${as==='exempt'?'on':''}">免繳</button></div>
+        ${as==='paid'?`<div class="seg mt" id="fee-mt"><button data-mt="cash" class="${method==='cash'?'on':''}">💵 現金</button><button data-mt="transfer" class="${method==='transfer'?'on':''}">🏦 轉帳</button></div>`:''}
+        <div class="notice info mt" id="fee-sum">${summary()}</div>
+        <button class="btn btn-primary mt" data-save>儲存</button>
+      </div></div>`;
+  };
+  bg.addEventListener('change', e=>{ const c = e.target.closest('input[data-k]'); if (!c) return; c.checked ? sel.add(c.dataset.k) : sel.delete(c.dataset.k); draw(); });
+  bg.addEventListener('click', async e=>{
+    if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); return; }
+    const q = e.target.closest('[data-n]');
+    if (q) { let i = range.findIndex(k=>k>=now && !sel.has(k)); if (i < 0) i = range.length;   // 從這個月起第一個還沒繳的月份開始勾
+      const take = range.slice(i, i + +q.dataset.n); take.forEach(k=>sel.add(k));
+      if (take.length < +q.dataset.n) toast('後面的月份還沒開放，先勾到能勾的月份');
+      draw(); return; }
+    const a = e.target.closest('[data-as]'); if (a) { as = a.dataset.as; draw(); return; }
+    const mt = e.target.closest('[data-mt]'); if (mt) { method = mt.dataset.mt; draw(); return; }
+    const sv = e.target.closest('[data-save]');
+    if (sv) {
+      const add = range.filter(k=>sel.has(k) && !orig.has(k)), del = range.filter(k=>!sel.has(k) && orig.has(k));
+      if (!add.length && !del.length) { bg.remove(); return; }
+      sv.disabled = true; sv.textContent = '儲存中…';
+      try {
+        if (add.length) await api.adminFeeSet(r.id, add, as, method);
+        if (del.length) await api.adminFeeSet(r.id, del, 'none');
+        toast(`已更新 ${r.name} 的月費`,'ok'); bg.remove(); onDone && onDone();
+      } catch(err){ sv.disabled = false; sv.textContent = '儲存'; toast(errText(err),'err'); }
+    }
+  });
+  document.body.appendChild(bg); draw();
+}
 async function adminFeeSheet(month){
   let d; try { d = await api.adminFeeList(month); } catch(err){ return toast(errText(err),'err'); }
   const bg = document.createElement('div'); bg.className='sheet-bg';
@@ -2356,14 +2435,14 @@ async function adminFeeSheet(month){
     const c = d.counts, rows = d.rows.slice().sort((a,b)=> (order[a.state]-order[b.state]) || a.name.localeCompare(b.name,'zh-Hant'));
     bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>💳 ${monthZh(d.month)}月費（NT$${d.fee}）</h3><button data-x>完成</button></div>
       <div class="sheet-b"><div class="seg mb" style="grid-template-columns:repeat(3,1fr)">${d.months.map(m=>`<button data-m="${m}" class="${m===d.month?'on':''}">${monthZh(m)}</button>`).join('')}</div>
-        ${!d.enforce ? '<div class="notice info mb">目前只記錄、<b>不會擋人</b>，夥伴也看不到月費提醒。要開始收時，在試算表「設定」加 feeEnforce＝Y。</div>'
+        ${!d.enforce ? '<div class="notice info mb">目前只記錄，<b>不會擋人</b>，<br>夥伴也看不到月費提醒。</div>'
           : d.month < d.start ? `<div class="notice info mb">${monthZh(d.month)}還是試用期（${monthZh(d.start)}開始收），不用繳。</div>` : ''}
         <div class="admin-grid mb fee-stats"><div class="stat ok"><div class="v">${c.paid}</div><div class="k">已繳</div></div><div class="stat pend"><div class="v">${c.pending}</div><div class="k">等確認</div></div>
           <div class="stat bad"><div class="v">${c.none}</div><div class="k">還沒繳</div></div><div class="stat"><div class="v">${c.exempt}</div><div class="k">免繳</div></div></div>
-        <div class="muted small mb">點名字：記錄已收（現金或轉帳）、免繳或改回還沒繳。${d.enforce?`過了每月 ${d.dueDay} 號還沒繳的人會被擋在 APP 外面。`:''}</div>
+        <div class="muted small mb">點名字，勾選收到的月份。<br>年繳、季繳可以一次勾好。${d.enforce?`<br>過了每月 ${d.dueDay} 號還沒繳的人，<br>會被擋在 APP 外面。`:''}</div>
         ${rows.length?'':'<div class="notice info">目前還沒有其他夥伴。</div>'}
-        <div class="mlist">${rows.map(r=>`<button class="mrow" data-id="${r.id}"><div class="who">${avatarHTML(r)}<div class="info"><b>${esc(r.name)}</b>
-          <div class="muted small">${r.state==='pending'?(r.method==='cash'?'說要付現金':'轉帳・後五碼 '+esc(r.last5)):esc(r.tw||'')}</div></div></div>${feePill(r.state)}</button>`).join('')}</div>
+        <div class="mlist">${rows.map(r=>{ const u = feeUntil(r.cov); return `<button class="mrow" data-id="${r.id}">${avatarHTML(r)}<div class="info"><b>${esc(r.name)}</b>
+          <div class="muted small">${r.state==='pending'?(r.method==='cash'?'說要付現金':'轉帳・後五碼 '+esc(r.last5)):esc(r.tw||'')}</div>${u?`<div class="small" style="color:var(--ok);font-weight:700">已繳到 ${u.slice(0,4)} 年 ${+u.slice(5)} 月</div>`:''}</div>${feePill(r.state)}</button>`; }).join('')}</div>
         ${c.none?'<button class="btn btn-outline mt" data-copy>複製「還沒繳」的名單</button>':''}</div></div>`;
   };
   bg.addEventListener('click', async e=>{
@@ -2372,6 +2451,7 @@ async function adminFeeSheet(month){
     if (e.target.closest('[data-copy]')) { const t = d.rows.filter(r=>r.state==='none').map(r=>r.name).join('\n'); try { await navigator.clipboard.writeText(t); toast('已複製','ok'); } catch(_){ toast(t); } return; }
     const b = e.target.closest('.mrow[data-id]'); if (!b) return;
     const r = d.rows.find(x=>x.id===b.dataset.id); if (!r) return;
+    if (d.range) return feePersonSheet(d, r, async () => { try { d = await api.adminFeeList(d.month); draw(); } catch(err){ toast(errText(err),'err'); } });
     const opts = r.state==='pending'
       ? [{ v:'paid', label:`✅ 確認收到（${r.method==='cash'?'現金':'後五碼 '+r.last5}）` }, { v:'none', label:'退回（沒收到）', cls:'btn-outline' }, { v:'exempt', label:'改成免繳', cls:'btn-ghost' }]
       : r.state==='none' ? [{ v:'paid', label:'✅ 已收（現金或轉帳）' }, { v:'exempt', label:'免繳（這個月不用繳）', cls:'btn-ghost' }]
@@ -2529,11 +2609,24 @@ if (window.matchMedia) { const mq = matchMedia('(min-width:1024px)'); const f = 
   mq.addEventListener ? mq.addEventListener('change', f) : mq.addListener(f); }
 /* 括號、引號黏住旁邊的字：不會出現「（」在行尾、「）」在行首這種斷法（使用者寫的內容不動） */
 const GLUE_SKIP = '.uc,.post-text,.cmt,textarea,input,script,style,svg';
+const PHRASE_SKIP = GLUE_SKIP + ',.ph,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
+const PH_RE = /[^，。、；：！？]+[，。、；：！？]*[」』）》〉】\u2060]*|[，。、；：！？]+/g;
+/** 說明文字依標點切成一小段一小段，換行只發生在段落之間 */
+function phraseText(t){
+  const v = t.nodeValue; if (!v || v.length < 10 || !/[\u4e00-\u9fff]/.test(v) || !/[，。、；：！？]/.test(v)) return;
+  const el = t.parentElement; if (!el || el.closest(PHRASE_SKIP)) return;
+  const cs = getComputedStyle(el); if (cs.whiteSpace !== 'normal' || /flex|grid/.test(cs.display)) return;
+  const parts = v.match(PH_RE); if (!parts || parts.length < 2 || parts.join('') !== v) return;
+  const frag = document.createDocumentFragment();
+  parts.forEach(x => { const sp = document.createElement('span'); sp.className = 'ph'; sp.textContent = x; frag.appendChild(sp); });
+  t.replaceWith(frag);
+}
 function glueText(root){
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const list = []; while (w.nextNode()) list.push(w.currentNode);
   list.forEach(t => {
     const el = t.parentElement; if (!el || el.closest(GLUE_SKIP)) return;
+    try { if (t.isConnected) queueMicrotask(() => { if (t.isConnected) phraseText(t); }); } catch(_){}
     const v = t.nodeValue; if (!/[「『（《〈【」』）》〉】]|\d[ \u00A0]?[天人篇堂次個月年日週分時元張代階]|^[ \u00A0]?[天人篇堂次個月年日週分時元張代階]/.test(v)) return;
     const nv = v.replace(/([「『（《〈【])\u2060?/g, '$1\u2060').replace(/\u2060?([」』）》〉】])/g, '\u2060$1')
       .replace(/(\d) (?=[天人篇堂次個月年日週分時元張代階])/g, '$1\u00A0')                   // 「3 天」「7 人」不拆成兩行
@@ -2729,7 +2822,19 @@ function rxSummaryHTML(p){
   if (!p.likeCount) return '<span class="rx-sum">👍 0</span>';
   const counts = p.reactionCounts || (p.liked ? {like:p.likeCount} : {like:p.likeCount});
   const top = Object.keys(counts).filter(k=>counts[k]>0 && RX[k]).sort((a,b)=>counts[b]-counts[a]).slice(0,3);
-  return `<span class="rx-sum"><span class="rx-icons">${top.map(k=>`<span>${RX[k].e}</span>`).join('')}</span> ${p.likeCount}</span>`;
+  const who = (p.reactors||[]).slice(0,5);   // 按表情的人：小小的大頭照（2026-11-25 使用者）
+  return `<span class="rx-sum" role="button" tabindex="0" data-act="rx-who" data-pid="${p.id}" aria-label="看誰按了表情"><span class="rx-icons">${top.map(k=>`<span>${RX[k].e}</span>`).join('')}</span> ${p.likeCount}${who.length?`<span class="rx-who">${who.map(a=>avatarHTML(a)).join('')}</span>`:''}</span>`;
+}
+/** 點表情：看是誰按的 */
+function rxWhoSheet(p){
+  const list = p.reactors || []; if (!list.length) return;
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const more = p.likeCount - list.length;
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>誰按了表情（${p.likeCount}）</h3><button data-x>關閉</button></div>
+    <div class="sheet-b"><div class="mlist">${list.map(a=>`<div class="mrow">${avatarHTML(a)}<div class="info"><b>${esc(a.name)}</b>${badgeHTML(a.id)}</div><span class="rx-big">${(RX[a.r]||RX.like).e}</span></div>`).join('')}</div>
+    ${more>0?`<div class="muted center mt">還有 ${more} 人</div>`:''}</div></div>`;
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  document.body.appendChild(bg);
 }
 function rxButtonHTML(p){
   const r = p.myReaction && RX[p.myReaction];
@@ -4186,7 +4291,7 @@ async function renderAdmin(main){
 </div>
       ${CONFIG.MODE==='live'&&s.emailQuota!=null?`<div class="hint">今天還能寄 ${s.emailQuota} 封驗證信</div>`:''}
       ${s.driveLimitGB?`<div class="notice ${s.driveUsedGB/s.driveLimitGB>0.8?'err':'info'} small mt">雲端硬碟：已用 ${s.driveUsedGB} GB／共 ${s.driveLimitGB} GB（${Math.round(s.driveUsedGB/s.driveLimitGB*100)}%）${s.driveUsedGB/s.driveLimitGB>0.8?'，快滿了，建議升級 Google One 容量':''}</div>`:''}
-      <div class="notice info small mt">已讀人數每 15 分鐘彙整一次；打卡天數在發文、修改、審核時立即更新。</div></div>
+      <div class="notice info small mt">已讀人數：每 15 分鐘更新一次。<br>打卡天數：發文、修改、審核時馬上更新。</div></div>
     ${actChips(ADM.acts, act, 'adm-act')}
     <div class="admin-grid mb">
       <button class="stat" data-act="stat-list" data-k="reg"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></button>
@@ -4200,29 +4305,29 @@ async function renderAdmin(main){
       <button class="stat pend" data-act="stat-list" data-k="pending"><div class="v">${s.pending}</div><div class="k">待審核</div></button>
     </div>
     <div class="adm-body"><div class="adm-side">
-    <div class="card"><h3>📋 夥伴總表</h3><div class="muted mb">每個人是誰、誰的下線、哪一條線、這個月月費、參加了哪些班，一張表看完。</div>
+    <div class="card"><h3>📋 夥伴總表</h3><div class="muted mb">每個人是誰、誰的下線、哪一條線，<br>這個月月費、參加了哪些班，<br>一張表看完。</div>
       <button class="btn btn-primary btn-sm" data-act="admin-roster">看夥伴總表</button></div>
-    <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">${s.feeEnforce?'每人每月 NT$300，每月 5 號前繳；過期沒繳的人進不了 APP。':'記錄每個人每月的繳費（目前只記錄，不會擋人）。'}</div>
+    <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">${s.feeEnforce?'每人每月 NT$300，每月 5 號前繳；<br>過期沒繳的人進不了 APP。':'記錄每個人每月的繳費。<br>年繳、季繳可以一次勾好。<br>目前只記錄，不會擋人。'}</div>
       <button class="btn btn-primary btn-sm" data-act="admin-fee">月費名單・更新繳費</button></div>
     ${act&&act.feeMode==='deposit'&&act.fee>0 ? (()=>{ const ok = ADM.rows.filter(r=>r.pr.reached && r.m.paid), todo = ok.filter(r=>!r.m.refunded);
-      return `<div class="card"><h3>💰 保證金退還</h3><div class="muted mb">保證金 NT$${act.fee.toLocaleString()}，達標就全額退還（退了還在班上）；沒達標不退。${todo.length?`還要退 <b>${todo.length}</b> 人。`:''}</div>
+      return `<div class="card"><h3>💰 保證金退還</h3><div class="muted mb">保證金 NT$${act.fee.toLocaleString()}，達標就全額退還，<br>退了還在班上；沒達標不退。${todo.length?`<br>還要退 <b>${todo.length}</b> 人。`:''}</div>
         ${ok.length ? `<div class="mlist">${ok.map(r=>`<div class="mrow"><div class="who">${avatarHTML(r.m)}<b>${esc(r.m.name)}</b></div>
           ${r.m.refunded ? `<button class="btn btn-ghost btn-sm" data-act="dep-refund" data-aid="${act.id}" data-id="${r.m.id}" data-on="0" data-fee="${act.fee}" data-name="${esc(r.m.name)}">✓ 已退（按錯可取消）</button>`
             : `<button class="btn btn-primary btn-sm" data-act="dep-refund" data-aid="${act.id}" data-id="${r.m.id}" data-on="1" data-fee="${act.fee}" data-name="${esc(r.m.name)}">標記已退</button>`}</div>`).join('')}</div>`
           : '<div class="muted">還沒有人達標。</div>'}</div>`; })() : ''}
-    <div class="card"><h3>📚 課程管理</h3><div class="muted mb">新增、修改課程（星期一 BOM、線上 Zoom、現場課）。夥伴在皇家學院看到的就是這裡的課。</div>
+    <div class="card"><h3>📚 課程管理</h3><div class="muted mb">星期一 BOM、線上課、現場課，<br>都在這裡新增、修改。<br>夥伴在皇家學院看到的，<br>就是這裡的課。</div>
       <button class="btn btn-primary btn-sm" data-act="admin-courses">課程管理・新增課程</button></div>
     <div class="card"><h3>🎫 課程收費與入場</h3><div class="mlist">
       ${onsite.length ? onsite.map(c=>`<button class="mrow" data-act="admin-course" data-id="${c.id}">
         <div class="info"><b>${esc(c.title)}</b><div class="muted small">${mdZh(c.date)} ${esc(c.time)}・${c.fee?'NT$'+c.fee.toLocaleString():'免費'}</div>
         <div class="chips">${c.date>=T0?(c.date===T0?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div></div>
         <div class="days">${c.taken}<span class="muted small"> 人報名</span></div></button>`).join('')
-        : '<div class="muted">目前沒有現場課程。在上面的「課程管理」新增課程時選「現場」或「線上＋現場」，就會出現在這裡。</div>'}</div></div>
-      <div class="card"><h3>📋 ${act?esc(act.name):'活動'}參加名單</h3><div class="muted mb">${!act?'目前沒有活動。':s.joinMode==='all'?'這個活動設成<b>全部夥伴都算</b>（不用報名）。':s.joinMode==='admin'?`名單上有 <b>${s.registered}</b> 人。只有你加進名單的人才算、看「我的進度」；夥伴不能自己報名。`:`名單上有 <b>${s.registered}</b> 人。只有名單上的人算、看「我的進度」；夥伴也可以在 APP 裡自己報名，申請會出現在「待審核」。`}</div>
+        : '<div class="muted">目前沒有現場課程。<br>新增課程時選「現場」或「線上＋現場」，<br>就會出現在這裡。</div>'}</div></div>
+      <div class="card"><h3>📋 ${act?esc(act.name):'活動'}參加名單</h3><div class="muted mb">${!act?'目前沒有活動。':s.joinMode==='all'?'這個活動設成<b>全部夥伴都算</b>，<br>不用報名。':s.joinMode==='admin'?`名單上有 <b>${s.registered}</b> 人。<br>只有你加進名單的人才算；<br>夥伴不能自己報名。`:`名單上有 <b>${s.registered}</b> 人。<br>只有名單上的人才算。<br>夥伴也可以在 APP 裡自己報名，<br>申請會出現在「待審核」。`}</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="reg-import">貼上 TW 名單</button><button class="btn btn-outline btn-sm" data-act="reg-manage">點名字加入／移出</button></div></div>
-      <div class="card"><h3>🌳 團隊樹狀圖</h3><div class="muted mb">每條線從最上面的頭往下排，一眼看出誰在哪條線、第幾代；還沒設定上線的人也列在最下面。</div>
+      <div class="card"><h3>🌳 團隊樹狀圖</h3><div class="muted mb">每條線從最上面的頭往下排，<br>一眼看出誰在哪條線、第幾代。<br>還沒設定上線的人，列在最下面。</div>
         <button class="btn btn-primary btn-sm" data-act="admin-tree">看團隊樹狀圖</button></div>
-      <div class="card"><h3>🏆 榮譽名人榜</h3><div class="muted mb">活動達標的人會自動上榜；晉升、業績表揚在這裡加。</div>
+      <div class="card"><h3>🏆 榮譽名人榜</h3><div class="muted mb">活動達標的人會自動上榜。<br>晉升、業績表揚在這裡加。</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="hon-add">＋ 新增榮譽</button><button class="btn btn-outline btn-sm" data-act="honors">看榮譽榜</button></div></div>
       <div class="card"><h3>待審核</h3><div id="rev" class="adm-scroll"></div></div>
     </div><div class="adm-main">
@@ -4753,6 +4858,7 @@ document.addEventListener('click', async e=>{
     case 'show-more': { const t=$('.post-text',postEl); t.classList.remove('clamp'); el.remove(); queueRead(pid); break; }
     case 'photo': { queueRead(pid); const lb=document.createElement('div'); lb.className='lightbox'; lb.innerHTML=`<img src="${el.src}" alt=""><button>關閉 ✕</button>`; lb.addEventListener('click',()=>lb.remove()); document.body.appendChild(lb); break; }
     case 'like': openReactionPicker(el, pid); break;
+    case 'rx-who': { const p = findPost(el.dataset.pid); if (p) rxWhoSheet(p); break; }
     case 'react': {
       const p = findPost(el.dataset.pid), k = el.dataset.k; closeReactionPicker();
       if (!p) break;
@@ -4762,11 +4868,14 @@ document.addEventListener('click', async e=>{
       if (prev.myReaction) rc[prev.myReaction] = Math.max(0, (rc[prev.myReaction]||1) - 1);
       const next = prev.myReaction === k ? '' : k;
       if (next) rc[next] = (rc[next]||0) + 1;
-      Object.assign(p, { myReaction:next, liked:!!next, reactionCounts:rc, likeCount: prev.likeCount + (prev.myReaction?0:1) - (next?0:1) });
+      prev.reactors = (p.reactors||[]).slice();
+      const others = (p.reactors||[]).filter(a=>a.id!==S.me.id);
+      Object.assign(p, { myReaction:next, liked:!!next, reactionCounts:rc, likeCount: prev.likeCount + (prev.myReaction?0:1) - (next?0:1),
+        reactors: next ? [{ id:S.me.id, r:next, name:S.me.name, avatarUrl:S.me.avatarUrl||'', color:S.me.color }, ...others] : others });
       refreshPostStats(p.id);
       try {
         const r = await api.react(p.id, k);
-        Object.assign(p, { myReaction:r.myReaction, liked:!!r.myReaction, likeCount:r.likeCount, reactionCounts:r.reactionCounts });
+        Object.assign(p, { myReaction:r.myReaction, liked:!!r.myReaction, likeCount:r.likeCount, reactionCounts:r.reactionCounts }, r.reactors ? { reactors:r.reactors } : {});
         if (!p.mine && r.readCount!=null) p.readCount = r.readCount; Read.sent.add(p.id);
       } catch(err){ Object.assign(p, prev, {liked:!!prev.myReaction}); toast('沒有送出成功，請再試一次','err'); }
       refreshPostStats(p.id); break; }
