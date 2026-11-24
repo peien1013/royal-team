@@ -1964,8 +1964,13 @@ function renderLogin(step='start', extra={}){
   const head = `<img class="logo-big" src="${LOGO}" alt="皇家團隊"><h1>皇家團隊 APP</h1><div class="sub">行動日誌・團隊動態・皇家學院</div>`;
   const msg = extra.msg ? `<div class="notice ${extra.ok?'ok':'err'} mb">${esc(extra.msg)}</div>` : '';
   if (step==='start') {
-    const cta = CONFIG.MODE==='live' && !['installed','desktop'].includes(installEnv());   // 手機、還沒放到桌面：先放桌面再登入
-    const lineTip = inLineApp() ? `<div class="notice info mb small">你現在是在 LINE 裡面打開。請按右上角「⋯」→「<b>用預設瀏覽器開啟</b>」，才能把 APP 加到手機桌面。</div>` : '';
+    const inLine = CONFIG.MODE==='live' && inLineApp();
+    const cta = CONFIG.MODE==='live' && !inLine && !['installed','desktop'].includes(installEnv());   // 手機瀏覽器、還沒放到桌面：先放桌面再登入（LINE 裡面直接用就好）
+    const lineTip = inLine ? `<div class="notice info mb">在 LINE 裡面直接用就好 👍<br>按下面的綠色按鈕，會<b>自動登入</b>，不用打帳號密碼。</div>` : '';
+    if (inLine && !msg && !sessionStorage.getItem('royal_line_auto')) {   // LINE 裡第一次打開：自動幫他登入（只自動一次，失敗就讓他自己按）
+      sessionStorage.setItem('royal_line_auto', '1');
+      setTimeout(() => { if (!S.session && $('#line-a')) startLineLogin(); }, 300);
+    }
     app.innerHTML = `<div class="login">${head}${msg}${lineTip}
       ${cta ? `<div class="install-cta"><div class="ic-n">第 1 步</div><b>先把 APP 放到手機桌面</b><div class="muted small">放好之後，從桌面的金色「皇家」圖示打開再登入</div>
         <button class="btn btn-gold" data-act="install-guide">📲 教我放到手機桌面</button></div><div class="ic-n">第 2 步</div>` : ''}
@@ -2077,11 +2082,16 @@ function randStr(n=32){ const a=new Uint8Array(n); crypto.getRandomValues(a); re
  *  用程式跳轉（location.href）的話，iPhone／安卓常常不會開 LINE，只會出現輸入帳號密碼的網頁（LINE 官方文件：Universal Links 不吃 JavaScript 跳轉）。
  *  所以登入頁一出現就先跟後端登記好，把網址直接放在按鈕上（2026-11-24 使用者：放到主畫面後第一次登入 LINE 還要打帳號密碼） */
 let LINE_PREP = null;
+/** LINE 登入網址。LINE 裡自動登入失敗過一次（例如無痕模式），之後改成一般登入畫面，免得一直失敗（LINE 官方建議） */
+function lineAuthUrl(st, nonce){
+  const o = { response_type:'code', client_id:CONFIG.LINE_CHANNEL_ID, redirect_uri:CONFIG.APP_URL, state:st, scope:'profile openid', nonce, bot_prompt:'normal' };
+  try { if (sessionStorage.getItem('royal_line_noauto')) o.disable_auto_login = 'true'; } catch(_){}
+  return 'https://access.line.me/oauth2/v2.1/authorize?' + new URLSearchParams(o).toString();
+}
 function prepLineLogin(force){
   if (!force && LINE_PREP && Date.now() - LINE_PREP.at < 10*60000) return LINE_PREP;
   const st = randStr(16), nonce = randStr(16), secret = randStr(24);
-  const q = new URLSearchParams({ response_type:'code', client_id:CONFIG.LINE_CHANNEL_ID, redirect_uri:CONFIG.APP_URL, state:st, scope:'profile openid', nonce, bot_prompt:'normal' });
-  const p = { state:st, nonce, secret, at:Date.now(), ok:false, url:'https://access.line.me/oauth2/v2.1/authorize?' + q.toString() };
+  const p = { state:st, nonce, secret, at:Date.now(), ok:false, url:lineAuthUrl(st, nonce) };
   p.ready = sha256Hex(secret).then(h => api.lineStart({ state:st, nonce, secretHash:h })).then(() => { p.ok = true; p.done = true; }, () => { p.ok = false; p.done = true; });
   return LINE_PREP = p;
 }
@@ -2108,21 +2118,24 @@ async function startLineLogin(){
     const st = randStr(16), nonce = randStr(16), secret = randStr(24);
     await api.lineStart({ state:st, nonce, secretHash: await sha256Hex(secret) });
     store('royal_line_pending', { state:st, secret, at:Date.now() });
-    const q = new URLSearchParams({ response_type:'code', client_id:CONFIG.LINE_CHANNEL_ID, redirect_uri:CONFIG.APP_URL,
-      state:st, scope:'profile openid', nonce, bot_prompt:'normal' });
-    location.href = 'https://access.line.me/oauth2/v2.1/authorize?' + q.toString();
+    location.href = lineAuthUrl(st, nonce);
   } catch(e) { renderLogin('start', {msg:errText(e)}); }
 }
 /** 第二步：LINE 帶 code 回來（可能是同一個視窗，也可能是另一個瀏覽器） */
 async function handleLineReturn(params){
   history.replaceState(null, '', CONFIG.APP_URL);
-  if (params.get('error')) { store('royal_line_pending', null); return renderLogin('start', {msg:'你取消了 LINE 登入，可以再按一次。'}); }
+  if (params.get('error')) { store('royal_line_pending', null); try { sessionStorage.setItem('royal_line_noauto', '1'); } catch(_){} LINE_PREP = null;
+    return renderLogin('start', {msg:'LINE 登入沒有完成，請再按一次「用 LINE 登入」。'}); }
   renderLogin('busy', {text:'LINE 確認中…'});
   const st = params.get('state');
   try { await api.lineLogin({ code:params.get('code'), state:st, redirectUri:CONFIG.APP_URL }); }
   catch(e) { store('royal_line_pending', null); return renderLogin('start', {msg:errText(e)}); }
   const pend = store('royal_line_pending');
   if (pend && pend.state === st) return pollLine(pend);   // 同一個視窗：直接領結果
+  if (inLineApp() && !sessionStorage.getItem('royal_line_auto2')) {   // 回到 LINE 裡面了：不要卡在這裡，直接在 LINE 裡再自動登入一次（原本的 APP 也一樣會登入）
+    sessionStorage.setItem('royal_line_auto2', '1'); sessionStorage.setItem('royal_line_auto', '1');
+    return startLineLogin();
+  }
   renderLogin('line-other');                               // 另一個瀏覽器：請他回到 APP
 }
 /** 第三步：原本的 APP 用自己的鑰匙去領登入結果 */
@@ -2154,7 +2167,8 @@ async function enterWithSession(r){
   document.body.style.background='';
   try { await loadHome(); } catch(e) { if (!S.session) return; return renderLogin('start', {msg:errText(e)}); }
   renderShell(); goStart(); prefetchPages();
-  if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip') && !(S.sub==='admin')) setTimeout(showInstallTip, 1500);
+  if (CONFIG.MODE==='live' && inLineApp()) { if (!store('royal_line_tip')) { store('royal_line_tip', Date.now()); setTimeout(()=>toast('以後在 LINE 群組點皇家的連結，就會直接登入使用 👍','ok'), 1200); } }
+  else if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip') && !(S.sub==='admin')) setTimeout(showInstallTip, 1500);
 }
 /** 第一次進 APP、還沒放到桌面：跳一次說明（關掉就不再跳，「我的帳號」裡也找得到） */
 function showInstallTip(){
@@ -3748,17 +3762,10 @@ function regImport(){
 }
 
 /* ---------- 加到手機主畫面 ---------- */
+/* 在 LINE 裡打開：就留在 LINE 裡用，不再自動跳到 Safari／Chrome。
+   LINE 裡面登入是自動的（不用打帳號密碼、不會跳來跳去）；放到手機桌面改成選用。
+   （2026-11-24 使用者：一按連結跳出瀏覽器、再轉回 LINE 就轉不出去；一開始的瀏覽器跟主畫面上的不同步） */
 const inLineApp = () => / Line\//i.test(navigator.userAgent);
-(function escapeLineBrowser(){
-  try {
-    if (CONFIG.MODE !== 'live' || !inLineApp() || window.self !== window.top) return;
-    const u = new URL(location.href);
-    if (u.searchParams.get('openExternalBrowser') === '1' || sessionStorage.getItem('royal_line_escape')) return;
-    if (u.searchParams.get('state') && (u.searchParams.get('code') || u.searchParams.get('error'))) return;   // LINE 確認完回來：就在這裡完成登入，不要再跳出去（不然會用兩次、出現錯誤）
-    sessionStorage.setItem('royal_line_escape', '1');
-    u.searchParams.set('openExternalBrowser', '1'); location.replace(u.toString());
-  } catch(_){}
-})();
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); installEvt = e; });
 const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
@@ -3884,7 +3891,8 @@ function installStepsHTML(){
   const list = a => a.map((x,i)=>step(i+1,x)).join('');
   const copy = '<button class="btn btn-outline mt" data-act="copy-app-link">📋 複製 APP 網址</button>';
   if (env==='installed') return '<div class="notice ok">已經放到手機桌面了 👍 之後從桌面的「皇家」圖示打開就好。</div>';
-  if (env==='line') return `<div class="notice info mb">你現在是在 <b>LINE 裡面</b>打開，要先換到手機的瀏覽器：</div>${list([
+  if (env==='line') return `<div class="notice ok mb"><b>不放桌面也可以</b>：以後在 LINE 群組點皇家的連結，就會自動登入使用，最簡單。</div>
+    <div class="notice info mb">一定要放到手機桌面的話，要先換到手機的瀏覽器（放好後從桌面打開，要再用 LINE 登入一次）：</div>${list([
     { t:'按右上角的「<b>⋯</b>」', mk:MK.lineBar },
     { t:'按「<b>用預設瀏覽器開啟</b>」', mk:MK.lineMenu, hint:'iPhone 會用 Safari 打開，安卓會用 Chrome 打開' },
     { t:'打開之後，再按一次「📲 教我放到手機桌面」，照新的步驟做' }])}${copy}`;
