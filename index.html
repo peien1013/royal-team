@@ -216,6 +216,16 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .filters .inp{min-height:52px;font-size:17px}
 .mlist .mrow{display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--line);cursor:pointer;background:none;border-left:0;border-right:0;border-top:0;width:100%;text-align:left}
 .mrow .info{flex:1;min-width:0}
+/* 首頁「進入教室」（2026-11-24 使用者：不用多做任何動作，直接進會議室的感覺） */
+.class-banner{background:linear-gradient(135deg,#0B5FA5,#1E88E5);color:#fff;border-radius:18px;padding:14px 16px;margin:0 0 12px;box-shadow:0 6px 18px rgba(11,95,165,.25)}
+.class-banner.live{background:linear-gradient(135deg,#0E7A3E,#18A957);box-shadow:0 6px 18px rgba(14,122,62,.3);animation:cb-pulse 2.4s ease-in-out infinite}
+.class-banner .cb-tag{display:inline-block;background:rgba(255,255,255,.2);border-radius:999px;padding:2px 10px;font-weight:800;font-size:14px}
+.class-banner b{display:block;font-size:19px;line-height:1.35;margin:6px 0 2px}
+.class-banner .cb-sub{opacity:.92;font-size:15px}
+.class-banner .btn-class{background:#fff;color:#0B5FA5;font-size:21px;font-weight:800;min-height:62px;margin-top:10px;border:0;width:100%;display:flex;align-items:center;justify-content:center;text-decoration:none;border-radius:14px}
+.class-banner.live .btn-class{color:#0E7A3E}
+@keyframes cb-pulse{0%,100%{box-shadow:0 6px 18px rgba(14,122,62,.3)}50%{box-shadow:0 6px 26px rgba(24,169,87,.6)}}
+@media (prefers-reduced-motion: reduce){.class-banner.live{animation:none}}
 /* 後台課程管理 */
 .cs-row{align-items:flex-start}.cs-row.is-hidden{opacity:.55}
 .cs-btns{display:flex;flex-direction:column;gap:6px;flex:0 0 auto}.cs-btns .btn{width:auto;white-space:nowrap}
@@ -2587,12 +2597,41 @@ function statusCardHTML(){
 }
 function greet(){ const h=new Date().getHours(); return h<11?'早安':h<14?'午安':h<18?'午安':'晚安'; }
 
+/* ---------- 首頁最上面：今天有線上課 →「▶ 進入教室」大按鈕，打開 APP 按一下就進 Zoom ---------- */
+const hm = t => { const m = String(t).match(/(\d{1,2})\s*[:：]\s*(\d{2})/); return m ? (+m[1])*60 + (+m[2]) : null; };
+function classTimes(c){ const all = String(c.time||'').match(/\d{1,2}\s*[:：]\s*\d{2}/g) || [], st = all[0] ? hm(all[0]) : null;
+  return { st, en: all[1] ? hm(all[1]) : (st!=null ? st + 150 : null) }; }   // 沒寫下課時間：當作上 2.5 小時
+function todayClass(cs){
+  const T = todayStr(), d = new Date(), now = d.getHours()*60 + d.getMinutes();
+  return (cs||[]).filter(c => c.date===T && c.zoom && c.zoom!=='#' && c.mode!=='onsite')
+    .map(c => ({ c, ...classTimes(c), now })).filter(x => x.en==null || now <= x.en + 15)   // 下課 15 分鐘後就收起來
+    .sort((a,b) => (a.st??0) - (b.st??0))[0] || null;
+}
+function classBannerHTML(cs){
+  const x = todayClass(cs); if (!x) return '';
+  const c = x.c, soon = x.st!=null && x.now >= x.st - 30, started = x.st!=null && x.now >= x.st;
+  const tag = started ? '🔴 上課中' : soon ? '⏰ 快開始了' : `📺 今天 ${esc(c.time||'')}`;
+  const btn = CONFIG.MODE==='live' ? `<a class="btn btn-class" href="${esc(c.zoom)}" target="_blank" rel="noopener" data-cid="${esc(c.id)}">▶ 進入教室</a>`
+    : `<button class="btn btn-class" data-act="zoom" data-id="${esc(c.id)}">▶ 進入教室</button>`;
+  return `<div class="class-banner${soon?' live':''}"><span class="cb-tag">${tag}</span><b>${esc(c.title)}</b>
+    <div class="cb-sub">${c.teacher?`講師：${esc(c.teacher)}・`:''}${esc(c.time||'')}</div>${btn}</div>`;
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.session && S.tab==='home' && !S.sub) fillClassBanner(); });   // 切回 APP：上課狀態（快開始了／上課中）跟著更新
+async function fillClassBanner(){
+  let cs = null;
+  try {
+    if (CONFIG.MODE==='live') { cs = QuickCache.fresh('courses', 60000) ? QuickCache.get('courses') : await QuickCache.fetch('courses', () => api.getCourses()); }
+    else cs = await api.getCourses();
+  } catch(_){ return; }
+  const b = $('#class-banner'); if (b && S.tab==='home' && !S.sub) b.innerHTML = classBannerHTML(cs);
+}
 function renderHome(main){
   const team = S.teamCount > 0 && S.scope==='team';
-  main.innerHTML = `${applyBannerHTML()}${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
+  main.innerHTML = `<div id="class-banner">${classBannerHTML(CONFIG.MODE==='live' ? QuickCache.get('courses') : null)}</div>${applyBannerHTML()}${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
     ${team?'<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>':''}
     <div class="feed-head" style="margin-top:4px"><h2>${team?'我的團隊動態':'團隊動態'}</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
     <div id="feed"></div><div id="feed-foot"></div>`;
+  fillClassBanner();
   if (team) drawTeamSummary();
   if (!S.feed.items.length || S.feed.scope !== (team?'team':'all')) loadFeed(true); else { drawFeed(); }
 }
