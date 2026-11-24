@@ -282,6 +282,7 @@ body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);back
 .topbar.event .logo{box-shadow:0 0 0 2px #E9C766,0 0 0 5px rgba(233,199,102,.28)}
 .topbar.event .tb-text small{color:#F2D688;opacity:1;letter-spacing:1px;font-weight:700}
 .topbar.event h1{color:#FFF7DF}
+.del-btn{background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5;width:auto;flex:0 0 auto;min-height:40px}
 .roster-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .mtable.roster td{vertical-align:middle}
 .pill.gold-pill{background:var(--gold-soft);color:var(--gold-dark);border:1px solid var(--gold-line)}
@@ -1660,6 +1661,8 @@ const MockApi = {
       return { id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw||'', role:m.role||'member', status:m.status||'approved', joined:todayStr(),
         upId: up?up.id:'', upName: up?up.name:'', upText:'', headId: x.d?x.h.id:'', headName: x.d?x.h.name:'', depth:x.d, downs: MockDB.members.filter(k=>k.uplineId===m.id).length,
         fee: st[i%5], feeLast5:'', acts: mockJoined(m) ? [MockDB.activity.name] : [] }; }) }; },
+  async adminDeleteMember(id){ await this._wait(); const m = MockDB.byId[id]; if (!m) throw new Error('NOT_FOUND'); const kids = MockDB.members.filter(k=>k.uplineId===id);
+    kids.forEach(k=>{ k.uplineId = m.uplineId||''; }); MockDB.members = MockDB.members.filter(k=>k.id!==id); return { ok:true, moved:kids.length, movedTo:(MockDB.byId[m.uplineId]||{}).name||'' }; },
   async adminTree(){ await this._wait(); return { members: MockDB.members.filter(m=>m.status!=='pending').map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, up:m.uplineId||'', role:m.role||'member', joined:'', upText:'' })) }; },
   async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
   async adminDashboard(){
@@ -1803,6 +1806,7 @@ const GasApi = {
   getFee(){ return this.call('fee.get', {}); },
   adminTree(){ return this.call('admin.tree', {}); },
   adminRoster(){ return this.call('admin.roster', {}); },
+  adminDeleteMember(memberId){ return this.call('admin.member.delete', {memberId}, {retry:0}); },
   feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
   adminFeeList(month){ return this.call('admin.fee.list', month ? {month} : {}); },
   adminFeeSet(memberId, month, to){ return this.call('admin.fee.set', {memberId, month, to}, {retry:0}); },
@@ -3754,7 +3758,9 @@ async function renderAdminRoster(main){
   const d = ROSTER, ok = d.rows.filter(r=>r.status==='approved');
   main.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px"><div><h2 style="margin:0">📋 夥伴總表</h2>
       <div class="muted">共 <b>${ok.length}</b> 人${d.rows.length>ok.length?`・等審核 <b>${d.rows.length-ok.length}</b> 人`:''}・月費看 ${monthZh(d.month)}${d.enforce?'':'（目前只記錄、不擋人）'}</div></div>
-      <div class="row" style="flex:0 0 auto;gap:8px">${window.self!==window.top?'':'<button class="btn btn-ghost btn-sm" data-act="roster-csv" style="width:auto">下載 CSV</button>'}</div></div>
+      <div class="row" style="flex:0 0 auto;gap:8px">${window.self!==window.top?'':'<button class="btn btn-ghost btn-sm" data-act="roster-csv" style="width:auto">下載 CSV</button>'}
+        <button class="btn ${S.rosterDel?'btn-primary':'btn-outline'} btn-sm" data-act="roster-del-mode" style="width:auto">${S.rosterDel?'完成':'🗑 刪除夥伴'}</button></div></div>
+    ${S.rosterDel?'<div class="notice err small mt">刪除模式：按名字旁邊的「刪除」。刪掉的人會從名單消失、不能再登入，他的下線會改接到他的上線。</div>':''}
     <div class="chipbar mt" id="roster-chips"></div></div>
     <div class="card" style="padding:0;overflow:hidden"><div id="roster-list"></div></div>`;
   drawRoster();
@@ -3777,12 +3783,12 @@ function drawRoster(){
   const actCell = r => r.acts.length ? r.acts.map(a=>`<span class="pill brand">${esc(a)}</span>`).join(' ') : '<span class="muted">—</span>';
   if (!rows.length) { box.innerHTML = '<div class="muted" style="padding:16px">沒有符合的人</div>'; return; }
   box.innerHTML = wide ? `<div style="overflow-x:auto"><table class="mtable roster"><thead><tr><th>姓名</th><th>上線</th><th>哪條線</th><th>${monthZh(d.month)}月費</th><th>參加的班</th><th>加入日期</th></tr></thead><tbody>
-      ${rows.map(r=>`<tr data-act="roster-row" data-id="${r.id}" tabindex="0"><td><div class="who">${avatarHTML(r)}<b>${esc(r.name)}</b>${badgeHTML(r.id)}${r.role==='admin'?' <span class="pill ok">管理員</span>':''}</div></td>
+      ${rows.map(r=>`<tr data-act="${S.rosterDel?'':'roster-row'}" data-id="${r.id}" tabindex="0"><td><div class="who">${S.rosterDel&&r.role!=='admin'?`<button class="btn btn-sm del-btn" data-act="roster-del" data-id="${r.id}">刪除</button>`:''}${avatarHTML(r)}<b>${esc(r.name)}</b>${badgeHTML(r.id)}${r.role==='admin'?' <span class="pill ok">管理員</span>':''}</div></td>
         <td>${upCell(r)}</td><td>${lineCell(r)}</td><td>${feeCell(r)}</td><td>${actCell(r)}</td><td class="nw">${mdZh(r.joined)}</td></tr>`).join('')}</tbody></table></div>`
-    : `<div class="mlist" style="padding:0 12px">${rows.map(r=>`<button class="mrow" data-act="roster-row" data-id="${r.id}"><div style="display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0;text-align:left">${avatarHTML(r)}<div class="info" style="min-width:0;flex:1">
+    : `<div class="mlist" style="padding:0 12px">${rows.map(r=>`<${S.rosterDel?'div':'button'} class="mrow" data-act="${S.rosterDel?'':'roster-row'}" data-id="${r.id}"><div style="display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0;text-align:left">${avatarHTML(r)}<div class="info" style="min-width:0;flex:1">
         <div><b>${esc(r.name)}</b>${badgeHTML(r.id)}${r.role==='admin'?' <span class="pill ok">管理員</span>':''}</div>
         <div class="muted small">上線：${upCell(r)}${lineCell(r)?`・${lineCell(r)}`:''}</div>
-        <div class="roster-tags">${feeCell(r)} ${actCell(r)}</div></div></div><span class="muted">›</span></button>`).join('')}</div>`;
+        <div class="roster-tags">${feeCell(r)} ${actCell(r)}</div></div></div>${S.rosterDel ? (r.role!=='admin'?`<button class="btn btn-sm del-btn" data-act="roster-del" data-id="${r.id}">刪除</button>`:'') : '<span class="muted">›</span>'}</${S.rosterDel?'div':'button'}>`).join('')}</div>`;
 }
 function rosterCSV(){
   const rows = rosterPick(), d = ROSTER, FS = { paid:'已繳', pending:'等確認', exempt:'免繳', trial:'試用期', none:'還沒繳' };
@@ -4034,7 +4040,8 @@ async function renderAdminMember(main){
         <button class="btn btn-ghost btn-sm" data-act="set-rank" data-id="${m.id}">🏅 聘階${(S.badges&&S.badges[m.id]&&S.badges[m.id].r)?'：'+esc(S.badges[m.id].r):''}</button>
         <button class="btn btn-ghost btn-sm" data-act="set-coe" data-id="${m.id}">⭐ 創業名人${(S.badges&&S.badges[m.id]&&S.badges[m.id].c)?'：'+COE[S.badges[m.id].c].n:''}</button></div>
       ${m.role==='admin'?'':`<div class="row mt" style="flex-wrap:wrap;align-items:center"><button class="btn ${m.role==='staff'?'btn-outline':'btn-primary'} btn-sm" data-act="set-staff" data-id="${m.id}" data-on="${m.role==='staff'?'0':'1'}">${m.role==='staff'?'取消工作人員':'🧑‍💼 設成工作人員'}</button>
-        <span class="muted small">工作人員只能用「掃描入場」，看不到後台其他資料。</span></div>`}
+        <span class="muted small">工作人員只能用「掃描入場」，看不到後台其他資料。</span></div>
+      <div class="row mt"><button class="btn btn-sm del-btn" data-act="member-del" data-id="${m.id}" data-name="${esc(m.name)}" data-up="${esc(m.uplineName||'')}" style="width:auto">🗑 刪除這位夥伴</button></div>`}
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
       <div class="stat late"><div class="v">${pr.late}</div><div class="k">補打卡</div></div>
@@ -4536,6 +4543,14 @@ document.addEventListener('click', async e=>{
       if (r.status==='pending') { go('account',{sub:'admin'}); break; }
       S.memBack = 'roster'; S.admin.memberId = r.id; S.admin.calMonth = null; S.admin.calSel = null; go('account',{sub:'adminMember'}); break; }
     case 'roster-csv': rosterCSV(); break;
+    case 'roster-del-mode': S.rosterDel = !S.rosterDel; renderAdminRoster($('#main')); break;
+    case 'roster-del': case 'member-del': { const id = el.dataset.id, r = (ROSTER && ROSTER.rows.find(x=>x.id===id)) || { name: el.dataset.name || '', upName: el.dataset.up || '' };
+      if (!await confirmBox(`確定要刪除「${r.name}」嗎？\n\n・他會從名單、總表、樹狀圖、動態牆消失，不能再登入\n・他的下線會改接到${r.upName?'「'+r.upName+'」':'沒有上線'}\n・打卡、繳費紀錄會留在試算表備查\n\n刪掉之後如果要回來，要請他重新申請。`, '刪除', true)) break;
+      el.disabled = true;
+      try { const x = await api.adminDeleteMember(id); toast(`已刪除 ${r.name}${x.moved?`，${x.moved} 位下線改接到${x.movedTo||'沒有上線'}`:''}`,'ok');
+        QuickCache.dropPrefix('roster'); QuickCache.dropPrefix('adm'); QuickCache.dropPrefix('home'); if (S.badges) delete S.badges[id];
+        if (act==='member-del') go('account',{sub:'adminRoster'}); else renderAdminRoster($('#main')); }
+      catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     /* 後台 */
     case 'admin-member': S.admin.memberId=el.dataset.id; S.admin.calMonth=null; S.admin.calSel=null; go('account',{sub:'adminMember'}); break;
     case 'acal-prev': S.admin.calMonth=monthShift(S.admin.calMonth,-1); renderAdminMember($('#main')); break;
