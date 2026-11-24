@@ -608,6 +608,10 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .hp-top .avatar{box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold-line)}
 .hp-name{font-size:21px;font-weight:800;line-height:1.3}
 .pill.rank{background:var(--gold-soft);color:var(--gold-dark);border:1px solid var(--gold-line)}
+.fee-what{display:grid;gap:6px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:12px;padding:10px 12px;font-weight:600}
+.fee-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.fee-banner .btn{width:auto;min-height:40px}
+.fee-stats{grid-template-columns:repeat(4,1fr)}
 .hp-quote{margin:12px 0 0;padding:10px 14px;background:var(--gold-soft);border-radius:12px;color:#4A3B12;font-size:17px}
 .hp-items{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .hp-item{display:flex;justify-content:space-between;gap:10px;align-items:baseline;font-weight:700}
@@ -1009,6 +1013,8 @@ function pad(n){return String(n).padStart(2,'0');}
 function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
 function parseYmd(s){const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
 function addDays(s,n){const d=parseYmd(s);d.setDate(d.getDate()+n);return ymd(d);}
+function ymAddJs(ym,n){const d=new Date(+ym.slice(0,4), +ym.slice(5,7)-1+n, 1);return d.getFullYear()+'-'+pad(d.getMonth()+1);}
+const monthZh = ym => (+String(ym).slice(5,7)) + ' 月';
 function diffDays(a,b){return Math.round((parseYmd(b)-parseYmd(a))/86400000);} // b - a
 const WD = ['日','一','二','三','四','五','六'];
 function mdZh(s){const d=parseYmd(s);return (d.getMonth()+1)+'/'+d.getDate()+'（'+WD[d.getDay()]+'）';}
@@ -1590,6 +1596,16 @@ const MockApi = {
     t.checkedInAt = Date.now();
     return { result:'ok', member:who, paidNow:!!payNow && fee>0, fee, at:t.checkedInAt };
   },
+  async getFee(){ await this._wait(); const T = todayStr(), ym = T.slice(0,7), nx = ymAddJs(ym,1);
+    return { summary:{ state:'paid', month:ym, fee:300, dueDay:5, next:{month:nx, state:'none'}, nextRemind:+T.slice(8)>=20 }, fee:300, dueDay:5,
+      payInfo:'請轉帳到：○○銀行（012）帳號 1234-5678-9012，或把現金交給管理員。', months:[{month:ym,state:'paid',method:'cash',last5:''},{month:nx,state:'none',method:'',last5:''}] }; },
+  async feeApply(){ await this._wait(); toast('示範版：不會真的送出','ok'); return this.getFee(); },
+  async adminFeeList(month){ await this._wait(); const ym = month || todayStr().slice(0,7), st = ['paid','pending','none','paid','exempt'];
+    const rows = MockDB.members.slice(1).map((m,i)=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw, state:st[i%5], method:st[i%5]==='pending'?'transfer':'', last5:st[i%5]==='pending'?'12345':'' }));
+    const n = k => rows.filter(r=>r.state===k).length;
+    return { month:ym, months:[ymAddJs(todayStr().slice(0,7),-1), todayStr().slice(0,7), ymAddJs(todayStr().slice(0,7),1)], fee:300, dueDay:5, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
+  async adminFeeSet(id, month, to){ await this._wait(); return { ok:true, state:to }; },
+  async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
   async adminDashboard(){
     await this._wait();
     const act = MockDB.activity, T = todayStr();
@@ -1664,6 +1680,7 @@ const GasApi = {
       }
     }
     if (['LOGIN_REQUIRED','LOGIN_EXPIRED','NOT_APPROVED'].includes(lastErr.message) && S.session) onSessionLost(lastErr.message);
+    if (lastErr.message==='FEE_REQUIRED' && S.session) renderFeeLock();
     throw lastErr;
   },
   lineStart(p){ return this.call('auth.lineStart', p, {retry:1}); },
@@ -1726,6 +1743,11 @@ const GasApi = {
   adminTicketPay(ticketId, method, undo){ return this.call('admin.ticket.pay', {ticketId, method, undo:!!undo}, {retry:0}); },
   adminCheckin(courseId, code, payNow, method){ return this.call('admin.checkin', {courseId, code, payNow:!!payNow, method}, {retry:1}); },
   adminDashboard(activityId){ return this.call('admin.dashboard', activityId ? {activityId} : {}); },
+  getFee(){ return this.call('fee.get', {}); },
+  feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
+  adminFeeList(month){ return this.call('admin.fee.list', month ? {month} : {}); },
+  adminFeeSet(memberId, month, to){ return this.call('admin.fee.set', {memberId, month, to}, {retry:0}); },
+  adminDepositRefund(activityId, memberId, on){ return this.call('admin.deposit.refund', {activityId, memberId, on}, {retry:0}); },
   adminMember(id){ return this.call('admin.member', {memberId:id}); },
   adminReview(postId, decision){ return this.call('admin.review', {postId, decision}); },
   adminApprove(memberId, ok){ return this.call('admin.approve', {memberId, ok}); }
@@ -1834,7 +1856,7 @@ function errText(e){
     CODE_WRONG:'驗證碼不對，請再輸入一次。', CODE_EXPIRED:'驗證碼過期了，請重新寄一次。', CODE_LOCKED:'錯太多次了，請重新寄驗證碼。',
     APPLY_EXPIRED:'申請頁停留太久，請重新登入一次再填。', NAME_REQUIRED:'請填寫姓名。', BAD_TW:'TW 帳號格式不對，只能有英文字母和數字。',
     NOT_FOUND:'找不到這筆資料，可能已經被刪除。', BAD_AMOUNT:'退費金額不能超過實際收到的錢。', COURSE_NOT_YET:'這堂課還沒上，上完課再來寫心得喔。', NOT_ONSITE:'這堂課沒有開放現場報名。', COURSE_ENDED:'這堂課已經結束了。',
-    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', HAS_UPLINE:'這位夥伴已經有上線了，要換上線請洽管理員。', BAD_DOWNLINE:'這位不能加成你的下線（可能是你的上線）。', BAD_UPLINE:'這位不能當上線，請選別人。' }[k]) || '發生問題，請稍後再試一次。';
+    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', HAS_UPLINE:'這位夥伴已經有上線了，要換上線請洽管理員。', BAD_DOWNLINE:'這位不能加成你的下線（可能是你的上線）。', BAD_UPLINE:'這位不能當上線，請選別人。', FEE_REQUIRED:'這個月的月費還沒繳。', BAD_MONTH:'只能繳這個月或下個月。', NOT_REACHED:'他還沒達標，保證金不能退。' }[k]) || '發生問題，請稍後再試一次。';
 }
 
 /* =====================================================================
@@ -2048,6 +2070,120 @@ function onSessionLost(code){
   setTimeout(()=>{ sessionLostShown = false; }, 3000);
 }
 
+
+/* =====================================================================
+   皇家主任月費（每人每月 300；每月 5 號前繳；繳了才能用 APP，每週一 BOM 免費）
+   ===================================================================== */
+const FEE_ST = { paid:['已繳','ok'], pending:['等管理員確認','pend'], exempt:['免繳','gray'], trial:['試用期','gray'], none:['還沒繳','bad'], due:['還沒繳','bad'], blocked:['還沒繳','bad'] };
+const feePill = st => { const x = FEE_ST[st] || FEE_ST.none; return `<span class="pill ${x[1]}">${x[0]}</span>`; };
+/** 繳費表單（鎖定畫面和「我的帳號」共用）。F：{month, payMethod, last5} */
+function feeFormHTML(info, F){
+  const months = info.months.filter(m=>m.state==='none').map(m=>m.month).filter(m=>m===info.summary.month || m===info.summary.next.month);
+  if (!months.length) return '<div class="notice ok">目前沒有要繳的月費 👍</div>';
+  if (!months.includes(F.month)) F.month = months[0];
+  return `${months.length>1?`<label class="lbl">繳哪個月？</label><div class="seg" style="grid-template-columns:repeat(${months.length},1fr)">${months.map(m=>`<button data-fm="${m}" class="${F.month===m?'on':''}">${monthZh(m)}</button>`).join('')}</div>`:`<div class="kv"><span class="k">月份</span><span class="v">${monthZh(F.month)}</span></div>`}
+    <div class="kv"><span class="k">金額</span><span class="v"><b>NT$${(+info.fee).toLocaleString()}</b></span></div>
+    <label class="lbl">怎麼付？</label>
+    <div class="seg" style="grid-template-columns:1fr 1fr"><button data-fp="transfer" class="${F.payMethod==='transfer'?'on':''}">🏦 轉帳</button><button data-fp="cash" class="${F.payMethod==='cash'?'on':''}">💵 現金</button></div>
+    ${F.payMethod==='transfer'?`<div class="notice info mt uc">${esc(info.payInfo||'')}</div>
+      <label class="lbl" for="fee-last5">你的匯款帳號後五碼<span class="req">必填</span></label>
+      <input class="inp" id="fee-last5" inputmode="numeric" pattern="[0-9]*" maxlength="5" placeholder="例如：12345" value="${esc(F.last5)}">
+      <div class="hint">轉帳後填上，管理員對帳用。</div>`
+    : '<div class="notice info mt">請把現金交給管理員。</div>'}
+    <div id="fee-err" class="notice err hidden mt"></div>
+    <button class="btn btn-primary mt" data-fs="send">送出</button>`;
+}
+/** 表單的點擊：換月份、換付款方式、送出。成功時呼叫 done(info) */
+function feeFormBind(box, info, F, redraw, done){
+  box.onclick = async e => {
+    const l = $('#fee-last5'); if (l) F.last5 = l.value.replace(/\D/g,'');
+    const fm = e.target.closest('[data-fm]'); if (fm){ F.month = fm.dataset.fm; return redraw(); }
+    const fp = e.target.closest('[data-fp]'); if (fp){ F.payMethod = fp.dataset.fp; return redraw(); }
+    const b = e.target.closest('[data-fs="send"]'); if (!b) return;
+    const err = m => { const x = $('#fee-err'); x.textContent = m; x.classList.remove('hidden'); };
+    if (F.payMethod==='transfer' && !/^\d{5}$/.test(F.last5)) return err(errText(new Error('BAD_LAST5')));
+    b.disabled = true; b.innerHTML = '<span class="spinner"></span> 送出中…';
+    try { done(await api.feeApply({ month:F.month, payMethod:F.payMethod, last5: F.payMethod==='transfer' ? F.last5 : '' })); }
+    catch(e2){ b.disabled = false; b.textContent = '送出'; err(errText(e2)); }
+  };
+}
+const FEE_WHAT = '<div class="fee-what"><div>✅ 使用皇家 APP（打卡、動態、皇家學院）</div><div>✅ 每週一 BOM 免費參加（線上或現場）</div></div>';
+/** 過了繳費期限還沒繳：整個 APP 只剩這個畫面 */
+let feeLockOn = false;
+async function renderFeeLock(){
+  if (feeLockOn) return; feeLockOn = true;
+  const app = $('#app'), head = `<img class="logo-big" src="${LOGO}" alt="皇家團隊"><h1>皇家主任月費</h1>`;
+  app.innerHTML = `<div class="login">${head}<div class="center" style="padding:20px"><span class="spinner" style="border-color:#cfe0f0;border-top-color:var(--brand);width:36px;height:36px"></span></div></div>`;
+  let info; try { info = await api.getFee(); } catch(e){ feeLockOn = false; app.innerHTML = `<div class="login">${head}<div class="notice err">${esc(errText(e))}</div><button class="btn btn-primary" onclick="location.reload()">再試一次</button></div>`; return; }
+  const F = { month: info.summary.month, payMethod:'transfer', last5:'' };
+  const draw = () => {
+    app.innerHTML = `<div class="login">${head}
+      <div class="card" style="text-align:left"><div class="notice err mb">${monthZh(info.summary.month)}的月費還沒繳（每月 ${info.dueDay} 號前），繳了就可以繼續使用。</div>
+        <div class="muted mb">每月 <b>NT$${(+info.fee).toLocaleString()}</b>，包含：</div>${FEE_WHAT}
+        <div id="fee-form" class="mt">${feeFormHTML(info, F)}</div></div>
+      <button class="link-btn mt" data-act="logout">登出</button></div>`;
+    feeFormBind($('#fee-form'), info, F, draw, () => { toast('已送出，等管理員確認','ok'); location.reload(); });
+  };
+  draw();
+}
+/** 「我的帳號」或首頁提醒：打開繳費單 */
+async function openFeeSheet(){
+  let info; try { info = await api.getFee(); } catch(e){ return toast(errText(e),'err'); }
+  const F = { month: info.summary.state==='due' ? info.summary.month : info.summary.next.month, payMethod:'transfer', last5:'' };
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const draw = () => {
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>💳 皇家主任月費</h3><button data-x>關閉</button></div>
+      <div class="sheet-b"><div class="muted mb">每月 <b>NT$${(+info.fee).toLocaleString()}</b>，每月 ${info.dueDay} 號前繳，包含：</div>${FEE_WHAT}
+        <div class="fee-months mt">${info.months.map(m=>`<div class="kv"><span class="k">${monthZh(m.month)}</span><span class="v">${feePill(m.state)}${m.last5?` <span class="muted small">後五碼 ${esc(m.last5)}</span>`:''}</span></div>`).join('')}</div>
+        <div id="fee-form" class="mt">${feeFormHTML(info, F)}</div></div></div>`;
+    feeFormBind(bg.querySelector('#fee-form'), info, F, draw, async r => {
+      info = r; S.fee = r.summary; toast('已送出，等管理員確認','ok'); QuickCache.dropPrefix('home'); draw(); if (S.tab==='account' && !S.sub) renderAccount($('#main')); });
+  };
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  document.body.appendChild(bg); draw();
+}
+/** 首頁最上面的提醒：這個月還沒繳（還在期限內）、月底提醒下個月 */
+function feeBannerHTML(){
+  const f = S.fee; if (!f) return '';
+  if (f.state==='due') return `<div class="notice err fee-banner"><span>${monthZh(f.month)}的月費還沒繳，${f.dueDay} 號前要繳喔</span><button class="btn btn-sm btn-primary" data-act="fee-open">繳月費</button></div>`;
+  if (f.nextRemind && ['paid','exempt','pending'].includes(f.state)) return `<div class="notice info fee-banner"><span>${monthZh(f.next.month)}的月費可以先繳了</span><button class="btn btn-sm btn-outline" data-act="fee-open">繳月費</button></div>`;
+  return '';
+}
+/** 後台：月費名單（點名字：已收／免繳／未繳） */
+async function adminFeeSheet(month){
+  let d; try { d = await api.adminFeeList(month); } catch(err){ return toast(errText(err),'err'); }
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  const order = { pending:0, none:1, paid:2, exempt:3, trial:4 };
+  const draw = () => {
+    const c = d.counts, rows = d.rows.slice().sort((a,b)=> (order[a.state]-order[b.state]) || a.name.localeCompare(b.name,'zh-Hant'));
+    bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>💳 ${monthZh(d.month)}月費（NT$${d.fee}）</h3><button data-x>完成</button></div>
+      <div class="sheet-b"><div class="seg mb" style="grid-template-columns:repeat(3,1fr)">${d.months.map(m=>`<button data-m="${m}" class="${m===d.month?'on':''}">${monthZh(m)}</button>`).join('')}</div>
+        ${d.month < d.start ? `<div class="notice info mb">${monthZh(d.month)}還是試用期（${monthZh(d.start)}開始收），不用繳。</div>` : ''}
+        <div class="admin-grid mb fee-stats"><div class="stat ok"><div class="v">${c.paid}</div><div class="k">已繳</div></div><div class="stat pend"><div class="v">${c.pending}</div><div class="k">等確認</div></div>
+          <div class="stat bad"><div class="v">${c.none}</div><div class="k">還沒繳</div></div><div class="stat"><div class="v">${c.exempt}</div><div class="k">免繳</div></div></div>
+        <div class="muted small mb">點名字：確認收到、改成現金已收、免繳或還沒繳。過了每月 ${d.dueDay} 號還沒繳的人會被擋在 APP 外面。</div>
+        ${rows.length?'':'<div class="notice info">目前還沒有其他夥伴。</div>'}
+        <div class="mlist">${rows.map(r=>`<button class="mrow" data-id="${r.id}"><div class="who">${avatarHTML(r)}<div class="info"><b>${esc(r.name)}</b>
+          <div class="muted small">${r.state==='pending'?(r.method==='cash'?'說要付現金':'轉帳・後五碼 '+esc(r.last5)):esc(r.tw||'')}</div></div></div>${feePill(r.state)}</button>`).join('')}</div>
+        ${c.none?'<button class="btn btn-outline mt" data-copy>複製「還沒繳」的名單</button>':''}</div></div>`;
+  };
+  bg.addEventListener('click', async e=>{
+    if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); return; }
+    const mb = e.target.closest('[data-m]'); if (mb) { try { d = await api.adminFeeList(mb.dataset.m); draw(); } catch(err){ toast(errText(err),'err'); } return; }
+    if (e.target.closest('[data-copy]')) { const t = d.rows.filter(r=>r.state==='none').map(r=>r.name).join('\n'); try { await navigator.clipboard.writeText(t); toast('已複製','ok'); } catch(_){ toast(t); } return; }
+    const b = e.target.closest('.mrow[data-id]'); if (!b) return;
+    const r = d.rows.find(x=>x.id===b.dataset.id); if (!r) return;
+    const opts = r.state==='pending'
+      ? [{ v:'paid', label:`✅ 確認收到（${r.method==='cash'?'現金':'後五碼 '+r.last5}）` }, { v:'none', label:'退回（沒收到）', cls:'btn-outline' }, { v:'exempt', label:'改成免繳', cls:'btn-ghost' }]
+      : r.state==='none' ? [{ v:'paid', label:'💵 現金已收' }, { v:'exempt', label:'免繳（這個月不用繳）', cls:'btn-ghost' }]
+      : [{ v:'none', label:'改回「還沒繳」', cls:'btn-outline' }];
+    const v = await choiceBox(`${r.name}・${monthZh(d.month)}月費`, opts); if (!v) return;
+    try { const x = await api.adminFeeSet(r.id, d.month, v); const old = r.state; r.state = x.state; if (v==='none') { r.method=''; r.last5=''; }
+      if (d.counts[old]!=null) d.counts[old]--; if (d.counts[r.state]!=null) d.counts[r.state]++; toast('已更新','ok'); draw(); } catch(err){ toast(errText(err),'err'); }
+  });
+  document.body.appendChild(bg); draw();
+}
+
 async function enterApp(method){   // 示範模式
   S.session = await MockApi.login(method);
   store(SESSION_KEY, S.session);
@@ -2089,7 +2225,7 @@ function setNav(){
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse');
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
-function applyHome(h){ S.me=h.me; S.act=h.activity; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
+function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
   S.acts = h.acts || []; S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
@@ -2196,7 +2332,7 @@ function greet(){ const h=new Date().getHours(); return h<11?'早安':h<14?'午�
 
 function renderHome(main){
   const team = S.teamCount > 0 && S.scope==='team';
-  main.innerHTML = `${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
+  main.innerHTML = `${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
     ${team?'<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>':''}
     <div class="feed-head" style="margin-top:4px"><h2>${team?'我的團隊動態':'團隊動態'}</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
     <div id="feed"></div><div id="feed-foot"></div>`;
@@ -2919,6 +3055,7 @@ function renderAccount(main){
   main.innerHTML = `
     <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
       <h2 style="margin:0">${esc(me.name)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+    ${S.fee && S.fee.state!=='exempt' && S.fee.state!=='trial' ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
     <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
     <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
@@ -3101,12 +3238,12 @@ async function dreamTick(i){
 }
 /** 我的成長最上面：目前的衝刺班報名（沒參加的人才會看到） */
 function regCardHTML(){
-  const a = S.act, r = S.reg, T = todayStr();
+  const a = S.act, r = S.reg, T = todayStr(), fw = a && a.feeMode==='deposit' ? '保證金' : '報名費';
   if (!a || !r || r.status==='joined' || a.end < T) return '';
   const when = `<div class="muted small"><span class="nw">${mdZh(a.start)} ～ ${mdZh(a.end)}</span>${r.deadline?`<wbr><span class="nw">・報名截止 ${mdZh(r.deadline)}</span>`:''}</div>`;
   if (r.status==='pending') return `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}
     <div class="notice ok mt">✅ 已送出報名，等管理員審核。<br>通過後，底部按鈕會變成「我的進度」。</div>
-    ${r.mine&&r.mine.fee?`<div class="hint">報名費 NT$${r.mine.fee.toLocaleString()}・${r.mine.payMethod==='cash'?'現金（請交給管理員）':'轉帳・後五碼 '+esc(r.mine.last5)}</div>`:''}</div>`;
+    ${r.mine&&r.mine.fee?`<div class="hint">${fw} NT$${r.mine.fee.toLocaleString()}・${r.mine.payMethod==='cash'?'現金（請交給管理員）':'轉帳・後五碼 '+esc(r.mine.last5)}</div>`:''}</div>`;
   if (!r.canApply) return r.status==='rejected' ? `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}<div class="notice err mt">這次的報名沒有通過，有問題請洽管理員。</div></div>` : '';
   return `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}
     ${r.status==='rejected'?'<div class="notice err mt">上次的報名沒有通過，有問題請洽管理員；也可以再報名一次。</div>':''}
@@ -3115,7 +3252,7 @@ function regCardHTML(){
 }
 /** 衝刺班報名頁：一次一步（看規則、勾同意 → 繳費方式 → 確認送出） */
 function renderRegApply(main){
-  const a = S.act, r = S.reg, R = S.rg || (S.rg = { step:1, agree:false, payMethod:'transfer', last5:'' });
+  const a = S.act, r = S.reg, R = S.rg || (S.rg = { step:1, agree:false, payMethod:'transfer', last5:'' }), fw = a && a.feeMode==='deposit' ? '保證金' : '報名費';
   if (!a || !r || !r.canApply) { go('progress'); return; }
   const fee = r.fee || 0, total = fee ? 3 : 2, stepNo = fee ? R.step : (R.step===1 ? 1 : 2);
   const dots = `<div class="ap-steps">${Array.from({length:total},(_,i)=>`<i class="${i<stepNo?'on':''}"></i>`).join('')}</div><div class="muted small center mb">第 ${stepNo} 步／共 ${total} 步</div>`;
@@ -3129,11 +3266,11 @@ function renderRegApply(main){
         <li>活動期間，有效打卡滿 <b>${a.threshold} 天</b>就達標</li>
         <li>每天發行動日誌就算打卡；忘了發，<b>${a.lateDays} 天內</b>補發還算數</li>
         ${a.courseNotes?`<li>活動期間每一堂<b>線上課</b>，上完 <b>${a.noteDays} 天內</b>要交課後心得</li>`:''}
-        ${fee?`<li>報名費 <b>NT$${fee.toLocaleString()}</b></li>`:''}
+        ${fee?(a.feeMode==='deposit'?`<li>保證金 <b>NT$${fee.toLocaleString()}</b>：<b>達標就全額退還</b>（退了還是在班上，可以繼續激勵夥伴）；沒達標不退</li>`:`<li>報名費 <b>NT$${fee.toLocaleString()}</b></li>`):''}
         ${a.note?`<li>${esc(a.note)}</li>`:''}</ol>
       <label class="big-check ${R.agree?'on':''}"><input type="checkbox" id="rg-agree" ${R.agree?'checked':''}><span>我已看完，同意以上活動規則</span></label>
       ${nav(fee?'next':'confirm','下一步')}</div>`;
-  else if (R.step===2 && fee) body = `<div class="card"><h2 class="act-name">報名費 NT$${fee.toLocaleString()}</h2>
+  else if (R.step===2 && fee) body = `<div class="card"><h2 class="act-name">${fw} NT$${fee.toLocaleString()}</h2>
       <label class="lbl">怎麼付？</label>
       <div class="seg" style="grid-template-columns:1fr 1fr"><button data-pm="transfer" class="${R.payMethod==='transfer'?'on':''}">🏦 轉帳</button><button data-pm="cash" class="${R.payMethod==='cash'?'on':''}">💵 現金</button></div>
       ${R.payMethod==='transfer'?`<div class="notice info mt uc">${esc(r.payInfo||'')}</div>
@@ -3146,9 +3283,9 @@ function renderRegApply(main){
       <div class="kv"><span class="k">姓名</span><span class="v">${esc(S.me.name)}</span></div>
       <div class="kv"><span class="k">TW 帳號</span><span class="v">${S.me.tw?esc(S.me.tw):'（沒有填）'}</span></div>
       <div class="kv"><span class="k">活動</span><span class="v">${esc(a.name)}</span></div>
-      ${fee?`<div class="kv"><span class="k">報名費</span><span class="v">NT$${fee.toLocaleString()}</span></div>
+      ${fee?`<div class="kv"><span class="k">${fw}</span><span class="v">NT$${fee.toLocaleString()}</span></div>
       <div class="kv"><span class="k">繳費方式</span><span class="v">${R.payMethod==='cash'?'現金':'轉帳・後五碼 '+esc(R.last5)}</span></div>`:''}
-      <div class="hint">送出後，管理員${fee?'確認收到報名費':'確認'}就會核准；核准後底部按鈕會變成「我的進度」。</div>
+      <div class="hint">送出後，管理員${fee?'確認收到'+fw+'':'確認'}就會核准；核准後底部按鈕會變成「我的進度」。</div>
       <div id="rg-err" class="notice err hidden mt"></div>
       <button class="btn btn-primary mt" data-rg="send">送出報名</button><button class="btn btn-outline mt" data-rg="prev">上一步</button></div>`;
   main.innerHTML = dots + body;
@@ -3494,7 +3631,7 @@ async function renderAdmin(main){
     ${actChips(ADM.acts, act, 'adm-act')}
     <div class="admin-grid mb">
       <div class="stat"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></div>
-      <div class="stat"><div class="v">${s.paid}</div><div class="k">已繳費</div></div>
+      <div class="stat"><div class="v">${s.paid}</div><div class="k">${act&&act.feeMode==='deposit'?'已繳保證金':'已繳費'}</div></div>
       <div class="stat ok"><div class="v">${s.todayDone}</div><div class="k">今日已打卡</div></div>
       <div class="stat bad"><div class="v">${s.registered-s.todayDone}</div><div class="k">今日尚未打卡</div></div>
       <div class="stat"><div class="v">${rate}%</div><div class="k">今日打卡率</div></div>
@@ -3504,6 +3641,14 @@ async function renderAdmin(main){
       <div class="stat pend"><div class="v">${s.pending}</div><div class="k">待審核</div></div>
     </div>
     <div class="adm-body"><div class="adm-side">
+    <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">每人每月 NT$300，每月 5 號前繳；過期沒繳的人進不了 APP。</div>
+      <button class="btn btn-primary btn-sm" data-act="admin-fee">看月費名單、確認收款</button></div>
+    ${act&&act.feeMode==='deposit'&&act.fee>0 ? (()=>{ const ok = ADM.rows.filter(r=>r.pr.reached && r.m.paid), todo = ok.filter(r=>!r.m.refunded);
+      return `<div class="card"><h3>💰 保證金退還</h3><div class="muted mb">保證金 NT$${act.fee.toLocaleString()}，達標就全額退還（退了還在班上）；沒達標不退。${todo.length?`還要退 <b>${todo.length}</b> 人。`:''}</div>
+        ${ok.length ? `<div class="mlist">${ok.map(r=>`<div class="mrow"><div class="who">${avatarHTML(r.m)}<b>${esc(r.m.name)}</b></div>
+          ${r.m.refunded ? `<button class="btn btn-ghost btn-sm" data-act="dep-refund" data-aid="${act.id}" data-id="${r.m.id}" data-on="0" data-fee="${act.fee}" data-name="${esc(r.m.name)}">✓ 已退（按錯可取消）</button>`
+            : `<button class="btn btn-primary btn-sm" data-act="dep-refund" data-aid="${act.id}" data-id="${r.m.id}" data-on="1" data-fee="${act.fee}" data-name="${esc(r.m.name)}">標記已退</button>`}</div>`).join('')}</div>`
+          : '<div class="muted">還沒有人達標。</div>'}</div>`; })() : ''}
     <div class="card"><h3>🎫 課程收費與入場</h3><div class="mlist">
       ${onsite.length ? onsite.map(c=>`<button class="mrow" data-act="admin-course" data-id="${c.id}">
         <div class="info"><b>${esc(c.title)}</b><div class="muted small">${mdZh(c.date)} ${esc(c.time)}・${c.fee?'NT$'+c.fee.toLocaleString():'免費'}</div>
@@ -4006,6 +4151,11 @@ document.addEventListener('click', async e=>{
     case 'tmcal-next': S.tmMonth=monthShift(S.tmMonth,1); { const b=$('#tm-cal'); if (b&&TM) b.innerHTML = calendarHTML(dayMap(TM.progress), TM.activity, S.tmMonth, null, 'tmcal'); } break;
     case 'tmcal-day': break;
     case 'reg-manage': regManage(); break;
+    case 'fee-open': openFeeSheet(); break;
+    case 'admin-fee': adminFeeSheet(); break;
+    case 'dep-refund': { const on = el.dataset.on === '1';
+      if (on && !await confirmBox(`確定已經把保證金 NT$${(+el.dataset.fee).toLocaleString()} 退給「${el.dataset.name}」了嗎？\n退了之後他還是在班上，照常打卡。`, '已退')) break;
+      el.disabled = true; try { await api.adminDepositRefund(el.dataset.aid, el.dataset.id, on); toast(on?'已標記退還':'已取消退還','ok'); QuickCache.dropPrefix('adm'); renderAdmin($('#main')); } catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     case 'reg-apply': S.rg = { step:1, agree:false, payMethod:'transfer', last5:'' }; go(S.tab, {sub:'regApply'}); break;
     case 'rename': { const v = await promptBox('改成真實姓名', el.dataset.name, '儲存'); if (v === null || v === el.dataset.name) break;
       if (!validName(v)) { toast(errText(new Error('BAD_NAME')),'err'); break; }
