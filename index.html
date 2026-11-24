@@ -1603,7 +1603,7 @@ const MockApi = {
   async adminFeeList(month){ await this._wait(); const ym = month || todayStr().slice(0,7), st = ['paid','pending','none','paid','exempt'];
     const rows = MockDB.members.slice(1).map((m,i)=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw, state:st[i%5], method:st[i%5]==='pending'?'transfer':'', last5:st[i%5]==='pending'?'12345':'' }));
     const n = k => rows.filter(r=>r.state===k).length;
-    return { month:ym, months:[ymAddJs(todayStr().slice(0,7),-1), todayStr().slice(0,7), ymAddJs(todayStr().slice(0,7),1)], fee:300, dueDay:5, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
+    return { month:ym, months:[ymAddJs(todayStr().slice(0,7),-1), todayStr().slice(0,7), ymAddJs(todayStr().slice(0,7),1)], fee:300, dueDay:5, enforce:false, rows, counts:{paid:n('paid'),pending:n('pending'),none:n('none'),exempt:n('exempt'),trial:0} }; },
   async adminFeeSet(id, month, to){ await this._wait(); return { ok:true, state:to }; },
   async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
   async adminDashboard(){
@@ -2144,7 +2144,7 @@ async function openFeeSheet(){
 }
 /** 首頁最上面的提醒：這個月還沒繳（還在期限內）、月底提醒下個月 */
 function feeBannerHTML(){
-  const f = S.fee; if (!f) return '';
+  const f = S.fee; if (!f || f.state==='off') return '';
   if (f.state==='due') return `<div class="notice err fee-banner"><span>${monthZh(f.month)}的月費還沒繳，${f.dueDay} 號前要繳喔</span><button class="btn btn-sm btn-primary" data-act="fee-open">繳月費</button></div>`;
   if (f.nextRemind && ['paid','exempt','pending'].includes(f.state)) return `<div class="notice info fee-banner"><span>${monthZh(f.next.month)}的月費可以先繳了</span><button class="btn btn-sm btn-outline" data-act="fee-open">繳月費</button></div>`;
   return '';
@@ -2158,10 +2158,11 @@ async function adminFeeSheet(month){
     const c = d.counts, rows = d.rows.slice().sort((a,b)=> (order[a.state]-order[b.state]) || a.name.localeCompare(b.name,'zh-Hant'));
     bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>💳 ${monthZh(d.month)}月費（NT$${d.fee}）</h3><button data-x>完成</button></div>
       <div class="sheet-b"><div class="seg mb" style="grid-template-columns:repeat(3,1fr)">${d.months.map(m=>`<button data-m="${m}" class="${m===d.month?'on':''}">${monthZh(m)}</button>`).join('')}</div>
-        ${d.month < d.start ? `<div class="notice info mb">${monthZh(d.month)}還是試用期（${monthZh(d.start)}開始收），不用繳。</div>` : ''}
+        ${!d.enforce ? '<div class="notice info mb">目前只記錄、<b>不會擋人</b>，夥伴也看不到月費提醒。要開始收時，在試算表「設定」加 feeEnforce＝Y。</div>'
+          : d.month < d.start ? `<div class="notice info mb">${monthZh(d.month)}還是試用期（${monthZh(d.start)}開始收），不用繳。</div>` : ''}
         <div class="admin-grid mb fee-stats"><div class="stat ok"><div class="v">${c.paid}</div><div class="k">已繳</div></div><div class="stat pend"><div class="v">${c.pending}</div><div class="k">等確認</div></div>
           <div class="stat bad"><div class="v">${c.none}</div><div class="k">還沒繳</div></div><div class="stat"><div class="v">${c.exempt}</div><div class="k">免繳</div></div></div>
-        <div class="muted small mb">點名字：確認收到、改成現金已收、免繳或還沒繳。過了每月 ${d.dueDay} 號還沒繳的人會被擋在 APP 外面。</div>
+        <div class="muted small mb">點名字：記錄已收（現金或轉帳）、免繳或改回還沒繳。${d.enforce?`過了每月 ${d.dueDay} 號還沒繳的人會被擋在 APP 外面。`:''}</div>
         ${rows.length?'':'<div class="notice info">目前還沒有其他夥伴。</div>'}
         <div class="mlist">${rows.map(r=>`<button class="mrow" data-id="${r.id}"><div class="who">${avatarHTML(r)}<div class="info"><b>${esc(r.name)}</b>
           <div class="muted small">${r.state==='pending'?(r.method==='cash'?'說要付現金':'轉帳・後五碼 '+esc(r.last5)):esc(r.tw||'')}</div></div></div>${feePill(r.state)}</button>`).join('')}</div>
@@ -2175,7 +2176,7 @@ async function adminFeeSheet(month){
     const r = d.rows.find(x=>x.id===b.dataset.id); if (!r) return;
     const opts = r.state==='pending'
       ? [{ v:'paid', label:`✅ 確認收到（${r.method==='cash'?'現金':'後五碼 '+r.last5}）` }, { v:'none', label:'退回（沒收到）', cls:'btn-outline' }, { v:'exempt', label:'改成免繳', cls:'btn-ghost' }]
-      : r.state==='none' ? [{ v:'paid', label:'💵 現金已收' }, { v:'exempt', label:'免繳（這個月不用繳）', cls:'btn-ghost' }]
+      : r.state==='none' ? [{ v:'paid', label:'✅ 已收（現金或轉帳）' }, { v:'exempt', label:'免繳（這個月不用繳）', cls:'btn-ghost' }]
       : [{ v:'none', label:'改回「還沒繳」', cls:'btn-outline' }];
     const v = await choiceBox(`${r.name}・${monthZh(d.month)}月費`, opts); if (!v) return;
     try { const x = await api.adminFeeSet(r.id, d.month, v); const old = r.state; r.state = x.state; if (v==='none') { r.method=''; r.last5=''; }
@@ -3055,7 +3056,7 @@ function renderAccount(main){
   main.innerHTML = `
     <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
       <h2 style="margin:0">${esc(me.name)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
-    ${S.fee && S.fee.state!=='exempt' && S.fee.state!=='trial' ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
+    ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
     <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
     <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
@@ -3641,8 +3642,8 @@ async function renderAdmin(main){
       <div class="stat pend"><div class="v">${s.pending}</div><div class="k">待審核</div></div>
     </div>
     <div class="adm-body"><div class="adm-side">
-    <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">每人每月 NT$300，每月 5 號前繳；過期沒繳的人進不了 APP。</div>
-      <button class="btn btn-primary btn-sm" data-act="admin-fee">看月費名單、確認收款</button></div>
+    <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">${s.feeEnforce?'每人每月 NT$300，每月 5 號前繳；過期沒繳的人進不了 APP。':'記錄每個人每月的繳費（目前只記錄，不會擋人）。'}</div>
+      <button class="btn btn-primary btn-sm" data-act="admin-fee">月費名單・更新繳費</button></div>
     ${act&&act.feeMode==='deposit'&&act.fee>0 ? (()=>{ const ok = ADM.rows.filter(r=>r.pr.reached && r.m.paid), todo = ok.filter(r=>!r.m.refunded);
       return `<div class="card"><h3>💰 保證金退還</h3><div class="muted mb">保證金 NT$${act.fee.toLocaleString()}，達標就全額退還（退了還在班上）；沒達標不退。${todo.length?`還要退 <b>${todo.length}</b> 人。`:''}</div>
         ${ok.length ? `<div class="mlist">${ok.map(r=>`<div class="mrow"><div class="who">${avatarHTML(r.m)}<b>${esc(r.m.name)}</b></div>
