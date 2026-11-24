@@ -282,6 +282,9 @@ body{background:linear-gradient(180deg,#E6F1FC 0%,#F3F8FD 45%,#EAF2FA 100%);back
 .topbar.event .logo{box-shadow:0 0 0 2px #E9C766,0 0 0 5px rgba(233,199,102,.28)}
 .topbar.event .tb-text small{color:#F2D688;opacity:1;letter-spacing:1px;font-weight:700}
 .topbar.event h1{color:#FFF7DF}
+.tb-dot{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:999px;background:#DC2626;color:#fff;font-size:13px;font-weight:800;line-height:1}
+.card.apply-banner{background:#ECFDF5;border:2px solid #10B981;color:#065F46;font-weight:700;margin-bottom:10px}
+.apply-banner b{font-size:20px}
 .topbar .tb-admin{background:linear-gradient(180deg,#D4A62A,#B8860B);color:#fff;font-weight:800;white-space:nowrap;flex:0 0 auto}
 .topbar.event .tb-btn{background:rgba(242,214,136,.16);color:#FFF1C9}
 .topbar.event::after{content:'';position:absolute;top:0;bottom:0;left:-40%;width:30%;pointer-events:none;
@@ -2202,6 +2205,22 @@ async function openFeeSheet(){
   bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
   document.body.appendChild(bg); draw();
 }
+/** 管理員首頁最上面：有新夥伴申請加入（2026-11-24 使用者：有新夥伴要申請，跳通知給我看） */
+function applyBannerHTML(){
+  return isAdminMe() && S.newApplicants ? `<button class="card entry-card apply-banner" data-act="open-admin"><span>🔔 有 <b>${S.newApplicants}</b> 位新夥伴申請加入</span><span>去審核 ›</span></button>` : '';
+}
+/** 管理員：APP 從背景切回來時，順便看看有沒有新的申請（最多一分鐘問一次） */
+let lastAdminPeek = 0;
+document.addEventListener('visibilitychange', async ()=>{
+  if (document.visibilityState!=='visible' || CONFIG.MODE!=='live' || !S.session || !isAdminMe() || Date.now()-lastAdminPeek < 60000) return;
+  lastAdminPeek = Date.now();
+  const before = S.newApplicants;
+  try { await loadHome(); } catch(_){ return; }
+  setNav();
+  if (S.newApplicants !== before && S.tab==='home' && !S.sub) { const b = $('.apply-banner'), html = applyBannerHTML();
+    if (b) b.outerHTML = html || ''; else if (html) $('#main').insertAdjacentHTML('afterbegin', html); }
+  if (S.newApplicants > before) toast(`有 ${S.newApplicants} 位新夥伴申請加入`, 'ok');
+});
 /** 首頁最上面的提醒：這個月還沒繳（還在期限內）、月底提醒下個月 */
 function feeBannerHTML(){
   const f = S.fee; if (!f || f.state==='off') return '';
@@ -2259,7 +2278,7 @@ async function enterApp(method){   // 示範模式
 function renderShell(){
   $('#app').innerHTML = `<div class="shell" id="shell">
     <header class="topbar"><img class="logo" src="${LOGO}" alt=""><div class="tb-text"><small id="tb-sub" class="hidden">皇家團隊</small><h1 id="tb-title">皇家團隊</h1></div>
-      <button class="tb-btn tb-admin hidden" id="tb-admin" data-act="open-admin" aria-label="管理後台">🛠 後台</button>
+      <button class="tb-btn tb-admin hidden" id="tb-admin" data-act="open-admin" aria-label="管理後台">🛠 後台<span class="tb-dot hidden" id="tb-admin-n"></span></button>
       <button class="tb-btn hidden" id="tb-back" data-act="back">‹ 返回</button></header>
     <main id="main"></main></div>
     <nav class="nav" aria-label="主選單"><div class="nav-in">
@@ -2285,6 +2304,7 @@ function setNav(){
   $$('.nav button').forEach(b=>b.classList.toggle('on', b.dataset.tab===S.tab && !S.sub));
   $('#tb-back').classList.toggle('hidden', !S.sub);
   { const ab = $('#tb-admin'); if (ab) ab.classList.toggle('hidden', !!S.sub || !isAdminMe()); }   // 管理員：每一頁右上角都有「後台」，一按就到
+  { const n = $('#tb-admin-n'); if (n) { n.textContent = S.newApplicants > 99 ? '99+' : String(S.newApplicants||0); n.classList.toggle('hidden', !S.newApplicants); } }   // 紅點：幾位新夥伴等審核
   requestAnimationFrame(fitTopTitle);
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse');
 }
@@ -2296,7 +2316,7 @@ function goStart(){
   go(wantAdmin ? 'account' : 'home', wantAdmin ? {sub:'admin'} : {});
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
-function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
+function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.newApplicants=h.newApplicants||0; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
   S.acts = h.acts || []; S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
@@ -2403,7 +2423,7 @@ function greet(){ const h=new Date().getHours(); return h<11?'早安':h<14?'午�
 
 function renderHome(main){
   const team = S.teamCount > 0 && S.scope==='team';
-  main.innerHTML = `${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
+  main.innerHTML = `${applyBannerHTML()}${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
     ${team?'<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>':''}
     <div class="feed-head" style="margin-top:4px"><h2>${team?'我的團隊動態':'團隊動態'}</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
     <div id="feed"></div><div id="feed-foot"></div>`;
