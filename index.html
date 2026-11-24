@@ -1827,7 +1827,7 @@ const QC_DROP = {
   'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
   'reg.apply':['growth:me'], 'team.addDown':[], 'team.removeDown':[]
 };
-const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list'];
+const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
   mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
@@ -1898,6 +1898,10 @@ function prefetchPages(delay = 1200){
   setTimeout(() => {
     if (!QuickCache.fresh('growth:me', QC_RECENT)) QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});
     if (!QuickCache.fresh('courses', QC_RECENT)) QuickCache.fetch('courses', () => api.getCourses()).catch(()=>{});
+    if (isAdminMe()) {   // 管理員：後台、總表先準備好，按下去就出來
+      if (!QuickCache.fresh('adm:', QC_RECENT)) QuickCache.fetch('adm:', () => api.adminDashboard()).catch(()=>{});
+      if (!QuickCache.fresh('roster', QC_RECENT)) QuickCache.fetch('roster', () => api.adminRoster()).catch(()=>{});
+    }
   }, delay);
 }
 // 管理員開通碼（只有第一次開通管理員時用）：記下來後馬上從網址拿掉，避免截圖或分享時外流
