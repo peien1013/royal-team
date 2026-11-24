@@ -77,6 +77,7 @@ h2{font-size:22px} h3{font-size:19px}
 .btn-danger{background:var(--bad-soft);color:var(--bad)}
 .btn-sm{min-height:46px;font-size:17px;border-radius:12px;width:auto}
 .row{display:flex;gap:10px;align-items:center}
+a.btn{text-decoration:none}
 .row > .btn{flex:1}
 .muted{color:var(--muted)}
 .small{font-size:15px}
@@ -1936,7 +1937,8 @@ function renderLogin(step='start', extra={}){
     app.innerHTML = `<div class="login">${head}${msg}${lineTip}
       ${cta ? `<div class="install-cta"><div class="ic-n">第 1 步</div><b>先把 APP 放到手機桌面</b><div class="muted small">放好之後，從桌面的金色「皇家」圖示打開再登入</div>
         <button class="btn btn-gold" data-act="install-guide">📲 教我放到手機桌面</button></div><div class="ic-n">第 2 步</div>` : ''}
-      <button class="btn btn-line" data-act="login-line">用 LINE 登入</button>
+      ${(()=>{ const p = CONFIG.MODE==='live' ? prepLineLogin() : null;
+        return p ? `<a class="btn btn-line" href="${esc(p.url)}" data-act="login-line">用 LINE 登入</a>` : '<button class="btn btn-line" data-act="login-line">用 LINE 登入</button>'; })()}
       <button class="btn btn-outline" data-act="login-email">沒有 LINE？用 Email 登入</button>
       ${CONFIG.MODE==='live' ? '<div class="hint center">第一次使用也是按這裡，登入後填資料申請加入。</div>'
         : ''}</div>`;
@@ -2036,7 +2038,30 @@ async function sha256Hex(s){
 }
 function randStr(n=32){ const a=new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,'0')).join(''); }
 
-/** 第一步：先跟後端登記，再跳到 LINE */
+/** 「用 LINE 登入」要是使用者「手指點的連結」，手機才會直接打開 LINE APP 自動登入；
+ *  用程式跳轉（location.href）的話，iPhone／安卓常常不會開 LINE，只會出現輸入帳號密碼的網頁（LINE 官方文件：Universal Links 不吃 JavaScript 跳轉）。
+ *  所以登入頁一出現就先跟後端登記好，把網址直接放在按鈕上（2026-11-24 使用者：放到主畫面後第一次登入 LINE 還要打帳號密碼） */
+let LINE_PREP = null;
+function prepLineLogin(force){
+  if (!force && LINE_PREP && Date.now() - LINE_PREP.at < 10*60000) return LINE_PREP;
+  const st = randStr(16), nonce = randStr(16), secret = randStr(24);
+  const q = new URLSearchParams({ response_type:'code', client_id:CONFIG.LINE_CHANNEL_ID, redirect_uri:CONFIG.APP_URL, state:st, scope:'profile openid', nonce, bot_prompt:'normal' });
+  const p = { state:st, nonce, secret, at:Date.now(), ok:false, url:'https://access.line.me/oauth2/v2.1/authorize?' + q.toString() };
+  p.ready = sha256Hex(secret).then(h => api.lineStart({ state:st, nonce, secretHash:h })).then(() => { p.ok = true; }, () => { p.ok = false; });
+  return LINE_PREP = p;
+}
+/** 按下「用 LINE 登入」：準備好了就讓連結自己打開（不攔）；還沒好才用舊方法 */
+function lineLinkTapped(e){
+  const p = LINE_PREP;
+  if (p && p.ok && Date.now() - p.at < 13*60000) {
+    store('royal_line_pending', { state:p.state, secret:p.secret, at:Date.now() });
+    LINE_PREP = null;
+    setTimeout(()=>{ if (!document.hidden && !S.session && location.pathname) renderLogin('busy', {text:'正在打開 LINE…（確認完請回到這個畫面）', cancel:true}); }, 1200);
+    return;   // 不擋：讓手機自己用連結打開 LINE
+  }
+  e.preventDefault(); startLineLogin();
+}
+/** 舊方法（備用）：先跟後端登記，再跳到 LINE */
 async function startLineLogin(){
   renderLogin('busy', {text:'正在前往 LINE…'});
   try {
@@ -4186,7 +4211,7 @@ document.addEventListener('click', async e=>{
   const act = el.dataset.act, postEl = el.closest('.post'), pid = postEl && postEl.dataset.id;
   switch(act){
     /* 登入 */
-    case 'login-line': if (CONFIG.MODE==='live') startLineLogin(); else renderLogin('who',{method:'LINE'}); break;
+    case 'login-line': if (CONFIG.MODE==='live') lineLinkTapped(e); else renderLogin('who',{method:'LINE'}); break;
     case 'login-email': renderLogin('email'); break;
     case 'login-back': store('royal_line_pending', null); renderLogin('start'); break;
     case 'email-send': {
