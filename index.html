@@ -444,6 +444,7 @@ input.inp,textarea.inp,select.inp{border-radius:20px}
    一段太長放不下才在段落裡面換。（試過 word-break: keep-all，iPhone Safari 會把中文標點也當成字，反而斷得很怪） */
 .ph{display:inline-block;max-width:100%}
 .mrow>.who{display:flex;align-items:center;gap:12px}
+.tree-set{flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer}
 button.stat{font:inherit;text-align:left;cursor:pointer;width:100%;position:relative;-webkit-tap-highlight-color:transparent}
 button.stat::after{content:"看名單 ›";position:absolute;right:12px;bottom:12px;font-size:13px;font-weight:700;color:var(--tone);opacity:.7}
 button.stat:active{transform:scale(.98)}
@@ -1748,7 +1749,7 @@ const MockApi = {
         fee: st[i%5], feeLast5:'', acts: mockJoined(m) ? [MockDB.activity.name] : [] }; }) }; },
   async adminDeleteMember(id){ await this._wait(); const m = MockDB.byId[id]; if (!m) throw new Error('NOT_FOUND'); const kids = MockDB.members.filter(k=>k.uplineId===id);
     kids.forEach(k=>{ k.uplineId = m.uplineId||''; }); MockDB.members = MockDB.members.filter(k=>k.id!==id); return { ok:true, moved:kids.length, movedTo:(MockDB.byId[m.uplineId]||{}).name||'' }; },
-  async adminTree(){ await this._wait(); return { members: MockDB.members.filter(m=>m.status!=='pending').map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, up:m.uplineId||'', role:m.role||'member', joined:'', upText:'' })) }; },
+  async adminTree(){ await this._wait(); return { members: MockDB.members.filter(m=>m.status!=='pending').map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, up:m.uplineId||'', role:m.role||'member', joined:'', upText:m.uplineText||'' })) }; },
   async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
   async adminDashboard(){
     await this._wait();
@@ -3884,19 +3885,30 @@ function drawTmPosts(){
   const n = S.tmAll ? 50 : 5, list = TM.posts || [];
   box.innerHTML = list.length ? list.slice(0,n).map(postHTML).join('') + (list.length>n?`<button class="btn btn-outline mt" data-act="tm-posts-more">看更多（共 ${list.length} 篇）</button>`:'') : '<div class="muted">還沒有日誌</div>';
 }
-/** 後台：設定某位夥伴的上線（點名字選；不能選到他自己的下線） */
-async function setUpline(memberId){
-  let ms; try { ms = (await api.adminRegList()).members; } catch(err){ return toast(errText(err),'err'); }
+/** 後台：設定某位夥伴的上線（點名字選；不能選到他自己的下線）
+ *  o.name：他的名字；o.hint：申請時寫的上線（有對到名字就放「👉 設為○○」一鍵設定）；o.members：名單（樹狀圖已經有就不用再抓）；o.onDone：設好之後做什麼 */
+async function setUpline(memberId, o={}){
+  let ms = o.members;
+  if (!ms) { try { ms = (await api.adminTree()).members; } catch(_){ try { ms = (await api.adminRegList()).members; } catch(err){ return toast(errText(err),'err'); } } }
   ms = ms.filter(x=>x.id!==memberId).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant'));
+  const hint = String(o.hint||'').trim();
+  const sug = hint ? [...ms.filter(u=>u.name===hint), ...ms.filter(u=>u.name!==hint && hint.length>=2 && u.name.length>=2 && (u.name.includes(hint) || hint.includes(u.name)))].slice(0,3) : [];
   const bg = document.createElement('div'); bg.className='sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>選他的上線</h3><button data-x>關閉</button></div>
-    <div class="sheet-b"><button class="btn btn-outline btn-sm mb" data-up="">沒有上線（清掉）</button>
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${o.name?`選「${esc(o.name)}」的上線`:'選他的上線'}</h3><button data-x>關閉</button></div>
+    <div class="sheet-b">
+      ${hint?`<div class="notice info mb">申請時寫的上線：<b>${esc(hint)}</b>${sug.length?'':'<br>名單裡找不到一樣的名字，<br>請從下面點選。'}</div>`:''}
+      ${sug.map(u=>`<button class="btn btn-primary mb" data-up="${u.id}">👉 設為 ${esc(u.name)}</button>`).join('')}
+      <button class="btn btn-outline btn-sm mb" data-up="">沒有上線（清掉）</button>
       <div class="pick-grid">${ms.map(u=>`<button data-up="${u.id}">${avatarHTML(u)}<span>${esc(u.name)}</span></button>`).join('')}</div></div></div>`;
   bg.addEventListener('click', async e=>{
     if (e.target===bg || e.target.closest('[data-x]')) return bg.remove();
-    const b = e.target.closest('[data-up]'); if (!b) return;
-    try { await api.adminSetUpline(memberId, b.dataset.up); bg.remove(); toast('上線已更新','ok'); renderAdminMember($('#main')); }
-    catch(err){ toast(errText(err),'err'); }
+    const b = e.target.closest('[data-up]'); if (!b || b.disabled) return;
+    b.disabled = true;
+    try { await api.adminSetUpline(memberId, b.dataset.up); bg.remove();
+      const up = ms.find(u=>u.id===b.dataset.up);
+      toast(up ? `✅ ${o.name||''}的上線是${up.name}` : '上線已清掉','ok');
+      if (o.onDone) o.onDone(); else renderAdminMember($('#main')); }
+    catch(err){ b.disabled = false; toast(errText(err),'err'); }
   });
   document.body.appendChild(bg);
 }
@@ -4172,11 +4184,13 @@ function statListSheet(k){
 }
 async function adminTreeSheet(){
   let d; try { d = await api.adminTree(); } catch(err){ return toast(errText(err),'err'); }
-  const kids = {}, total = {};
-  d.members.forEach(m=>{ (kids[m.up||''] = kids[m.up||''] || []).push(m); });
+  let kids, total, roots, heads, loners;
   const cnt = id => { if (total[id] != null) return total[id]; total[id] = 0; let n = 0; (kids[id]||[]).forEach(c=>{ n += 1 + cnt(c.id); }); return total[id] = n; };
   const byName = (a,b) => a.name.localeCompare(b.name, 'zh-Hant'), order = (a,b) => (cnt(b.id)-cnt(a.id)) || byName(a,b);
-  const roots = kids[''] || [], heads = roots.filter(m=>(kids[m.id]||[]).length).sort(order), loners = roots.filter(m=>!(kids[m.id]||[]).length).sort(byName);
+  const rebuild = () => { kids = {}; total = {};
+    d.members.forEach(m=>{ (kids[m.up||''] = kids[m.up||''] || []).push(m); });
+    roots = kids[''] || []; heads = roots.filter(m=>(kids[m.id]||[]).length).sort(order); loners = roots.filter(m=>!(kids[m.id]||[]).length).sort(byName); };
+  rebuild();
   const open = new Set(heads.map(h=>h.id));   // 一開始：每條線展開第 1 代
   const bg = document.createElement('div'); bg.className='sheet-bg';
   const node = (m, depth, seen) => {
@@ -4196,8 +4210,8 @@ async function adminTreeSheet(){
           return `<div class="tree-line"><div class="tree-head"><button class="tg" data-tg="${h.id}" aria-label="${on?'收起':'展開'}">${on?'▾':'▸'}</button>
             <button class="nm" data-mem="${h.id}">${avatarHTML(h)}<b class="uc">${esc(h.name)}</b>${badgeHTML(h.id)}</button><span class="cnt">下面 ${cnt(h.id)} 人</span></div>
             ${on ? ch.map(c=>node(c, 1, seen)).join('') : ''}</div>`; }).join('') : '<div class="notice info">還沒有人設定上下線。</div>'}
-        ${loners.length ? `<div class="card mt" style="box-shadow:none;border:1px solid var(--line)"><h3>還沒設定上線（${loners.length} 人）</h3><div class="muted small mb">如果他是最上面的頭就不用設；不是的話，點名字 →「👥 設定上線」。</div>
-          <div class="mlist">${loners.map(m=>`<button class="mrow" data-mem="${m.id}"><div class="who">${avatarHTML(m)}<div class="info"><b>${esc(m.name)}</b>${m.upText?`<div class="muted small">申請時寫的上線：${esc(m.upText)}</div>`:''}</div></div><span class="muted">›</span></button>`).join('')}</div></div>` : ''}
+        ${loners.length ? `<div class="card mt" id="tree-loners" style="box-shadow:none;border:1px solid var(--line)"><h3>還沒設定上線（${loners.length} 人）</h3><div class="muted small mb">點名字，直接選他的上線；<br>設好會留在這裡，可以接著設下一位。<br>最上面的頭不用設。</div>
+          <div class="mlist">${loners.map(m=>`<div class="mrow">${avatarHTML(m)}<button class="info tree-set" data-setup="${m.id}"><b>${esc(m.name)}</b>${m.upText?`<div class="muted small">申請時寫的上線：${esc(m.upText)}</div>`:''}<div class="small" style="color:var(--brand);font-weight:700">👥 點這裡設定上線</div></button><button class="btn btn-ghost btn-sm" data-mem="${m.id}">資料</button></div>`).join('')}</div></div>` : ''}
       </div></div>`;
     const nb = $('.sheet-b', bg); if (nb) nb.scrollTop = top;
   };
@@ -4205,6 +4219,11 @@ async function adminTreeSheet(){
     if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); return; }
     const tg = e.target.closest('[data-tg]'); if (tg) { const id = tg.dataset.tg; open.has(id) ? open.delete(id) : open.add(id); draw(); return; }
     const all = e.target.closest('[data-all]'); if (all) { open.clear(); if (all.dataset.all==='1') d.members.forEach(m=>{ if ((kids[m.id]||[]).length) open.add(m.id); }); draw(); return; }
+    const su = e.target.closest('[data-setup]');
+    if (su) { const m = d.members.find(x=>x.id===su.dataset.setup); if (!m) return;   // 在樹狀圖裡直接設定上線，設完留在這裡（2026-11-25 使用者）
+      setUpline(m.id, { name:m.name, hint:m.upText, members:d.members, onDone: async () => {
+        try { d = await api.adminTree(); rebuild(); draw(); const L = $('#tree-loners', bg); if (L) L.scrollIntoView({block:'start'}); } catch(err){ toast(errText(err),'err'); } } });
+      return; }
     const mb = e.target.closest('[data-mem]'); if (mb) { bg.remove(); S.admin.memberId = mb.dataset.mem; S.admin.calMonth = null; S.admin.calSel = null; go('account', {sub:'adminMember'}); }
   });
   document.body.appendChild(bg); draw();
