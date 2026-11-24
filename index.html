@@ -1649,6 +1649,7 @@ const GasApi = {
         if (!res.ok) throw new Error('NETWORK');
         let data; try { data = await res.json(); } catch(_) { throw new Error('NETWORK'); }
         if (!data.ok) { const e = new Error(data.error || 'SERVER'); e.server = true; throw e; }
+        if (QC_CHANGES.test(action)) QuickCache.clear();   // 有改資料：手機記住的舊畫面作廢
         return data.result;
       } catch(e) {
         lastErr = (e.name === 'AbortError' || e instanceof TypeError) ? new Error('NETWORK') : e;
@@ -1721,6 +1722,45 @@ const GasApi = {
   adminApprove(memberId, ok){ return this.call('admin.approve', {memberId, ok}); }
 };
 const api = CONFIG.MODE === 'demo' ? MockApi : GasApi;
+
+/* ---------- 秒開：先顯示上一次的內容，背景再拿新的 ----------
+   每個登入的人分開記；有發文、報名、改夢想等改資料的動作時全部作廢；登出時清掉。 */
+const QC_CHANGES = /^(post\.(create|update|delete)|comment\.add|dream\.|course\.|ticket\.|honor\.|reg\.|member\.|admin\.)/;
+const QuickCache = {
+  mem: {}, busy: {},
+  key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
+  get(k){ const kk = this.key(k); if (kk in this.mem) return this.mem[kk]; const v = store(kk); if (v) this.mem[kk] = v; return v; },
+  put(k, v){ const kk = this.key(k); this.mem[kk] = v; store(kk, v); },
+  fetch(k, fn){
+    const kk = this.key(k);
+    if (this.busy[kk]) return this.busy[kk];
+    const p = fn().then(v => { this.put(k, v); return v; }).finally(() => { delete this.busy[kk]; });
+    return (this.busy[kk] = p);
+  },
+  clear(){
+    this.mem = {}; store('royal_home_last', null);
+    try { Object.keys(localStorage).filter(k => k.indexOf('qc:') === 0).forEach(k => localStorage.removeItem(k)); } catch(_){}
+  }
+};
+/** 有記住的內容就先畫出來（不用等）；拿到新的、而且有變，才重畫一次（保持原本捲動位置） */
+async function quickRender(main, k, fn, draw){
+  const seq = S.navSeq, old = QuickCache.get(k);
+  if (old) draw(old); else main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+  let fresh;
+  try { fresh = await QuickCache.fetch(k, fn); }
+  catch(e) { if (!old && S.navSeq === seq) main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  if (S.navSeq !== seq || !main.isConnected) return;          // 已經換到別頁
+  if (old && JSON.stringify(old) === JSON.stringify(fresh)) return;
+  const y = window.scrollY; draw(fresh); window.scrollTo(0, y);
+}
+/** 進首頁後，趁空檔先把「我的成長」「皇家學院」準備好 */
+function prefetchPages(){
+  if (CONFIG.MODE !== 'live' || !S.me) return;
+  setTimeout(() => {
+    QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});
+    QuickCache.fetch('courses', () => api.getCourses()).catch(()=>{});
+  }, 1200);
+}
 // 管理員開通碼（只有第一次開通管理員時用）：記下來後馬上從網址拿掉，避免截圖或分享時外流
 try { const u = new URL(location.href), oc = u.searchParams.get('owner');
   if (oc){ store('royal_owner', oc.trim().toUpperCase().slice(0,20)); u.searchParams.delete('owner'); history.replaceState(null, '', u.pathname + u.search + u.hash); } } catch(_){}
@@ -1819,7 +1859,8 @@ function renderLogin(step='start', extra={}){
   } else if (step==='apply') {
     // 第一次加入：一次一步（姓名＋照片 → TW 帳號 → 確認送出）
     const A = S.ap && S.ap.ticket === (extra.ticket||'') ? S.ap : (S.ap = { ticket:extra.ticket||'', step:1, name:'', tw:'', loginName:extra.suggestedName||'', picture:extra.suggestedPicture||'' });
-    const dots = `<div class="ap-steps">${[1,2,3,4].map(i=>`<i class="${i<=A.step?'on':''}"></i>`).join('')}</div><div class="muted small center">第 ${A.step} 步／共 4 步</div>`;
+    const owner = !!store('royal_owner'), total = owner ? 3 : 4, shown = owner && A.step===4 ? 3 : A.step;   // 管理員開通：不用選上線
+    const dots = `<div class="ap-steps">${Array.from({length:total},(_,i)=>`<i class="${i<shown?'on':''}"></i>`).join('')}</div><div class="muted small center">第 ${shown} 步／共 ${total} 步</div>`;
     const av = avatarHTML({name:A.name||'？', avatarUrl:S.applyAvatar||A.picture||'', color:'#B9C6D3'},'xl');
     let body = '';
     if (A.step===1) body = `<h2 style="margin:0 0 4px">你的真實姓名</h2>
@@ -1833,23 +1874,19 @@ function renderLogin(step='start', extra={}){
       <button class="btn btn-primary mt" data-act="ap-next">下一步</button>
       <button class="btn btn-outline mt" data-act="login-back">回登入頁</button>`;
     else if (A.step===2) body = `<h2 style="margin:0 0 4px">如新 TW 帳號</h2>
-      <div class="muted">用來確認你是誰、對應經營戶別和衝刺班報名名單。</div>
       <label class="lbl" for="ap-tw">TW 帳號<span class="req">必填</span></label><input class="inp" id="ap-tw" placeholder="例如：TW0012345" autocapitalize="characters" maxlength="20" value="${esc(A.tw)}">
-      <div class="hint"><b>夫妻、家人共用同一個 TW 帳號沒關係</b>，每個人各自用自己的 LINE 申請、填同一個 TW 就好。</div>
-      <div class="hint">只有你和管理員看得到，不會公開在動態牆。</div>
-      <div class="hint"><b>請不要提供如新帳號的密碼。</b></div>
       <div id="ap-err" class="notice err hidden"></div>
       <button class="btn btn-primary mt" data-act="ap-next">下一步</button>
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
     else if (A.step===3) body = `<h2 style="margin:0 0 4px">你的上線是誰？</h2>
-      <div class="muted">帶你加入的推薦人。點一下名字；不知道可以跳過，管理員會幫你設定。</div>
-      <div id="ap-ups" class="mt"><div class="skeleton"></div></div>
+      <label class="lbl" for="ap-upname">上線的名字</label><input class="inp" id="ap-upname" placeholder="例如：王小美" maxlength="30" value="${esc(A.uplineName||A.uplineText||'')}">
+      <div id="ap-ups" class="mt"></div>
       <div id="ap-err" class="notice err hidden"></div>
-      <button class="btn btn-primary mt" data-act="ap-next">${A.uplineId?'下一步':'跳過，下一步'}</button>
+      <button class="btn btn-primary mt" data-act="ap-next">${A.uplineId||A.uplineText?'下一步':'跳過，下一步'}</button>
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
     else body = `<h2 style="margin:0 0 4px">確認資料</h2><div class="muted">送出後由管理員審核，通過就能使用。</div>
       <div class="card center mt" style="box-shadow:none;border:2px solid var(--line)">${av}<div style="font-size:24px;font-weight:800;margin-top:8px">${esc(A.name)}</div>
-        <div class="muted">TW 帳號：${esc(A.tw)}</div><div class="muted">上線：${A.uplineName?esc(A.uplineName):'（沒有選，管理員會幫你設定）'}</div></div>
+        <div class="muted">TW 帳號：${esc(A.tw)}</div>${owner?'':`<div class="muted">上線：${A.uplineName||A.uplineText?esc(A.uplineName||A.uplineText):'（沒有填，管理員會幫你設定）'}</div>`}</div>
       <div class="notice info small mt privacy">🔒 <b>個人資料說明</b>：你填的姓名、大頭照、TW 帳號和登入用的 LINE／Email，只用在皇家團隊的活動管理（審核、打卡、課程報名與繳費）。
         其他夥伴只看得到你的姓名和大頭照；TW 帳號、Email 只有你和管理員看得到。資料存在管理員的 Google 帳號，不會提供給團隊以外的人。想刪除資料請洽管理員。按下面的按鈕送出，就表示你同意以上說明。</div>
       <div id="ap-err" class="notice err hidden"></div>
@@ -1857,14 +1894,17 @@ function renderLogin(step='start', extra={}){
       <button class="btn btn-outline mt" data-act="ap-prev">上一步</button>`;
     app.innerHTML = `<div class="login" style="justify-content:flex-start">${head}${dots}${body}</div>`;
     if (A.step===3) (async () => {
-      const box = $('#ap-ups'); let ups = A.ups;
-      try { if (!ups) ups = A.ups = await api.applyUplines(A.ticket); } catch(e){ if (box) box.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
-      if (!box) return;
-      box.innerHTML = `<div class="pick-grid">${ups.map(u=>`<button data-up="${u.id}" class="${A.uplineId===u.id?'on':''}">${avatarHTML(u)}<span>${esc(u.name)}</span></button>`).join('')}</div>`;
+      const box = $('#ap-ups'), inp = $('#ap-upname'); let ups = A.ups;
+      const sync = () => { $$('[data-up]', box).forEach(x=>x.classList.toggle('on', x.dataset.up===A.uplineId));
+        const nb = $('[data-act="ap-next"]'); if (nb) nb.textContent = A.uplineId || A.uplineText ? '下一步' : '跳過，下一步'; };
+      if (inp) inp.oninput = () => { A.uplineText = inp.value.replace(/\s+/g,' ').trim(); if (A.uplineName && A.uplineText !== A.uplineName){ A.uplineId=''; A.uplineName=''; } sync(); };
+      try { if (!ups) ups = A.ups = await api.applyUplines(A.ticket); } catch(e){ return; }   // 名單拿不到也沒關係，可以自己寫
+      if (!box || !ups.length) return;
+      box.innerHTML = `<div class="muted small" style="margin-bottom:6px">或點一下名字：</div><div class="pick-grid">${ups.map(u=>`<button data-up="${u.id}" class="${A.uplineId===u.id?'on':''}">${avatarHTML(u)}<span>${esc(u.name)}</span></button>`).join('')}</div>`;
       box.onclick = e => { const b = e.target.closest('[data-up]'); if (!b) return; const u = ups.find(x=>x.id===b.dataset.up);
-        if (A.uplineId===u.id){ A.uplineId=''; A.uplineName=''; } else { A.uplineId=u.id; A.uplineName=u.name; }
-        $$('[data-up]', box).forEach(x=>x.classList.toggle('on', x.dataset.up===A.uplineId));
-        const nb = $('[data-act="ap-next"]'); if (nb) nb.textContent = A.uplineId ? '下一步' : '跳過，下一步'; };
+        if (A.uplineId===u.id){ A.uplineId=''; A.uplineName=''; A.uplineText=''; } else { A.uplineId=u.id; A.uplineName=u.name; A.uplineText=u.name; }
+        if (inp) inp.value = A.uplineText || ''; sync(); };
+      sync();
     })();
     const f = $('#ap-name') || $('#ap-tw'); if (f && !f.value) setTimeout(()=>f.focus(), 50);
   } else if (step==='wait') {
@@ -1935,7 +1975,7 @@ async function enterWithSession(r){
   store(SESSION_KEY, S.session);
   document.body.style.background='';
   try { await loadHome(); } catch(e) { if (!S.session) return; return renderLogin('start', {msg:errText(e)}); }
-  renderShell(); go('home');
+  renderShell(); go('home'); prefetchPages();
   if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip')) setTimeout(showInstallTip, 1500);
 }
 /** 第一次進 APP、還沒放到桌面：跳一次說明（關掉就不再跳，「我的帳號」裡也找得到） */
@@ -1949,7 +1989,7 @@ function showInstallTip(){
 }
 let sessionLostShown = false;
 function onSessionLost(code){
-  store(SESSION_KEY, null); S.session = null; S.feed = {items:[],cursor:0,done:false,loading:false};
+  QuickCache.clear(); store(SESSION_KEY, null); S.session = null; S.feed = {items:[],cursor:0,done:false,loading:false};
   if (sessionLostShown) return; sessionLostShown = true;
   renderLogin('start', {msg: code==='NOT_APPROVED' ? '你的帳號目前不能使用，請洽管理員。' : '登入已過期，請重新登入。'});
   setTimeout(()=>{ sessionLostShown = false; }, 3000);
@@ -1995,7 +2035,8 @@ function setNav(){
   $('#tb-back').classList.toggle('hidden', !S.sub); requestAnimationFrame(fitTopTitle);
   $('#shell').classList.toggle('wide', S.sub==='admin' || S.sub==='adminMember' || S.sub==='adminCourse');
 }
-async function loadHome(){ const h = await api.getHome(); S.me=h.me; S.act=h.activity; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
+async function loadHome(){ const h = await api.getHome(); applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
+function applyHome(h){ S.me=h.me; S.act=h.activity; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[];
   S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
@@ -2053,7 +2094,7 @@ function watchNavVisible(){
 function go(tab, opts={}){
   stopReadTracking();
   { const m = $('#main'); if (m) m.onclick = null; }
-  S.tab = tab; S.sub = opts.sub || null;
+  S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
   const main = $('#main');
   if (S.sub==='admin') return renderAdmin(main);
@@ -2474,9 +2515,17 @@ function dayMap(pr){ const m={}; if (pr && pr.days) Object.keys(pr.days).forEach
 function monthShift(mo, n){ const [y,m]=mo.split('-').map(Number); const d=new Date(y,m-1+n,1); return d.getFullYear()+'-'+pad(d.getMonth()+1); }
 
 async function renderProgress(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  try { await loadHome(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
-  setNav();
+  const seq = S.navSeq;
+  if (!S.me){
+    main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
+    try { await loadHome(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+    setNav(); return drawProgress(main);
+  }
+  const snap = () => JSON.stringify([growthMode(), S.progress, S.act, S.joined]), before = snap();
+  drawProgress(main);   // 先用已知的資料畫，背景再確認有沒有變
+  loadHome().then(() => { setNav(); if (S.navSeq === seq && snap() !== before) drawProgress(main); }).catch(()=>{});
+}
+async function drawProgress(main){
   if (growthMode()) return renderGrowth(main);
   const pr=S.progress, act=S.act;
   if (!S.calMonth) S.calMonth = todayStr().slice(0,7);
@@ -2505,7 +2554,9 @@ async function renderProgress(main){
     <div id="my-dream"></div>
     <div class="card"><h3>打卡日曆</h3><div id="cal">${calendarHTML(dayMap(pr), act, S.calMonth, S.calSel)}</div><div id="day-detail"></div></div>
     <div class="card"><h3>我的歷史日誌</h3><div id="my-posts"><div class="skeleton"></div></div></div>`;
-  api.getGrowth().then(g => { GROW = g; const b = $('#my-dream'); if (b) b.innerHTML = dreamCardHTML(g.dream, true); }).catch(()=>{});
+  { const show = g => { GROW = g; const b = $('#my-dream'); if (b) b.innerHTML = dreamCardHTML(g.dream, true); };
+    const old = QuickCache.get('growth:me'); if (old) show(old);
+    QuickCache.fetch('growth:me', () => api.getGrowth()).then(show).catch(()=>{}); }
   await loadMyPosts();
   if (S.calSel) drawDayDetail(S.calSel);
 }
@@ -2548,10 +2599,10 @@ function drawDayDetail(ds){
    ===================================================================== */
 const isOnline = c => !c.mode || c.mode==='online' || c.mode==='hybrid';
 const isOnsite = c => c.mode==='onsite' || c.mode==='hybrid';
-async function renderAcademy(main){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  let cs;
-  try { cs = await api.getCourses(); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+function renderAcademy(main){
+  return quickRender(main, 'courses', () => api.getCourses(), cs => drawAcademy(main, cs));
+}
+async function drawAcademy(main, cs){
   ACAD = cs;
   const T = todayStr(), view = S.acadView || 'online';
   const link = (url, cls, label, act, id) => (CONFIG.MODE==='live' && url && url!=='#')
@@ -2606,8 +2657,9 @@ async function renderAcademy(main){
 let ACAD = [];
 /* 本月課表：讀「RoyalTeam 行事曆」的資料（課表照舊在行事曆試算表編輯） */
 async function renderSchedule(box){
-  let d;
-  try { d = await api.getSchedule(); } catch(e) { box.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  return quickRender(box, 'schedule', () => api.getSchedule(), d => drawSchedule(box, d));
+}
+async function drawSchedule(box, d){
   if (!d || !d.available){ box.innerHTML = '<div class="card center"><div style="font-size:40px">📅</div><div class="muted">本月課表暫時讀不到，請稍後再看。</div></div>'; return; }
   const now = parseYmd(todayStr()), sameMonth = d.year===now.getFullYear() && d.month===now.getMonth()+1;
   const isPast = dt => { if (!sameMonth) return false; const m = String(dt).match(/^(\d{1,2})\/(\d{1,2})/); return m && (+m[1]===d.month) && (+m[2] < now.getDate()); };
@@ -3041,9 +3093,11 @@ function renderRegApply(main){
     }
   };
 }
-async function renderGrowth(main, memberId){
-  main.innerHTML = '<div class="skeleton"></div><div class="skeleton"></div>';
-  let g; try { g = await api.getGrowth(memberId); } catch(e) { main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+function renderGrowth(main, memberId){
+  const mine = !memberId || (S.me && memberId === S.me.id);
+  return quickRender(main, 'growth:' + (mine ? 'me' : memberId), () => api.getGrowth(mine ? undefined : memberId), g => drawGrowth(main, g));
+}
+async function drawGrowth(main, g){
   const honorsHTML = items => items.length ? `<div class="card"><h3>🏆 ${g.mine?'我的榮譽':'榮譽'}</h3><div class="hp-items" style="margin-top:0">${items.map(it=>`<div class="hp-item"><span>${it.kind==='reach'?'🎯':'🏅'} ${esc(it.title)}</span><span class="muted">${mdZh(it.date)}</span></div>`).join('')}</div>
     <button class="link-btn mt" data-act="honors">看榮譽名人榜 ›</button></div>` : '';
   if (!g.mine){
@@ -3398,7 +3452,7 @@ function drawMemberList(){
 }
 function drawReview(){
   const box = $('#rev');
-  const apps = ADM.applicants.map(a=>`<div class="review-item"><div class="row">${avatarHTML(a)}<b>新夥伴申請：${esc(a.name)}</b></div><div class="muted small">${CONFIG.SHOW_TEAM?esc(a.team)+'・':''}TW：${esc(a.tw)}・透過 ${esc(a.via)}${a.loginName?`（${esc(a.loginName)}）`:''}・${timeAgo(a.at)}</div>${a.uplineName?`<div class="small">上線：<b>${esc(a.uplineName)}</b></div>`:''}
+  const apps = ADM.applicants.map(a=>`<div class="review-item"><div class="row">${avatarHTML(a)}<b>新夥伴申請：${esc(a.name)}</b></div><div class="muted small">${CONFIG.SHOW_TEAM?esc(a.team)+'・':''}TW：${esc(a.tw)}・透過 ${esc(a.via)}${a.loginName?`（${esc(a.loginName)}）`:''}・${timeAgo(a.at)}</div>${a.uplineName?`<div class="small">上線：<b>${esc(a.uplineName)}</b></div>`:a.uplineText?`<div class="small">上線（他自己寫的）：<b>${esc(a.uplineText)}</b>，核准後到他的夥伴頁點選上線</div>`:''}
     <div class="row mt"><button class="btn btn-primary btn-sm" data-act="app-ok" data-id="${a.id}">核准</button><button class="btn btn-outline btn-sm" data-act="app-no" data-id="${a.id}">退回</button></div></div>`).join('');
   const posts = ADM.pendingPosts.map(p=>{ return `<div class="review-item"><b>逾期補登：${esc(p.authorName)}</b>
     <div class="muted small"><span class="nw">行動日 ${mdZh(p.actionDate)}</span><wbr><span class="nw">・實際發布 ${timeAgo(p.postedAt)}</span><wbr><span class="nw">（晚 ${p.lateDays} 天）</span></div>
@@ -3416,7 +3470,7 @@ async function renderAdminMember(main){
   if (!S.admin.calMonth) S.admin.calMonth = todayStr().slice(0,7);
   main.innerHTML = `<div class="card"><div class="row">${avatarHTML(m,'lg')}
       <div style="flex:1"><h2 style="margin:0">${esc(m.name)} ${m.role==='staff'?'<span class="pill brand">工作人員</span>':m.role==='admin'?'<span class="pill ok">管理員</span>':''}</h2><div class="muted">${esc(m.tw)}・${CONFIG.SHOW_TEAM?esc(m.team)+'・':''}${m.paid?'已繳費':'未繳費'}</div></div></div>
-      <div class="muted mt">上線：<b>${m.uplineName?esc(m.uplineName):'（沒有設定）'}</b>${m.teamCount?`・整條線 ${m.teamCount} 人`:''}</div>
+      <div class="muted mt">上線：<b>${m.uplineName?esc(m.uplineName):'（沒有設定）'}</b>${!m.uplineName&&m.uplineText?`<span class="small">（申請時寫：${esc(m.uplineText)}）</span>`:''}${m.teamCount?`・整條線 ${m.teamCount} 人`:''}</div>
       <div class="row mt" style="flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-act="rename" data-id="${m.id}" data-name="${esc(m.name)}">✏️ 改姓名</button>
         <button class="btn btn-ghost btn-sm" data-act="set-upline" data-id="${m.id}">👥 設定上線</button></div>
       ${m.role==='admin'?'':`<div class="row mt" style="flex-wrap:wrap;align-items:center"><button class="btn ${m.role==='staff'?'btn-outline':'btn-primary'} btn-sm" data-act="set-staff" data-id="${m.id}" data-on="${m.role==='staff'?'0':'1'}">${m.role==='staff'?'取消工作人員':'🧑‍💼 設成工作人員'}</button>
@@ -3782,14 +3836,16 @@ document.addEventListener('click', async e=>{
       const x = $('#ap-err'), err = m => { x.textContent = m; x.classList.remove('hidden'); };
       if (act==='ap-next' && A.step===1){ if (!A.name) return err('請填寫真實姓名。'); if (!validName(A.name)) return err(errText(new Error('BAD_NAME'))); }
       if (act==='ap-next' && A.step===2){ if (!A.tw) return err(errText(new Error('TW_REQUIRED'))); if (!/^[A-Z0-9-]{4,20}$/.test(A.tw)) return err(errText(new Error('BAD_TW'))); }
+      if ($('#ap-upname')) { A.uplineText = $('#ap-upname').value.replace(/\s+/g,' ').trim(); if (A.uplineName && A.uplineText !== A.uplineName){ A.uplineId=''; A.uplineName=''; } }
       A.step = Math.max(1, Math.min(4, A.step + (act==='ap-next'?1:-1)));
+      if (A.step===3 && store('royal_owner')) A.step += act==='ap-next' ? 1 : -1;   // 管理員開通：沒有上線這一步
       renderLogin('apply', { ticket:A.ticket }); break; }
     case 'apply-send': {
       const x=$('#ap-err'), A = S.ap || {}, name = A.name || '';
       if(!name){ x.textContent='請填寫姓名。'; x.classList.remove('hidden'); return; }
       if (CONFIG.MODE!=='live') { S.ap = null; renderLogin('wait',{method:'LINE'}); break; }
       el.disabled=true; el.innerHTML='<span class="spinner"></span> 送出中…';
-      try { await handleAuth(await api.apply({ ticket:el.dataset.ticket, name, tw:A.tw || '', uplineId:A.uplineId || '', avatar: S.applyAvatar || '', ownerCode: store('royal_owner') || '' })); S.applyAvatar = null; S.ap = null; store('royal_owner', null); }
+      try { await handleAuth(await api.apply({ ticket:el.dataset.ticket, name, tw:A.tw || '', uplineId:A.uplineId || '', uplineText: A.uplineId ? '' : (A.uplineText || ''), avatar: S.applyAvatar || '', ownerCode: store('royal_owner') || '' })); S.applyAvatar = null; S.ap = null; store('royal_owner', null); }
       catch(err){ el.disabled=false; el.textContent='送出申請'; x.textContent=errText(err); x.classList.remove('hidden'); }
       break; }
     /* 導覽 */
@@ -3884,7 +3940,7 @@ document.addEventListener('click', async e=>{
     case 'share-course': S.editing=null; S.draft=newDraft({courseId:el.dataset.id, courseTitle:el.dataset.title, text:'', actionDate:todayStr(), dateMode:'today'}); go('compose'); break;
     /* 帳號 */
     case 'bind': toast('正式上線後，這裡會引導你用 LINE 或 Email 驗證後綁定'); break;
-    case 'logout': if (await confirmBox('確定要登出嗎？','登出')) { try { await api.logout(); } catch(_){} store(SESSION_KEY,null); S.session=null; S.feed={items:[],cursor:0,done:false,loading:false}; renderLogin('start'); } break;
+    case 'logout': if (await confirmBox('確定要登出嗎？','登出')) { try { await api.logout(); } catch(_){} QuickCache.clear(); store(SESSION_KEY,null); S.session=null; S.feed={items:[],cursor:0,done:false,loading:false}; renderLogin('start'); } break;
     case 'logout-all': if (await confirmBox('會讓你在所有手機和電腦上都登出，確定嗎？','全部登出',true)) {
       try { await api.logoutAll(); } catch(err){ toast(errText(err),'err'); break; }
       store(SESSION_KEY,null); S.session=null; S.feed={items:[],cursor:0,done:false,loading:false}; renderLogin('start',{msg:'已登出所有裝置。', ok:true}); } break;
@@ -3933,9 +3989,25 @@ document.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.matche
   const sess = store(SESSION_KEY);
   if (sess && sess.expiresAt > Date.now()) {
     S.session = sess;
+    const last = CONFIG.MODE==='live' ? store('royal_home_last') : null;
+    if (last && last.me) {   // 秒開：先用上一次的首頁，背景再更新
+      applyHome(last); api._prefetch = { at:Date.now(), feed:last.feed };
+      document.body.style.background=''; renderShell(); go('home');
+      const before = JSON.stringify(last);
+      loadHome().then(() => {
+        setTopTitle(); setNav();
+        const now = store('royal_home_last');
+        if (S.tab==='home' && !S.sub && JSON.stringify(now) !== before) {
+          const y = window.scrollY; S.feed = { items:[], cursor:0, done:false, loading:false };
+          renderHome($('#main')); window.scrollTo(0, y);
+        }
+        prefetchPages();
+      }).catch(()=>{});
+      return;
+    }
     renderLogin('busy', {text:'載入中…'});
     try { await loadHome(); } catch(e) { if (S.session) renderLogin('start', {msg:errText(e)}); return; }
-    document.body.style.background=''; renderShell(); go('home');
+    document.body.style.background=''; renderShell(); go('home'); prefetchPages();
   } else renderLogin('start');
 })();
 // iPhone 主畫面 APP：從 LINE 切回來時，繼續領登入結果
