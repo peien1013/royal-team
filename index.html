@@ -2100,7 +2100,7 @@ function setTopTitle(){
   t.classList.toggle('act', hasAct); sub.classList.toggle('hidden', !hasAct);
   const T = todayStr(), live = hasAct && S.act.end >= T;   // 活動還沒結束：金框看板
   const bar = t.closest('.topbar'); if (bar) bar.classList.toggle('event', live);
-  sub.textContent = !hasAct ? '皇家團隊' : S.act.start > T ? '🏆 皇家團隊・衝刺班即將開始' : S.act.end >= T ? '🏆 皇家團隊・衝刺班進行中' : '皇家團隊';
+  sub.textContent = !hasAct ? '皇家團隊' : S.act.start > T ? '🏆 皇家團隊・即將開始' : S.act.end >= T ? '🏆 皇家團隊・進行中' : '皇家團隊';
   requestAnimationFrame(fitTopTitle);
 }
 /** 活動名稱一定排成一行：放不下就把字縮小一點（最小 12px），不截斷 */
@@ -2918,7 +2918,7 @@ function renderAccount(main){
   const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
   main.innerHTML = `
     <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
-      <h2 style="margin:0">${esc(me.name)}</h2>${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+      <h2 style="margin:0">${esc(me.name)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
     <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
     <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
     <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
@@ -3416,7 +3416,7 @@ async function regManage(){
   const count = () => ms.filter(m=>m.joined).length;
   bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${d.act?esc(d.act.name)+' ':''}參加名單（<span id="rg-n">${count()}</span> 人）</h3><button data-x>完成</button></div>
     <div class="sheet-b"><div class="muted mb">點一下名字：綠色＝有參加；再點一次移出。</div>
-      <div class="pick-grid">${ms.map(m=>`<button data-id="${m.id}" class="${m.joined?'on':''}">${avatarHTML(m)}<span>${esc(m.name)}</span>${m.pending&&!m.joined?'<small class="pill pend">申請中</small>':''}</button>`).join('')}</div>
+      ${ms.length?'':'<div class="notice info">目前還沒有其他夥伴。請夥伴先用 APP 申請加入，你核准後就會出現在這裡。</div>'}<div class="pick-grid">${ms.map(m=>`<button data-id="${m.id}" class="${m.joined?'on':''}">${avatarHTML(m)}<span>${esc(m.name)}</span>${m.pending&&!m.joined?'<small class="pill pend">申請中</small>':''}</button>`).join('')}</div>
       ${d.unmatched.length?`<div class="hint mt">名單上還沒加入 APP 的 TW（加入後會自動對上）：${d.unmatched.map(esc).join('、')}</div>`:''}</div></div>`;
   bg.addEventListener('click', async e=>{
     if (e.target===bg || e.target.closest('[data-x]')){ bg.remove(); QuickCache.dropPrefix('adm'); if (S.sub==='admin') renderAdmin($('#main')); return; }
@@ -3510,7 +3510,7 @@ async function renderAdmin(main){
         <div class="chips">${c.date>=T0?(c.date===T0?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div></div>
         <div class="days">${c.taken}<span class="muted small"> 人報名</span></div></button>`).join('')
         : '<div class="muted">目前沒有現場課程。在課程表把「mode」填 onsite、填上地點和費用，就會出現在這裡。</div>'}</div></div>
-      <div class="card"><h3>📋 衝刺班參加名單</h3><div class="muted mb">${s.joinMode==='all'?'這個活動設成<b>全部夥伴都算</b>（不用報名）。':`名單上有 <b>${s.registered}</b> 人。只有名單上的人算衝刺班、看「我的進度」；夥伴也可以在 APP 裡自己報名，申請會出現在「待審核」。`}</div>
+      <div class="card"><h3>📋 ${act?esc(act.name):'活動'}參加名單</h3><div class="muted mb">${!act?'目前沒有活動。':s.joinMode==='all'?'這個活動設成<b>全部夥伴都算</b>（不用報名）。':s.joinMode==='admin'?`名單上有 <b>${s.registered}</b> 人。只有你加進名單的人才算、看「我的進度」；夥伴不能自己報名。`:`名單上有 <b>${s.registered}</b> 人。只有名單上的人算、看「我的進度」；夥伴也可以在 APP 裡自己報名，申請會出現在「待審核」。`}</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="reg-import">貼上 TW 名單</button><button class="btn btn-outline btn-sm" data-act="reg-manage">點名字加入／移出</button></div></div>
       <div class="card"><h3>🏆 榮譽名人榜</h3><div class="muted mb">活動達標的人會自動上榜；晉升、業績表揚在這裡加。</div>
         <div class="row" style="flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-act="hon-add">＋ 新增榮譽</button><button class="btn btn-outline btn-sm" data-act="honors">看榮譽榜</button></div></div>
