@@ -323,6 +323,9 @@ h2 .bdg{width:28px;height:28px}
 @keyframes bdg-star{0%,50%,100%{opacity:0;transform:scale(.4) rotate(0)}65%{opacity:1;transform:scale(1.2) rotate(45deg)}80%{opacity:0;transform:scale(.6) rotate(90deg)}}
 .bdg-tag.te{background:linear-gradient(135deg,#8A5A00,#F6D365 45%,#B07800);color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.45);letter-spacing:.5px;box-shadow:0 0 0 1px #E8C25A inset}
 h2 .bdg-tag.te{font-size:15px;padding:1px 9px}
+.my-bdgs{display:flex;gap:12px;align-items:center;margin:0 0 12px}
+.bdg-big{width:56px;height:56px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.25))}
+.bdg-big-te{font-size:22px;padding:6px 14px}
 @media (prefers-reduced-motion: reduce){.bdg-s::after,.bdg-s::before,.bdg-s img.bdg,.bdg-tag.te::after{animation:none}}
 .tb-dot{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;margin-left:6px;border-radius:999px;background:#DC2626;color:#fff;font-size:13px;font-weight:800;line-height:1}
 .card.apply-banner{background:#ECFDF5;border:2px solid #10B981;color:#065F46;font-weight:700;margin-bottom:10px}
@@ -2436,36 +2439,37 @@ const shiny = (img, alt, title) => `<span class="bdg-s" style="--m:url('${img}')
 function badgeHTML(id){
   const b = S.badges && S.badges[id]; if (!b) return '';
   const r = rankOf(b.r), c = COE[b.c]; let h = '';   // 先聘階、再創業名人（例：TE＋五百萬）
-  if (r) h += r.img ? shiny(r.img, r.k, `${r.k}・${r.full}`)
-    : r.te ? `<span class="bdg-s is-tag"><span class="bdg-tag te" title="${esc(r.full)}">${r.tag}</span></span>`
+  if (r) h += r.img ? shiny(r.img, r.k, r.k)
+    : r.te ? `<span class="bdg-s is-tag"><span class="bdg-tag te">${r.tag}</span></span>`
     : `<span class="bdg-tag" title="${esc(r.full)}">${r.tag}</span>`;
   else if (b.r) h += `<span class="bdg-tag">${esc(b.r)}</span>`;
-  if (c) h += shiny(c.img, c.n, `${c.n}（${c.old}）`);
+  if (c) h += shiny(c.img, c.old, c.old);
   return h ? `<span class="bdgs">${h}</span>` : '';
 }
 /** 我的帳號：我的徽章（自己選聘階、創業名人） */
 function myBadgeCardHTML(){
-  const b = (S.badges && S.badges[S.me.id]) || { r:'', c:0 }, r = rankOf(b.r), c = COE[b.c];
-  const showR = r && (r.img || r.te);
+  const b = (S.badges && S.badges[S.me.id]) || { r:'', c:0 }, r = rankOf(b.r), c = COE[b.c], showR = r && (r.img || r.te);
+  const big = showR ? (r.img ? `<img class="bdg-big" src="${r.img}" alt="${esc(r.k)}">` : '<span class="bdg-tag te bdg-big-te">TE</span>') : '';
   return `<div class="card" id="my-badge"><h3>🏅 我的徽章</h3>
     <div class="muted mb">選好之後，動態牆上你的名字後面就會出現閃亮的徽章，大家都看得到。</div>
+    ${showR || c ? `<div class="my-bdgs">${big}${c ? `<img class="bdg-big" src="${c.img}" alt="${esc(c.old)}">` : ''}</div>` : ''}
     <div class="row" style="flex-wrap:wrap;gap:8px">
-      <button class="btn btn-ghost btn-sm" data-act="my-rank">${showR ? rankIcon(r) + esc(r.k) + '・' + esc(r.full) : '選我的聘階'}</button>
-      <button class="btn btn-ghost btn-sm" data-act="my-coe">${c ? `<img class="bdg" src="${c.img}" alt=""> ${c.n}（${c.old}）` : '選我的創業名人'}</button></div>
-    <div class="hint">各選一個目前最高的；升階了再回來改。</div></div>`;
+      <button class="btn btn-ghost btn-sm" data-act="my-rank">${showR ? '換聘階徽章' : '選聘階徽章'}</button>
+      <button class="btn btn-ghost btn-sm" data-act="my-coe">${c ? '換創業名人徽章' : '選創業名人徽章'}</button></div>
+    <div class="hint">各選一個目前最高的；升階了再回來換。</div></div>`;
 }
 const rankIcon = r => r.img ? `<img class="bdg" src="${r.img}" alt=""> ` : r.te ? '<span class="bdg-tag te">TE</span> ' : '';
 /** 夥伴自己選：只列有徽章的聘階（TE～主任），各選一個最高的 */
 async function pickMyRank(cur){
-  const v = await choiceBox(`選你目前<b>最高</b>的聘階（只能選一個）`, [
-    ...RANKS.filter(r=>r.img||r.te).map(r=>({ v:r.k, label:`${rankIcon(r)}${r.k}・${r.full}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
-    { v:'__clear', label:'先不要顯示聘階', cls:'btn-outline' }], { html:true });
+  const v = await choiceBox(`選你目前<b>最高</b>的聘階徽章（只能選一個）`, [
+    ...RANKS.filter(r=>r.img||r.te).map(r=>({ v:r.k, label:`${rankIcon(r)}${r.te ? '' : r.k}`, cls: rankOf(cur)===r ? 'btn-primary' : 'btn-ghost', html:true })),
+    { v:'__clear', label:'先不要顯示', cls:'btn-outline' }], { html:true });
   return !v ? null : v==='__clear' ? '' : v;
 }
 async function pickMyCoe(cur){
-  const v = await choiceBox(`選你目前<b>最高</b>的創業名人（只能選一個）`, [
-    ...[1,2,3,4].map(n=>({ v:String(n), label:`<img class="bdg" src="${COE[n].img}" alt=""> ${COE[n].n}（${COE[n].old}）`, cls: cur===n ? 'btn-primary' : 'btn-ghost', html:true })),
-    { v:'0', label:'先不要顯示創業名人', cls:'btn-outline' }], { html:true });
+  const v = await choiceBox(`選你目前<b>最高</b>的創業名人徽章（只能選一個）`, [
+    ...[1,2,3,4].map(n=>({ v:String(n), label:`<img class="bdg" src="${COE[n].img}" alt=""> ${COE[n].old}`, cls: cur===n ? 'btn-primary' : 'btn-ghost', html:true })),
+    { v:'0', label:'先不要顯示', cls:'btn-outline' }], { html:true });
   return !v ? null : +v;
 }
 /** 管理員：選聘階（回傳名稱；'' 清掉；null 取消） */
@@ -3423,7 +3427,7 @@ async function renderHonors(main){
       ${admin?'<button class="btn btn-white btn-sm" data-act="hon-add">＋ 新增榮譽</button>':''}</div>
     ${HONORS.people.length ? HONORS.people.map(p=>`<div class="card hp">
       <div class="hp-top"><span data-act="person" data-id="${p.id}" style="cursor:pointer">${avatarHTML(p,'lg')}</span><div style="flex:1;min-width:0"><div class="hp-name">${esc(p.name)}${badgeHTML(p.id)}</div>
-        ${p.rank?`<span class="pill rank">👑 ${esc(p.rank)}</span>`:''}</div></div>
+        </div></div>
       ${p.quote?`<div class="hp-quote uc">「${esc(p.quote)}」</div>`:''}
       <div class="hp-items">${p.items.map(it=>`<div class="hp-item"><span>${it.kind==='reach'?'🎯':'🏅'} ${esc(it.title)}</span><span class="muted">${mdZh(it.date)}</span></div>`).join('')}</div>
       ${p.id===meId || admin ? `<div class="hp-acts">
@@ -3618,7 +3622,7 @@ async function drawGrowth(main, g){
     <button class="link-btn mt" data-act="honors">看榮譽名人榜 ›</button></div>` : '';
   if (!g.mine){
     main.innerHTML = `<div class="card person-head">${avatarHTML(g.m,'xl')}<h2 style="margin:4px 0 0">${esc(g.m.name)}${badgeHTML(g.m.id)}</h2>
-        ${g.m.rank?`<span class="pill rank">👑 ${esc(g.m.rank)}</span>`:''}${g.m.quote?`<div class="hp-quote uc" style="width:100%">「${esc(g.m.quote)}」</div>`:''}</div>
+        ${g.m.quote?`<div class="hp-quote uc" style="width:100%">「${esc(g.m.quote)}」</div>`:''}</div>
       ${dreamCardHTML(g.dream, false, g.m.name)}${honorsHTML(g.honors)}`;
     return;
   }
