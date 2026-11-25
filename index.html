@@ -648,8 +648,8 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .pill.mode-online{background:var(--brand-soft);color:var(--brand-dark)}
 .pill.mode-onsite{background:#FFEBD9;color:#B4540A}
 .pill.mode-both{background:linear-gradient(90deg,var(--brand-soft),#FFEBD9);color:#6B4A1A}
-.acad-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 6px}
-.acad-switch button{border:2px solid var(--brand-line);background:#fff;border-radius:18px;padding:12px 8px;font-size:18px;font-weight:800;min-height:64px;color:var(--text,#1f2a37)}
+.acad-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:8px 0 12px}   /* 10:07 使用者：還要往下滑一點才看到「進入 Zoom 上課」→ 拿掉「即將開課」大標（卡片上已經有標籤）、切換鈕變矮 */
+.acad-switch button{border:2px solid var(--brand-line);background:#fff;border-radius:18px;padding:8px 8px;font-size:18px;font-weight:800;min-height:58px;color:var(--text,#1f2a37)}
 .acad-switch button small{display:block;font-size:13px;font-weight:600;opacity:.8;margin-top:2px}
 .acad-switch button.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,114,196,.25)}
 .acad-h{margin:16px 4px 10px}
@@ -3505,7 +3505,7 @@ async function drawAcademy(main, cs){
         <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
         ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
         ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div></div>
-      ${c.intro?`<div class="c-intro">${introBlocks(c.intro)}</div>`:''}
+      ${c.intro&&showOnsite?`<div class="c-intro">${introBlocks(c.intro)}</div>`:''}
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
       ${c.announce?`<div class="announce">📢 ${esc(c.announce)}</div>`:''}
@@ -3541,7 +3541,7 @@ async function drawAcademy(main, cs){
   main.innerHTML = `${mineHTML}
     ${sw}
     ${view==='onsite'&&hasTk&&!mine.length?'<button class="link-btn" data-act="my-tickets">🎫 我的票券 ›</button>':''}
-    ${up.length?`<h2 class="acad-h">即將開課</h2>${up.map(card).join('')}`:''}
+    ${up.length?up.map(card).join(''):''}
     ${past.length?`<h2 class="acad-h">${view==='online'?'課程回放':'過去的課程'}</h2>${past.map(card).join('')}`:''}
     ${!list.length?`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`:''}`;
 }
