@@ -218,8 +218,25 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .stat.late{background:var(--late-soft)} .stat.late .v{color:var(--late)}
 
 /* 學院 */
-.course .when{font-weight:700;color:var(--brand-dark)}
-.course .teacher{color:var(--muted)}
+.course .c-head{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:start;margin-top:14px}
+.c-date{border-radius:16px;background:linear-gradient(180deg,var(--brand),var(--brand-dark));color:#fff;text-align:center;padding:7px 2px 8px;box-shadow:0 4px 12px rgba(11,114,196,.22)}
+.c-date.past{background:linear-gradient(180deg,#9AA6B2,#7D8995);box-shadow:none}
+.c-date .m,.c-date .w{display:block;font-size:14px;font-weight:700;line-height:1.3;opacity:.92}
+.c-date b{display:block;font-size:34px;line-height:1.1;font-weight:800}
+.course .c-title{margin:0 0 8px;font-size:21px;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}   /* 「發展」不拆兩行；沒有空格的長標題才硬換行 */
+.c-meta{display:flex;gap:10px;align-items:baseline;font-size:17px;line-height:1.5;margin-top:3px}
+.c-meta .k{flex:none;font-size:14px;font-weight:700;color:var(--brand-dark);background:var(--brand-soft);border-radius:8px;padding:1px 8px}
+.c-meta b{color:var(--text)}
+.course .c-intro{margin-top:16px;background:#F5F8FC;border:1px solid var(--line);border-radius:16px;padding:12px 16px;font-size:17px}
+.c-intro .c-line{line-height:1.65;color:var(--text)}
+.c-intro .c-gap{height:10px}
+.c-intro .c-kvs{margin:10px 0 2px;background:#fff;border-radius:12px;padding:2px 14px}
+.c-intro .c-line+.c-kvs{margin-top:12px}
+.c-intro .c-kvs:first-child{margin-top:0}
+.c-intro .c-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;line-height:1.4}
+.c-intro .c-kv+.c-kv{border-top:1px dashed var(--line)}
+.c-intro .c-kv .k{flex:none;color:var(--muted);font-size:16px}
+.c-intro .c-kv .v{text-align:right;font-size:19px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
 .course .btns{display:grid;gap:8px;margin-top:12px}
 .course .announce{background:#FFF8E6;border-radius:10px;padding:8px 12px;font-size:16px;margin-top:8px}
 
@@ -2326,7 +2343,10 @@ async function handleLineReturn(params){
   renderLogin('busy', {text:'LINE 確認中…'});
   const st = params.get('state');
   try { await api.lineLogin({ code:params.get('code'), state:st, redirectUri:CONFIG.APP_URL }); }
-  catch(e) { store('royal_line_pending', null); return renderLogin('start', {msg:errText(e)}); }
+  catch(e) {
+    // 同一個回來的網址被打開兩次（例如 Safari 重新整理、開了兩個分頁）：其實已經登入了，不要嚇人
+    if (e && e.message === 'LOGIN_TIMEOUT') { const pd = store('royal_line_pending'); if (pd && pd.state === st) return pollLine(pd); if (await recoverLogin(st)) return; }
+    store('royal_line_pending', null); return renderLogin('start', {msg:errText(e)}); }
   const pend = store('royal_line_pending');
   if (pend && pend.state === st) return pollLine(pend);   // 同一個視窗：直接領結果
   if (inLineApp() && !sessionStorage.getItem('royal_line_auto2')) {   // 回到 LINE 裡面了：不要卡在這裡，直接在 LINE 裡再自動登入一次（原本的 APP 也一樣會登入）
@@ -2341,16 +2361,35 @@ async function pollLine(pend){
   if (polling) return; polling = true;
   renderLogin('busy', {text:'等待 LINE 確認…（確認完請回到這個畫面）', cancel:true});
   try {
-    for (let i = 0; i < 90; i++) {
-      if (!store('royal_line_pending')) return;              // 使用者按了取消
+    // 只有「看得到的那個畫面」去領結果：同一支手機開了兩個分頁時，不會兩邊搶（2026-11-25 夥伴看到「登入等太久了」）
+    for (let i = 0, t0 = Date.now(); i < 90 && Date.now() - t0 < 15*60000; ) {
+      if (!store('royal_line_pending')) { if (!S.session) await recoverLogin(pend.state); return; }   // 取消了，或另一個分頁已經領走
+      if (document.visibilityState === 'hidden') { await sleep(1000); continue; }
+      i++;
       const r = await api.linePoll({ state:pend.state, secret:pend.secret });
-      if (r.status !== 'waiting') { store('royal_line_pending', null); return handleAuth(r); }
+      if (r.status !== 'waiting') { store('royal_line_done', { state:pend.state, r, at:Date.now() }); store('royal_line_pending', null); return handleAuth(r); }
       await sleep(2000);
     }
     store('royal_line_pending', null); renderLogin('start', {msg:'等太久了，請再按一次「用 LINE 登入」。'});
-  } catch(e) { store('royal_line_pending', null); renderLogin('start', {msg:errText(e)}); }
+  } catch(e) {
+    if (e && e.message === 'LOGIN_TIMEOUT' && await recoverLogin(pend.state)) return;
+    store('royal_line_pending', null); renderLogin('start', {msg:errText(e)}); }
   finally { polling = false; }
 }
+/** 另一個分頁（或剛剛那一次）其實已經登入好了：直接用，不要顯示「登入等太久了」 */
+async function recoverLogin(st){
+  if (S.session) return true;
+  const d = store('royal_line_done');
+  if (d && d.r && (!st || d.state === st) && Date.now() - d.at < 5*60000) { await handleAuth(d.r); return true; }
+  const s = store(SESSION_KEY);
+  if (s && s.token) { await enterWithSession(s); return true; }
+  return false;
+}
+// 同一支手機的另一個分頁登入好了 → 這個分頁如果還停在登入頁，也自動進去
+window.addEventListener('storage', e => {
+  if (CONFIG.MODE !== 'live' || e.key !== SESSION_KEY || !e.newValue || S.session) return;
+  try { const s = JSON.parse(e.newValue); if (s && s.token) { store('royal_line_pending', null); enterWithSession(s); } } catch(_){}
+});
 /** 登入結果：已核准→進入；第一次→填申請；審核中→等待 */
 async function handleAuth(r){
   if (r.status === 'ok') return enterWithSession(r);
@@ -2894,6 +2933,25 @@ function greet(){ const h=new Date().getHours(); return h<11?'早安':h<14?'午�
 
 /* ---------- 首頁最上面：今天有線上課 →「▶ 進入教室」大按鈕，打開 APP 按一下就進 Zoom ---------- */
 /** 課程說明：照打的分行顯示；「引號裡的字」、一串數字（會議 ID）不會被拆到兩行（2026-11-24 使用者：分行分清楚、不要斷行、完整詞句在同一行） */
+/** 課程卡左邊的日期方塊：11 月／30／週一（2026-11-25 09:35 使用者：「排版再好看、清楚、區別，不要擠在一起」） */
+function dateTile(ds, past){
+  const d = parseYmd(ds), y = d.getFullYear() !== new Date().getFullYear() ? d.getFullYear() + ' 年 ' : '';
+  return `<div class="c-date${past?' past':''}" aria-label="${fullZh(ds)}"><span class="m">${y}${d.getMonth()+1} 月</span><b>${d.getDate()}</b><span class="w">週${WD[d.getDay()]}</span></div>`;
+}
+/** 課程說明分塊：一般文字一行一行；「會議 ID：…」「密碼：…」這種變成左邊小標、右邊粗體的一列，看得清楚 */
+function introBlocks(t){
+  const lines = String(t||'').replace(/\r/g,'').trim().split('\n');
+  let html = '', kv = [];
+  const flush = () => { if (kv.length) { html += `<div class="c-kvs">${kv.join('')}</div>`; kv = []; } };
+  for (const ln of lines) {
+    const x = ln.trim(), m = x.match(/^([^：:]{1,8}?)\s*[：:]\s*(.+)$/);
+    if (m && !/^https?$/i.test(m[1]) && !/^\/\//.test(m[2])) { kv.push(`<div class="c-kv"><span class="k">${esc(m[1])}</span><b class="v">${introHTML(m[2])}</b></div>`); continue; }
+    flush();
+    html += x ? `<div class="c-line">${introHTML(x)}</div>` : '<div class="c-gap"></div>';
+  }
+  flush();
+  return html;
+}
 function introHTML(t){
   const raw = String(t||'').replace(/\r/g,'').trim().replace(/(\d)[ 　]+(?=\d)/g, '$1 ');   // 925 7414 0214 → 不拆開
   const re = /「[^」\n]{1,16}」|[A-Za-z][A-Za-z0-9.\- ]{0,20}[A-Za-z0-9]/g;                      // 「進入 Zoom 上課」、英文詞不拆開
@@ -3432,9 +3490,11 @@ async function drawAcademy(main, cs){
     const showOnsite = view==='onsite' && isOnsite(c), showOnline = view==='online';
     return `<div class="card course">
       <div class="row" style="justify-content:space-between;align-items:center">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
-      <div class="when mt"><span class="nw">${fullZh(c.date)}</span> <wbr><span class="nw">${esc(c.time)}</span></div>
-      <h3 style="margin:4px 0 2px">${esc(c.title)}</h3><div class="teacher">講師：${esc(c.teacher)}</div>
-      ${c.intro?`<div class="mt c-intro">${introHTML(c.intro)}</div>`:''}
+      <div class="c-head">${dateTile(c.date, !isUp)}<div class="c-main">
+        <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
+        ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
+        ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div></div>
+      ${c.intro?`<div class="c-intro">${introBlocks(c.intro)}</div>`:''}
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
       ${c.announce?`<div class="announce">📢 ${esc(c.announce)}</div>`:''}
@@ -3711,7 +3771,7 @@ function renderAccount(main){
   main.innerHTML = `
     <button class="card acct-head" data-act="acct-settings">${avatarHTML(me,'lg')}<span class="ah-t">
       <span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>
-      <span class="ah-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}</span>
+      <span class="ah-tw">${me.tw ? '如新帳號&ensp;'+esc(me.tw) : '如新帳號　還沒填'}</span>
       ${admin?'<span class="pill ok">👑 管理員</span>':''}</span><span class="ah-go" aria-hidden="true">›</span></button>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <div class="card app-card"><div class="app-grid" id="app-grid">${appTilesHTML()}</div>
@@ -3751,9 +3811,9 @@ function tripTile(kind){
   if (open.length===1 && !(admin && all.length>1)) return { ...T, href: open[0].url };
   return { ...T, act:'trip-open', k: kind };
 }
-/** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示）。會員卡還沒有圖，先用表情符號。 */
+/** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示；09:35 會員卡＝金色皇冠卡）。 */
 const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:'tiles/travel.jpg', hsr:'tiles/hsr.jpg', meal:'tiles/meal.jpg',
-  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg' };
+  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg' };
 const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
@@ -3835,7 +3895,7 @@ function renderSettings(main){
       <h2 style="margin:0">${esc(me.name)}${badgeHTML(me.id)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
     ${me.role==='admin' ? '' : myBadgeCardHTML()}
     <div class="card"><h3>基本資料</h3>
-      <div class="kv"><span class="k">如新 TW 帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}</span></div>
+      <div class="kv"><span class="k">如新帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}</span></div>
       ${same.length?`<div class="kv"><span class="k">同戶別夥伴</span><span class="v">${same.map(esc).join('、')}</span></div>`:''}
       <div class="kv"><span class="k">加入日期</span><span class="v">${mdZh(me.joined)}</span></div>
       <div class="hint">TW 帳號只有你和管理員看得到，不會出現在動態牆。</div></div>
@@ -3848,12 +3908,12 @@ function renderSettings(main){
       <button class="link-btn danger mt" data-act="logout-all">換手機或不放心？登出所有裝置</button></details>`;
 }
 /** 會員卡（2026-11-25 使用者：每人一個專屬條碼，以後報到、取票都掃這個）
- *  QR 裡只有系統編號＋防偽碼，沒有 TW、姓名；卡上給本人看的是「如新 TW」（同戶別的 B 只在後台）。 */
+ *  QR 裡只有系統編號＋防偽碼，沒有 TW、姓名；卡上給本人看的是「如新帳號 TW…」（09:33 使用者指定寫法；同戶別的 B 只在後台）。 */
 function renderMemberCard(main){
   const me = S.me;
   main.innerHTML = `<div class="card mcard">
       <div class="mc-top"><img src="${LOGO}" alt=""><span>皇家團隊・會員卡</span></div>
-      <div class="mc-me">${avatarHTML(me,'lg')}<div class="mc-t"><div class="mc-name">${esc(me.name)}${badgeHTML(me.id)}</div><div class="mc-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}</div></div></div>
+      <div class="mc-me">${avatarHTML(me,'lg')}<div class="mc-t"><div class="mc-name">${esc(me.name)}${badgeHTML(me.id)}</div><div class="mc-tw">${me.tw ? '如新帳號&ensp;'+esc(me.tw) : '如新帳號　還沒填'}</div></div></div>
       ${me.card ? `<div class="ticket-qr mc-qr">${qrSVG(me.card)}<img class="qr-logo" src="${LOGO}" alt=""></div>
         <div class="mc-say">報到、取票、領東西時，<br>給工作人員掃這個 QR。</div>` : '<div class="notice info mt">會員卡還在準備中，請稍後再打開一次。</div>'}
     </div>
