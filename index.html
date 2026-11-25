@@ -256,6 +256,14 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .cs-form textarea.inp{min-height:96px}
 /* 我的帳號：個人小卡＋桌面圖示（2026-11-25 08:02）；自己排列（08:06） */
 .app-card{padding:6px 8px 10px}
+/* 會員卡（2026-11-25） */
+.card.mcard{background:linear-gradient(160deg,#fff 0%,#F7F1E1 100%);border:2px solid #E8C766;text-align:center;padding:18px 16px 20px}
+.mc-top{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#7A5A00;letter-spacing:2px;font-size:16px}
+.mc-top img{width:30px;height:30px;border-radius:50%}
+.mc-me{display:flex;align-items:center;gap:12px;justify-content:center;margin:14px 0 4px;text-align:left}
+.mc-name{font-size:22px;font-weight:800}.mc-tw{font-size:16px;color:var(--muted);margin-top:2px}
+.mc-qr{width:min(70vw,270px)}
+.mc-say{font-size:17px;font-weight:700;color:var(--text);line-height:1.6}
 .card.fold{padding:0 18px}.fold>summary{list-style:none;cursor:pointer;padding:16px 0;font-size:17px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
 .fold>summary::-webkit-details-marker{display:none}.fold>summary::after{content:'›';font-size:24px;color:var(--muted);transition:transform .2s}
 .fold[open]>summary::after{transform:rotate(90deg)}.fold[open]{padding-bottom:16px}
@@ -277,12 +285,18 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .acct-head .ah-go{font-size:30px;color:var(--muted);line-height:1}
 .app-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 4px;padding:16px 0 12px}
 .app-tile{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:0;padding:0;color:var(--text);text-decoration:none;cursor:pointer;font:inherit;min-width:0;-webkit-tap-highlight-color:transparent}
+.app-tile .ai.img{padding:0;overflow:hidden;background:#fff}.app-tile .ai.img img{width:100%;height:100%;object-fit:cover;transform:scale(1.05);pointer-events:none}
 .app-tile .ai{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:31px;line-height:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);transition:transform .12s}
 .app-tile:active .ai{transform:scale(.92)}
 .app-tile .al{font-size:16px;font-weight:700;line-height:1.2}
 .app-tile.off .ai,.app-tile.off .al{opacity:.42}
 .app-tile .ao{font-size:12px;color:var(--muted);margin-top:-5px}
 .trip-list{display:grid;gap:10px}
+.hsr-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.hsr-big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:150px;border-radius:20px;background:#FFF4EC;border:2px solid #F2B68C;color:#7A3A0E;text-decoration:none;text-align:center;padding:12px}
+.hsr-big.q{background:#EAF2FD;border-color:#9DBFEF;color:#174A8B}
+.hsr-big .ic{font-size:40px;line-height:1}.hsr-big b{font-size:21px}.hsr-big small{font-size:14px;opacity:.85}
+.hsr-big:active{transform:scale(.97)}
 .trip-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--text);text-decoration:none;min-height:66px}
 .trip-btn:active{background:var(--brand-soft)}
 .trip-btn .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;align-items:flex-start}
@@ -1486,7 +1500,7 @@ function mockDownline(rootId){
   return out;
 }
 function mockMe(m){
-  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined,
+  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined, card:'RM1.'+m.id+'.DEMO000000',
     sameTw: MockDB.members.filter(x=>x.tw===m.tw && x.id!==m.id).map(x=>x.name) };
 }
 
@@ -2835,6 +2849,7 @@ function go(tab, opts={}){
   if (S.sub==='adminCourseEdit') return renderAdminCourseEdit(main);
   if (S.sub==='adminLinks') return renderAdminLinks(main);
   if (S.sub==='settings') return renderSettings(main);
+  if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
   if (S.sub==='staffScan') return renderStaffScan(main);
@@ -3657,6 +3672,23 @@ const TRIP_ORDER = ['travel','hsr','meal'];
 const LINK_ADMIN_ORDER = ['notice', ...TRIP_ORDER];   // 後台：跑馬燈公告放最上面
 const tripShort = t => String(t||'').replace(/^\s*\d{4}\s*/, '').replace(/(之旅|查詢|登記)$/, '').trim();
 function tripLinks(kind){ const all = (S.links||[]).filter(l=>l.kind===kind); return { open: all.filter(l=>!l.hidden), all }; }
+/** 我的高鐵（2026-11-25 使用者：「讓夥伴直覺式的使用，登記入口、查詢入口」）
+ *  打開高鐵網頁時用 # 帶名字（只在手機上，不會送到伺服器）：登記時名字填好；查詢直接看到三格狀態和車卡。 */
+function hsrSheet(){
+  const { open, all } = tripLinks('hsr'), admin = isAdminMe(), l = open[0] || (admin ? all[0] : null); if (!l) return;
+  const base = String(l.url).split('#')[0], nm = encodeURIComponent((S.me && S.me.name) || '');
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>🚄 我的高鐵</h3><button data-x>關閉</button></div>
+    <div class="sheet-b">${l.hidden ? '<div class="notice info small mb">還沒開放，夥伴看不到這個圖示。<br>要開放登記時，到後台按「開放」。</div>' : ''}
+      <div class="hsr-two">
+        <a class="hsr-big" href="${esc(base)}#reg&name=${nm}" target="_blank" rel="noopener"><span class="ic" aria-hidden="true">✍️</span><b>我要登記</b><small>名字已經幫你填好</small></a>
+        <a class="hsr-big q" href="${esc(base)}#q&name=${nm}" target="_blank" rel="noopener"><span class="ic" aria-hidden="true">🎫</span><b>查我的車票</b><small>付款、取票、車廂座位</small></a>
+      </div>
+      <div class="muted small mt center">幫家人登記的也查得到；<br>家人用自己的名字也查得到。</div>
+      ${admin ? '<button class="btn btn-outline mt" data-act="admin-links">到後台設定</button>' : ''}</div></div>`;
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]') || e.target.closest('a,[data-act]')) setTimeout(()=>bg.remove(), 0); });
+  document.body.appendChild(bg);
+}
 function tripSheet(kind){
   const K = TRIP_KIND[kind], admin = isAdminMe(), { open, all } = tripLinks(kind), list = admin ? all : open;
   const bg = document.createElement('div'); bg.className='sheet-bg';
@@ -3707,7 +3739,7 @@ function renderAccount(main){
 /** 桌面圖示：夢想・榮譽・旅遊・高鐵・便當・團隊・票券・設定 */
 const TRIP_TILE = { travel:{ ic:'✈️', t:'旅遊', c:'#E4F0FB' }, hsr:{ ic:'🚄', t:'高鐵', c:'#FCEBE4' }, meal:{ ic:'🍽️', t:'便當', c:'#E9F5DC' } };
 function appTile(x){
-  const inner = `<span class="ai" style="background:${x.c}" aria-hidden="true">${x.ic}</span><span class="al">${x.t}</span>${x.off?'<span class="ao">未開放</span>':''}`;
+  const inner = `${x.img ? `<span class="ai img" aria-hidden="true"><img src="${x.img}" alt="" draggable="false"></span>` : `<span class="ai" style="background:${x.c}" aria-hidden="true">${x.ic}</span>`}<span class="al">${x.t}</span>${x.off?'<span class="ao">未開放</span>':''}`;
   return x.href ? `<a class="app-tile" href="${esc(x.href)}" target="_blank" rel="noopener" draggable="false" data-act="trip-link" data-key="${x.key}">${inner}</a>`
     : `<button class="app-tile${x.off?' off':''}" data-act="${x.act}"${x.k?` data-k="${x.k}"`:''} data-key="${x.key}">${inner}</button>`;
 }
@@ -3715,16 +3747,21 @@ function tripTile(kind){
   const T = TRIP_TILE[kind], { open, all } = tripLinks(kind), admin = isAdminMe();
   if (!open.length && !admin) return null;
   if (!open.length) return { ...T, act: all.length ? 'trip-open' : 'admin-links', k: kind, off: true };
+  if (kind==='hsr') return { ...T, act:'hsr-open', k: kind };   // 高鐵：兩個大按鈕「我要登記」「查我的車票」（2026-11-25）
   if (open.length===1 && !(admin && all.length>1)) return { ...T, href: open[0].url };
   return { ...T, act:'trip-open', k: kind };
 }
-const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','team','tickets','settings'];
+const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','team','tickets','card','settings'];
+/** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
+ *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
+const NUSHOP_URL = () => /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=com.nuskin.shoppingcart' : 'https://apps.apple.com/tw/app/id1448081635';
 /** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
 function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
 function appTilesHTML(){
-  const T = { dreams:{ act:'dreams', ic:'✨', t:'夢想', c:'#F0ECFF' }, honors:{ act:'honors', ic:'🏆', t:'榮譽', c:'#FFF3D6' },
+  const T = { dreams:{ act:'dreams', ic:'✨', t:'夢想', c:'#F0ECFF', img:'tiles/dreams.jpg' }, nushop:{ href: NUSHOP_URL(), t:'新享購', img:'tiles/nushop.jpg' }, honors:{ act:'honors', ic:'🏆', t:'榮譽', c:'#FFF3D6' },
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
-    team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' } };
+    team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
+    card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' } };
   return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k })).join('');
 }
 /* ---------- 自己排圖示（2026-11-25 08:06 使用者：「讓使用者自己排列順序，像手機這樣可以自己排列和移動」）----------
@@ -3806,6 +3843,18 @@ function renderSettings(main){
       <div class="kv"><span class="k">Email</span><span class="v">${has('EMAIL')?'<span class="pill ok">已綁定</span>':'<span class="pill gray">未綁定</span>'}</span></div>
       <button class="btn btn-outline mt" data-act="logout">登出</button>
       <button class="link-btn danger mt" data-act="logout-all">換手機或不放心？登出所有裝置</button></details>`;
+}
+/** 會員卡（2026-11-25 使用者：每人一個專屬條碼，以後報到、取票都掃這個）
+ *  QR 裡只有系統編號＋防偽碼，沒有 TW、姓名；卡上給本人看的是「如新 TW」（同戶別的 B 只在後台）。 */
+function renderMemberCard(main){
+  const me = S.me;
+  main.innerHTML = `<div class="card mcard">
+      <div class="mc-top"><img src="${LOGO}" alt=""><span>皇家團隊・會員卡</span></div>
+      <div class="mc-me">${avatarHTML(me,'lg')}<div class="mc-t"><div class="mc-name">${esc(me.name)}${badgeHTML(me.id)}</div><div class="mc-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}</div></div></div>
+      ${me.card ? `<div class="ticket-qr mc-qr">${qrSVG(me.card)}<img class="qr-logo" src="${LOGO}" alt=""></div>
+        <div class="mc-say">報到、取票、領東西時，<br>給工作人員掃這個 QR。</div>` : '<div class="notice info mt">會員卡還在準備中，請稍後再打開一次。</div>'}
+    </div>
+    <div class="hint center">掃不到的話，把手機螢幕調亮一點。<br>這張卡只有你自己看得到。</div>`;
 }
 /** 換了大頭照、徽章：重畫現在這一頁 */
 function rerenderAcct(){ const m = $('#main'); if (S.sub==='settings') renderSettings(m); else if (S.tab==='account' && !S.sub) renderAccount(m); }
@@ -4730,7 +4779,7 @@ function drawMemberList(){
     $('#mlist').innerHTML = rows.length ? `<table class="mtable"><thead><tr><th>夥伴</th><th class="col-tw">TW 帳號</th><th>今天</th><th>有效打卡</th><th>課後心得</th><th>繳費</th><th>狀態</th></tr></thead><tbody>
       ${rows.map(({m,pr})=>`<tr data-act="admin-member" data-id="${m.id}" tabindex="0">
         <td><div class="who">${avatarHTML(m)}<b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''}</div></td>
-        <td class="muted col-tw">${esc(m.tw)}</td>
+        <td class="muted col-tw">${esc(m.royalNo||m.tw)}</td>
         <td>${pr.todayDone?'<span class="pill ok">已打卡</span>':'<span class="pill bad">未打卡</span>'}</td>
         <td><div class="cell-bar"><b>${pr.valid}</b><span class="muted small"> / ${th||'—'}</span><div class="bar light"><i style="width:${th?Math.min(100,Math.round(pr.valid/th*100)):0}%"></i></div></div></td>
         <td>${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">${n.done} / ${n.req}</span>`:'<span class="muted">—</span>')(noteSum(pr))}</td>
@@ -4741,7 +4790,7 @@ function drawMemberList(){
   }
   $('#mlist').innerHTML = rows.map(({m,pr})=>`<button class="mrow" data-act="admin-member" data-id="${m.id}">
     ${avatarHTML(m)}
-    <div class="info"><b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''} <span class="muted small">${esc(m.tw)}${CONFIG.SHOW_TEAM?'・'+esc(m.team):''}</span>
+    <div class="info"><b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''} <span class="muted small">${esc(m.royalNo||m.tw)}${CONFIG.SHOW_TEAM?'・'+esc(m.team):''}</span>
       <div class="chips">${pr.todayDone?'<span class="pill ok">今天已打卡</span>':'<span class="pill bad">今天未打卡</span>'}
       ${m.paid?'<span class="pill gray">已繳費</span>':'<span class="pill pend">未繳費</span>'}
       ${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">心得 ${n.done}/${n.req}</span>`:'')(noteSum(pr))}
@@ -4767,7 +4816,7 @@ async function renderAdminMember(main){
   const m = d.m, act = d.activity, pr = d.progress || {valid:0,need:0,late:0,missing:0,days:{}};
   if (!S.admin.calMonth) S.admin.calMonth = todayStr().slice(0,7);
   main.innerHTML = `<div class="card"><div class="row">${avatarHTML(m,'lg')}
-      <div style="flex:1"><h2 style="margin:0">${esc(m.name)}${badgeHTML(m.id)} ${m.role==='staff'?'<span class="pill brand">工作人員</span>':m.role==='admin'?'<span class="pill ok">管理員</span>':''}</h2><div class="muted">${esc(m.tw)}・${CONFIG.SHOW_TEAM?esc(m.team)+'・':''}${m.paid?'已繳費':'未繳費'}</div></div></div>
+      <div style="flex:1"><h2 style="margin:0">${esc(m.name)}${badgeHTML(m.id)} ${m.role==='staff'?'<span class="pill brand">工作人員</span>':m.role==='admin'?'<span class="pill ok">管理員</span>':''}</h2><div class="muted">${esc(m.royalNo||m.tw)}・${CONFIG.SHOW_TEAM?esc(m.team)+'・':''}${m.paid?'已繳費':'未繳費'}</div></div></div>
       <div class="muted mt">上線：<b>${m.uplineName?esc(m.uplineName):'（沒有設定）'}</b>${!m.uplineName&&m.uplineText?`<span class="small">（申請時寫：${esc(m.uplineText)}）</span>`:''}${m.teamCount?`・整條線 ${m.teamCount} 人`:''}</div>
       <div class="row mt" style="flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-act="rename" data-id="${m.id}" data-name="${esc(m.name)}">✏️ 改姓名</button>
         <button class="btn btn-ghost btn-sm" data-act="set-upline" data-id="${m.id}">👥 設定上線</button>
@@ -5030,8 +5079,9 @@ async function scanHandle(code, payNow, method){
   if (r.result==='replaced') return showScanResult('bad', `<div class="big">✗</div><h2>這張 QR 已經轉讓</h2>${who}<div class="sub">請對方打開最新的入場 QR（舊截圖不能用）</div>`, 4000);
   if (r.result==='cancelled') return showScanResult('bad', `<div class="big">✗</div><h2>這張票已取消／退費</h2>${who}`, 4000);
   if (r.result==='moved') return showScanResult('bad', `<div class="big">✗</div><h2>這張票已改到別堂課</h2>${who}<div class="sub">請對方用新的入場 QR</div>`, 4000);
+  if (r.result==='no_ticket') return showScanResult('bad', `<div class="big">✗</div><h2>沒有報名這堂課</h2>${who}<div class="sub">掃的是會員卡，但他沒有這堂課的票</div>`, 3500);
   if (r.result==='wrong_course') return showScanResult('bad', `<div class="big">✗</div><h2>不是這堂課的票</h2>${who}<div class="sub">${r.courseTitle?'這張是：'+esc(r.courseTitle):''}</div>`, 3500);
-  return showScanResult('bad', `<div class="big">✗</div><h2>看不懂這張 QR</h2><div class="sub">請夥伴打開 APP「學院」→「我的入場 QR」再掃一次</div>`, 3000);
+  return showScanResult('bad', `<div class="big">✗</div><h2>看不懂這張 QR</h2><div class="sub">請夥伴打開 APP 的入場 QR 或「會員卡」再掃一次</div>`, 3000);
 }
 function showScanResult(kind, html, autoMs, code){
   let el = $('#scan-res'); if (el) el.remove();
@@ -5289,6 +5339,7 @@ document.addEventListener('click', async e=>{
     case 'admin-courses': go('account', {sub:'adminCourses'}); break;
     case 'admin-links': go('account', {sub:'adminLinks'}); break;
     case 'acct-settings': go('account', {sub:'settings'}); break;
+    case 'member-card': go('account', {sub:'memberCard'}); break;
     case 'tiles-edit': tileEdit(true); break;
     case 'notice-open': noticeSheet(); break;
     case 'mq-mode': case 'mq-times': {   // 跑馬燈跑法、次數（後台）
@@ -5301,6 +5352,7 @@ document.addEventListener('click', async e=>{
     case 'tiles-done': tileEdit(false); toast('已排好','ok'); break;
     case 'tiles-reset': S.me.tiles = []; clearTimeout(tileSaveT); api.meTilesSet([]).catch(()=>{}); $('#app-grid').innerHTML = appTilesHTML(); break;
     case 'trip-open': tripSheet(el.dataset.k); break;
+    case 'hsr-open': hsrSheet(); break;
     case 'trip-link': return;   // 只有一個連結：讓瀏覽器直接打開
     case 'ln-new': openLinkEdit(null, el.dataset.k); break;
     case 'ln-edit': { const l = (ADML && ADML.links || []).find(x=>x.id===el.dataset.id); if (l) openLinkEdit(l); break; }
