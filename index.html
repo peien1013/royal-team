@@ -3711,7 +3711,7 @@ function renderAccount(main){
   main.innerHTML = `
     <button class="card acct-head" data-act="acct-settings">${avatarHTML(me,'lg')}<span class="ah-t">
       <span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>
-      <span class="ah-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}${me.tw&&me.twStatus==='pending'?' <span class="pill pend">待確認</span>':''}</span>
+      <span class="ah-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}</span>
       ${admin?'<span class="pill ok">👑 管理員</span>':''}</span><span class="ah-go" aria-hidden="true">›</span></button>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <div class="card app-card"><div class="app-grid" id="app-grid">${appTilesHTML()}</div>
@@ -3751,6 +3751,9 @@ function tripTile(kind){
   if (open.length===1 && !(admin && all.length>1)) return { ...T, href: open[0].url };
   return { ...T, act:'trip-open', k: kind };
 }
+/** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示）。會員卡還沒有圖，先用表情符號。 */
+const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:'tiles/travel.jpg', hsr:'tiles/hsr.jpg', meal:'tiles/meal.jpg',
+  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg' };
 const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
@@ -3762,7 +3765,7 @@ function appTilesHTML(){
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
     team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
     card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' } };
-  return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k })).join('');
+  return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })).join('');
 }
 /* ---------- 自己排圖示（2026-11-25 08:06 使用者：「讓使用者自己排列順序，像手機這樣可以自己排列和移動」）----------
    按住 0.5 秒（或按「↕ 排列圖示」）→ 圖示會抖動 → 拖到想放的位置；手不穩也可以「先點一個、再點要放的位置」。
@@ -3832,7 +3835,7 @@ function renderSettings(main){
       <h2 style="margin:0">${esc(me.name)}${badgeHTML(me.id)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
     ${me.role==='admin' ? '' : myBadgeCardHTML()}
     <div class="card"><h3>基本資料</h3>
-      <div class="kv"><span class="k">如新 TW 帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}${me.tw&&me.twStatus==='pending'?' <span class="pill pend">待確認</span>':''}</span></div>
+      <div class="kv"><span class="k">如新 TW 帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}</span></div>
       ${same.length?`<div class="kv"><span class="k">同戶別夥伴</span><span class="v">${same.map(esc).join('、')}</span></div>`:''}
       <div class="kv"><span class="k">加入日期</span><span class="v">${mdZh(me.joined)}</span></div>
       <div class="hint">TW 帳號只有你和管理員看得到，不會出現在動態牆。</div></div>
