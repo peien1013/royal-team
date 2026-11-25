@@ -143,7 +143,12 @@ img.avatar{object-fit:cover;display:block}
 .who{flex:1;min-width:0}
 .who .name{font-weight:700;font-size:18px;line-height:1.3}
 .who .meta{font-size:15px;color:var(--muted);line-height:1.4;display:flex;flex-wrap:wrap;column-gap:0}
-.who .meta>span{white-space:nowrap}.who .meta>span+span::before{content:'・';margin:0 2px}
+.who .meta>span{white-space:nowrap}.who .meta>span+span::before{content:'・';margin:0 2px;color:var(--muted)}
+.who .meta .late-t{color:var(--late);font-weight:700}   /* 10:17 使用者：補打卡跟時間放同一行（原本另外一行的橘色標籤） */
+.who .meta{font-size:14px}
+.post-h{position:relative}
+.post[data-mine] .post-h .more-btn{position:absolute;top:8px;right:6px}   /* 自己的貼文：⋯ 靠右上角，時間那一行可以用到整個寬度 */
+.post[data-mine] .post-h .who .name{padding-right:40px}
 .more-btn{border:0;background:none;width:44px;height:44px;border-radius:50%;font-size:24px;color:var(--muted)}
 .post-badges{padding:0 16px;display:flex;gap:6px;flex-wrap:wrap}
 .post-text{padding:8px 16px 12px;white-space:pre-wrap;word-break:break-word}
@@ -3046,7 +3051,6 @@ function observeMore(){
 
 function postHTML(p){
   const badges = [];
-  if (p.isLate) badges.push(`<span class="pill late">補打卡・行動日 ${mdZh(p.actionDate)}</span>`);
   if (p.mine && p.review==='pending') badges.push('<span class="pill pend">補登待審核</span>');
   if (p.mine && p.review==='rejected') badges.push('<span class="pill gray">不計入打卡</span>');
   if (p.course) badges.push(`<span class="pill" style="background:#F3ECFF;color:#5A2FA0">📚 課後心得：${esc(p.course.title)}</span>`);
@@ -3055,7 +3059,7 @@ function postHTML(p){
     <div class="post-h">
       ${avatarHTML(p.author)}
       <div class="who"><div class="name" data-act="person" data-id="${p.author.id}">${esc(p.author.name)}${badgeHTML(p.author.id)}</div>
-        <div class="meta"><span>${timeAgo(p.postedAt)}</span>${p.isLate?'':`<span>行動日 ${mdZh(p.actionDate)}</span>`}${p.editedAt?'<span class="edited">已編輯</span>':''}</div></div>
+        <div class="meta"><span>${timeAgo(p.postedAt)}</span>${p.isLate?`<span class="late-t">補打卡 ${mdZh(p.actionDate)}</span>`:`<span>行動日 ${mdZh(p.actionDate)}</span>`}${p.editedAt?'<span class="edited">已編輯</span>':''}</div></div>
       ${p.mine?`<button class="more-btn" data-act="post-menu" aria-label="更多">⋯</button>`:''}
     </div>
     ${badges.length?`<div class="post-badges">${badges.join('')}</div>`:''}
