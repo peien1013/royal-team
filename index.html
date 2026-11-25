@@ -176,6 +176,9 @@ label.lbl{display:block;font-weight:700;margin:16px 0 8px;font-size:19px}
 label.lbl .req{color:var(--bad);font-size:15px;margin-left:4px}
 label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .lbl-side{font-weight:400;font-size:15px;color:var(--muted);white-space:nowrap}
+/* 後台打卡一覽：上線 */
+.mrow .up-line{font-size:15px;color:var(--muted);margin-top:4px}.mrow .up-line b{color:var(--text)}
+.up-none{color:#B4540A;font-weight:700}
 /* 後台：誰在線上 */
 .online-card h3 .on-n{color:var(--ok)}
 .online-faces{display:flex;flex-wrap:wrap;gap:10px 6px;margin-top:10px}
@@ -1895,7 +1898,7 @@ const MockApi = {
   async adminDashboard(){
     await this._wait();
     const act = MockDB.activity, T = todayStr();
-    const rows = MockDB.members.filter(m=>mockJoined(m)).map(m => { const pr = computeDays(m.id, act); return { m, pr }; });
+    const rows = MockDB.members.filter(m=>mockJoined(m)).map(m => { const pr = computeDays(m.id, act), u = MockDB.byId[m.uplineId]; return { m:{ ...m, up:u?u.name:'', upText:u?'':(m.uplineText||'') }, pr }; });
     const todayLate = new Set(MockDB.posts.filter(p=>p.status==='active' && p.isLate && ymd(new Date(p.postedAt))===T).map(p=>p.authorId));
     const pendingPosts = MockDB.posts.filter(p=>p.status==='active' && p.review==='pending').map(p=>({ id:p.id, authorId:p.authorId,
       authorName:MockDB.byId[p.authorId].name, actionDate:p.actionDate, postedAt:p.postedAt, text:p.text, lateDays:diffDays(p.actionDate, ymd(new Date(p.postedAt))) }));
@@ -4874,13 +4877,14 @@ async function renderAdmin(main){
           <select class="inp" id="ftoday"><option value="">今天：全部</option><option value="done" ${S.admin.today==='done'?'selected':''}>今天已打卡</option><option value="no" ${S.admin.today==='no'?'selected':''}>今天未打卡</option></select>
           <select class="inp" id="freach"><option value="">達標：全部</option><option value="ok" ${S.admin.reach==='ok'?'selected':''}>仍可達標</option><option value="no" ${S.admin.reach==='no'?'selected':''}>已無法達標</option></select>
           <select class="inp" id="fpay"><option value="">繳費：全部</option><option value="paid" ${S.admin.pay==='paid'?'selected':''}>已繳費</option><option value="unpaid" ${S.admin.pay==='unpaid'?'selected':''}>未繳費</option></select>
+          <select class="inp" id="fup"><option value="">上線：全部</option><option value="none" ${S.admin.up==='none'?'selected':''}>還沒設定上線</option><option value="set" ${S.admin.up==='set'?'selected':''}>已設定上線</option></select>
         </div>
         <div class="row mt" style="flex-wrap:wrap">${window.self!==window.top?'':'<button class="btn btn-ghost btn-sm" data-act="export-csv">下載 CSV</button>'}<button class="btn btn-ghost btn-sm" data-act="copy-list">複製名單</button><span class="muted small" id="fcount"></span></div>
         <div class="mlist mt" id="mlist"></div></div>
     </div></div>`;
   drawReview(); drawMemberList(); drawOnline();
-  ['fq','fteam','ftoday','freach','fpay'].forEach(id=> $('#'+id) && $('#'+id).addEventListener(id==='fq'?'input':'change', e=>{
-    const key = {fq:'q',fteam:'team',ftoday:'today',freach:'reach',fpay:'pay'}[id]; S.admin[key]=e.target.value; drawMemberList(); }));
+  ['fq','fteam','ftoday','freach','fpay','fup'].forEach(id=> $('#'+id) && $('#'+id).addEventListener(id==='fq'?'input':'change', e=>{
+    const key = {fq:'q',fteam:'team',ftoday:'today',freach:'reach',fpay:'pay',fup:'up'}[id]; S.admin[key]=e.target.value; drawMemberList(); }));
 }
 function filteredRows(){
   const f = S.admin;
@@ -4890,21 +4894,29 @@ function filteredRows(){
     if (f.today==='done' && !pr.todayDone) return false; if (f.today==='no' && pr.todayDone) return false;
     if (f.reach==='ok' && !pr.reachable) return false; if (f.reach==='no' && pr.reachable) return false;
     if (f.pay==='paid' && !m.paid) return false; if (f.pay==='unpaid' && m.paid) return false;
+    if (f.up==='none' && m.up) return false; if (f.up==='set' && !m.up) return false;
     return true;
   });
 }
 const noteSum = pr => ({ done: pr.notesDone ?? (pr.notes ? pr.notes.done : 0), req: pr.notesRequired ?? (pr.notes ? pr.notes.required : 0),
   bad: pr.notesMissed ?? (pr.notes ? pr.notes.missed + pr.notes.late : 0) });
 const isDesk = () => window.matchMedia && matchMedia('(min-width:1024px)').matches;
+/** 打卡一覽裡的「上線」：有設定＝名字；沒設定＝橘色「還沒設定」＋他申請時自己寫的名字（點進去設定） */
+function upLineHTML(m, cell){
+  if (m.up) return cell ? esc(m.up) : `<div class="up-line">上線：<b>${esc(m.up)}</b></div>`;
+  const t = m.upText ? `（他寫：${esc(m.upText)}）` : '';
+  return cell ? `<span class="up-none">還沒設定</span><span class="muted small">${t}</span>` : `<div class="up-line"><span class="up-none">上線還沒設定</span><span class="muted">${t}</span></div>`;
+}
 function drawMemberList(){
   const rows = filteredRows();
   $('#fcount').textContent = `共 ${rows.length} 人`;
   if (isDesk()) {   // 電腦：一人一列的表格，比較好比對
     const th = ADM.act ? ADM.act.threshold : 0;
-    $('#mlist').innerHTML = rows.length ? `<table class="mtable"><thead><tr><th>夥伴</th><th class="col-tw">TW 帳號</th><th>今天</th><th>有效打卡</th><th>課後心得</th><th>繳費</th><th>狀態</th></tr></thead><tbody>
+    $('#mlist').innerHTML = rows.length ? `<table class="mtable"><thead><tr><th>夥伴</th><th class="col-tw">TW 帳號</th><th>上線</th><th>今天</th><th>有效打卡</th><th>課後心得</th><th>繳費</th><th>狀態</th></tr></thead><tbody>
       ${rows.map(({m,pr})=>`<tr data-act="admin-member" data-id="${m.id}" tabindex="0">
         <td><div class="who">${avatarHTML(m)}<b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''}</div></td>
         <td class="muted col-tw">${esc(m.royalNo||m.tw)}</td>
+        <td>${upLineHTML(m, true)}</td>
         <td>${pr.todayDone?'<span class="pill ok">已打卡</span>':'<span class="pill bad">未打卡</span>'}</td>
         <td><div class="cell-bar"><b>${pr.valid}</b><span class="muted small"> / ${th||'—'}</span><div class="bar light"><i style="width:${th?Math.min(100,Math.round(pr.valid/th*100)):0}%"></i></div></div></td>
         <td>${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">${n.done} / ${n.req}</span>`:'<span class="muted">—</span>')(noteSum(pr))}</td>
@@ -4919,7 +4931,7 @@ function drawMemberList(){
       <div class="chips">${pr.todayDone?'<span class="pill ok">今天已打卡</span>':'<span class="pill bad">今天未打卡</span>'}
       ${m.paid?'<span class="pill gray">已繳費</span>':'<span class="pill pend">未繳費</span>'}
       ${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">心得 ${n.done}/${n.req}</span>`:'')(noteSum(pr))}
-      ${pr.reachable?'':'<span class="pill bad">已無法達標</span>'}${pr.pending?`<span class="pill pend">待審 ${pr.pending}</span>`:''}</div></div>
+      ${pr.reachable?'':'<span class="pill bad">已無法達標</span>'}${pr.pending?`<span class="pill pend">待審 ${pr.pending}</span>`:''}</div>${upLineHTML(m)}</div>
     <div class="days">${pr.valid}<span class="muted small"> / ${ADM.act?ADM.act.threshold:'—'}</span></div></button>`).join('') || '<div class="muted">沒有符合的夥伴</div>';
 }
 function drawReview(){
