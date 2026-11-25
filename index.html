@@ -1242,6 +1242,7 @@ const LOGO = document.querySelector('link[rel="icon"]').href;
 const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbzHoJ7zxBYWzp8q9OyLZwo_Fd72zUtr-r0M_Bgu8MKOWaZvFaLOdDF1xbkdaTa3FmJqvw/exec',               // 由 tools/build.py 從 frontend/config.json 填入（Apps Script 網址，不是祕密）
   LINE_CHANNEL_ID: '2012768857', // LINE 登入頻道 ID（不是祕密；密鑰只放在 Apps Script）
+  LIFF_ID: '2012768857-HiFkyu2v',               // 在 LINE 裡直接打開（LIFF，不是祕密）：連結 https://liff.line.me/<LIFF_ID>
   PAGE_SIZE: 8,            // 動態牆一次載入幾篇
   READ_DWELL_MS: 2000,     // 貼文在畫面上停留幾秒才算「已讀」
   READ_FLUSH_MS: 8000,     // 已讀紀錄每幾秒批次送出一次
@@ -2021,6 +2022,7 @@ const GasApi = {
   lineStart(p){ return this.call('auth.lineStart', p, {retry:1}); },
   lineLogin(p){ return this.call('auth.line', p, {retry:0}); },
   linePoll(p){ return this.call('auth.linePoll', p, {retry:1}); },
+  liffLogin(idToken){ return this.call('auth.liff', { idToken }, {retry:1}); },
   emailSend(email){ return this.call('auth.emailSend', {email}, {retry:0}); },
   emailVerify(email, code){ return this.call('auth.emailVerify', {email, code}, {retry:0}); },
   apply(p){ return this.call('member.apply', p, {retry:0}); },
@@ -2477,6 +2479,29 @@ window.addEventListener('storage', e => {
   if (CONFIG.MODE !== 'live' || e.key !== SESSION_KEY || !e.newValue || S.session) return;
   try { const s = JSON.parse(e.newValue); if (s && s.token) { store('royal_line_pending', null); enterWithSession(s); } } catch(_){}
 });
+/** 在 LINE 裡直接打開（LIFF，2026-11-25 17:09 使用者在 LINE 後台新增 LIFF）：
+ *  夥伴在 LINE 群組點 liff.line.me/<LIFF_ID> → APP 在 LINE 裡全螢幕打開 → 用 LINE 給的身分證明（ID token）直接登入，
+ *  不用跳出去、不用按「用 LINE 登入」。只有在 LINE 的 LIFF 視窗裡才用；其他地方照舊。失敗就回到原本的登入畫面。 */
+const liffUrl = () => /[?&](liff\.state|liff\.referrer|liffClientId)=/.test(location.search) || /(context_token|access_token)=/.test(location.hash);
+const liffWanted = () => CONFIG.MODE==='live' && /^\d+-\w+$/.test(CONFIG.LIFF_ID) && inLineApp() && (/ LIFF/i.test(navigator.userAgent) || liffUrl());
+function loadLiffSdk(){
+  if (window.liff) return Promise.resolve();
+  return new Promise((res, rej) => { const el = document.createElement('script'); el.src = 'https://static.line-scdn.net/liff/edge/2/sdk.js'; el.onload = () => res(); el.onerror = () => rej(new Error('LOAD')); document.head.appendChild(el); });
+}
+async function liffLogin(){
+  renderLogin('busy', {text:'LINE 自動登入中…'});
+  try {
+    await loadLiffSdk();
+    await liff.init({ liffId: CONFIG.LIFF_ID }); window.__liffReady = 1;
+    if (!liff.isInClient()) return false;
+    if (!liff.isLoggedIn()) { liff.login({ redirectUri: CONFIG.APP_URL }); return true; }
+    const idToken = liff.getIDToken();
+    if (!idToken) return false;
+    const r = await api.liffLogin(idToken);
+    await handleAuth(r);
+    return true;
+  } catch(e) { return false; }
+}
 /** 登入結果：已核准→進入；第一次→填申請；審核中→等待 */
 async function handleAuth(r){
   if (r.status === 'ok') return enterWithSession(r);
@@ -4819,6 +4844,10 @@ function installStepsHTML(){
   const list = a => a.map((x,i)=>step(i+1,x)).join('');
   const copy = '<button class="btn btn-outline mt" data-act="copy-app-link">📋 複製 APP 網址</button>';
   if (env==='installed') return '<div class="notice ok">已經放到手機桌面了 👍 之後從桌面的「皇家」圖示打開就好。</div>';
+  if (env==='line' && / LIFF/i.test(navigator.userAgent) && CONFIG.MODE==='live') return `<div class="notice ok mb"><b>不放桌面也可以</b>：以後在 LINE 群組點皇家的連結，就會自動登入使用，最簡單。</div>
+    <div class="notice info mb">一定要放到手機桌面的話（放好後從桌面打開，要再用 LINE 登入一次）：</div>${list([
+    { t:`按下面的按鈕，用 ${isIOS()?'<b>Safari</b>':'<b>Chrome</b>'} 打開皇家 APP` },
+    { t:'打開之後，再按一次「📲 教我放到手機桌面」，照新的步驟做' }])}<button class="btn btn-primary mt" data-act="open-external">🧭 用 ${isIOS()?'Safari':'Chrome'} 打開</button>${copy}`;
   if (env==='line') return `<div class="notice ok mb"><b>不放桌面也可以</b>：以後在 LINE 群組點皇家的連結，就會自動登入使用，最簡單。</div>
     <div class="notice info mb">一定要放到手機桌面的話，要先換到手機的瀏覽器（放好後從桌面打開，要再用 LINE 登入一次）：</div>${list([
     { t:'按右上角的「<b>⋯</b>」', mk:MK.lineBar },
@@ -5533,6 +5562,10 @@ document.addEventListener('click', async e=>{
     case 'open-admin': go('account',{sub:'admin'}); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt = null; } else toast('請按 Chrome 右上角「⋮」→「加到主畫面」'); break;
     case 'install-guide': openInstallGuide(false); break;
+    case 'open-external': {   // LIFF 裡：直接用手機的瀏覽器（Safari／Chrome）打開 APP，才能放到桌面
+      try { await loadLiffSdk(); if (!window.__liffReady) { await liff.init({ liffId: CONFIG.LIFF_ID }); window.__liffReady = 1; } liff.openWindow({ url: CONFIG.APP_URL, external: true }); }
+      catch(_) { toast('打不開，請按「複製 APP 網址」，再到瀏覽器貼上', 'err'); }
+      break; }
     case 'copy-app-link': { const u = location.origin + location.pathname; try { await navigator.clipboard.writeText(u); toast('已複製網址','ok'); } catch(_){ await promptBox('長按下面的網址複製', u, '好'); } break; }
     case 'admin-tree': adminTreeSheet(); break;
     case 'admin-roster': go('account', {sub:'adminRoster'}); break;
@@ -5660,10 +5693,14 @@ document.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.matche
 /* ---------- 啟動 ---------- */
 (async function start(){
   const params = new URLSearchParams(location.search);
-  if (CONFIG.MODE==='live' && (params.get('code') || params.get('error')) && params.get('state')) return handleLineReturn(params);
+  if (CONFIG.MODE==='live' && (params.get('code') || params.get('error')) && params.get('state') && !params.has('liffClientId')) return handleLineReturn(params);
   const pend = store('royal_line_pending');
   if (CONFIG.MODE==='live' && pend && Date.now() - pend.at < 15*60000) return pollLine(pend);
   const sess = store(SESSION_KEY);
+  if (!(sess && sess.expiresAt > Date.now()) && liffWanted()) {   // 在 LINE 裡打開、還沒登入：直接用 LINE 的身分登入
+    if (await liffLogin()) return;
+    return renderLogin('start');
+  }
   if (sess && sess.expiresAt > Date.now()) {
     S.session = sess;
     const last = CONFIG.MODE==='live' ? store('royal_home_last') : null;
