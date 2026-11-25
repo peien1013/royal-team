@@ -176,6 +176,24 @@ label.lbl{display:block;font-weight:700;margin:16px 0 8px;font-size:19px}
 label.lbl .req{color:var(--bad);font-size:15px;margin-left:4px}
 label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .lbl-side{font-weight:400;font-size:15px;color:var(--muted);white-space:nowrap}
+/* 週一便當份數 */
+.ms-who{margin-top:12px;background:#fff;border-radius:12px;padding:4px 12px}
+.ms-who-h{font-size:14px;font-weight:700;color:var(--muted);padding:8px 0 4px}
+.ms-p{display:grid;grid-template-columns:22px auto auto 1fr;gap:4px 8px;align-items:baseline;padding:8px 0;border-top:1px dashed var(--line);font-size:16px}
+.ms-p .no{color:var(--muted);font-size:13px}.ms-p .n{color:var(--brand-dark);font-weight:800;white-space:nowrap}
+.ms-p .d{grid-column:2/-1;color:var(--muted);font-size:14px}.ms-p .d i{font-style:normal;color:var(--text)}
+.ln-sched{margin-top:8px;font-size:14px}.ln-sched .seg-mini{display:inline-flex;flex-wrap:wrap;gap:4px;margin-left:4px;vertical-align:middle}
+.ln-sched .seg-mini button{border:1px solid var(--brand-line);background:#fff;border-radius:8px;padding:2px 8px;font-size:14px;min-height:32px}
+.ln-sched .seg-mini button.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.meal-stats{background:var(--brand-soft);border-radius:16px;padding:12px 16px;margin-bottom:14px}
+.meal-stats .ms-h{font-weight:800;font-size:16px;color:var(--brand-dark)}
+.meal-stats .ms-big{display:flex;align-items:baseline;gap:6px;margin:2px 0}
+.meal-stats .ms-big b{font-size:44px;line-height:1.1;color:var(--brand-dark)}.meal-stats .ms-big span{font-size:20px;font-weight:700}
+.meal-stats .ms-big small{margin-left:8px;color:var(--muted);font-size:15px}
+.meal-stats .ms-row{display:flex;gap:10px;align-items:flex-start;margin-top:8px}
+.meal-stats .ms-row .k{flex:none;font-size:14px;font-weight:700;color:var(--muted);padding-top:4px}
+.ms-chips{display:flex;flex-wrap:wrap;gap:6px}.ms-chip{background:#fff;border-radius:10px;padding:2px 10px;font-size:15px}
+.bad-t{color:var(--bad)}
 /* 後台打卡一覽：上線 */
 .mrow .up-line{font-size:15px;color:var(--muted);margin-top:4px}.mrow .up-line b{color:var(--text)}
 .up-none{color:#B4540A;font-weight:700}
@@ -1544,7 +1562,7 @@ function mockDownline(rootId){
   return out;
 }
 function mockMe(m){
-  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined, card:'RM1.'+m.id+'.DEMO000000',
+  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined, card:'RM1.'+m.id+'.DEMO000000', mealView: S.role==='admin' || !!m.mealView,
     sameTw: MockDB.members.filter(x=>x.tw===m.tw && x.id!==m.id).map(x=>x.name) };
 }
 
@@ -1881,7 +1899,11 @@ const MockApi = {
     if (p.id) { const x = MockDB.links.find(y=>y.id===p.id); if (!x) throw new Error('NOT_FOUND');
       if (x.kind!==kind) { MockDB.links.splice(MockDB.links.indexOf(x), 1); MockDB.links.push(x); } Object.assign(x, { kind, title:t, note:p.note||'', url:u }); return { ok:true, id:p.id }; }
     const id = uid('L'); MockDB.links.push({ id, kind, title:t, note:p.note||'', url:u, hidden:false }); return { ok:true, id }; },
-  async adminLinkHide(id, hidden){ await this._wait(); const x = MockDB.links.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND'); x.hidden = hidden!==false; return { ok:true, hidden:x.hidden }; },
+  async adminLinkHide(id, hidden){ await this._wait(); const x = MockDB.links.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND'); x.hidden = hidden!==false; delete x.sched; delete x.until; delete x.manualHidden; return { ok:true, hidden:x.hidden }; },
+  async adminLinkMode(id, mode, until){ await this._wait(); const x = MockDB.links.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND');
+    delete x.sched; delete x.until; x.hidden = mode==='hidden';
+    if (mode==='mon') { x.until = until || '18:00'; x.sched = 'mon@' + x.until; x.hidden = !(new Date().getDay()===1 && new Date().toTimeString().slice(0,5) < x.until); x.openNow = !x.hidden; }
+    return { ok:true }; },
   async adminLinkMove(id, dir){ await this._wait(); const L = MockDB.links, x = L.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND');
     const same = L.filter(y=>y.kind===x.kind), o = same[same.indexOf(x) + (dir===-1?-1:1)]; if (!o) return { ok:true, moved:false };
     const a = L.indexOf(x), b = L.indexOf(o); L[a] = o; L[b] = x; return { ok:true, moved:true }; },
@@ -1932,11 +1954,18 @@ const MockApi = {
     return { online:[{ id:this._me().id, name:this._me().name, avatarUrl:this._me().avatarUrl||'', color:this._me().color, min:0 }, ...pick(1,4,1)], recent:pick(4,7,12) };
   },
   async mePing(){ return { ok:true }; },
+  async mealStats(){
+    await this._wait(); if (!(S.role==='admin' || this._me().mealView)) throw new Error('FORBIDDEN');
+    return { title:'11/30 凡人咖啡廳｜週一愛心晚餐', meal:'滷排骨佐蔬食', deadline:'2026/11/30', open:true, portions:23, orders:17, money:2890,
+      drinks:[{name:'冰紅茶',n:9},{name:'熱綠茶',n:6},{name:'冰美式',n:5},{name:'熱拿鐵',n:3}], ways:[{name:'內用',n:18},{name:'外帶',n:5}], meals:[{name:'滷排骨佐蔬食',n:23}], at:todayStr()+' '+new Date().toTimeString().slice(0,8),
+      people:[{name:'王小美',n:2,drinks:['冰紅茶','熱拿鐵'],way:'內用',note:''},{name:'黃志明',n:1,drinks:['冰美式'],way:'外帶',note:'飯少一點'},{name:'劉佳穎',n:3,drinks:['熱綠茶','熱綠茶','冰紅茶'],way:'內用',note:''}] };
+  },
+  async adminMealViewer(memberId, on){ await this._wait(); const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND'); m.mealView = !!on; return { ok:true, on:!!on }; },
   async adminMember(id){
     await this._wait();
     const m = MockDB.byId[id], act = MockDB.activity;
     const posts = MockDB.posts.filter(p=>p.authorId===id && p.status!=='deleted').sort((a,b)=>b.postedAt-a.postedAt).map(p=>publicPost(p, this._me().id));
-    return { m:{ ...m, title:m.title||'', feeNow:(m.role==='admin'||m.title)?'exempt':'none', uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length }, activity:act, progress:computeDays(id, act), posts };
+    return { m:{ ...m, mealView:!!m.mealView, title:m.title||'', feeNow:(m.role==='admin'||m.title)?'exempt':'none', uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length }, activity:act, progress:computeDays(id, act), posts };
   },
   async adminReview(postId, decision){
     await this._wait();
@@ -2041,6 +2070,8 @@ const GasApi = {
   adminSetTitle(memberId, title){ return this.call('admin.setTitle', {memberId, title}); },
   adminOnline(){ return this.call('admin.online', {}, {retry:0}); },
   mePing(){ return this.call('me.ping', {}, {retry:0}); },
+  mealStats(){ return this.call('meal.stats', {}); },
+  adminMealViewer(memberId, on){ return this.call('admin.mealViewer', {memberId, on}); },
   adminTicketRefund(ticketId, amount, method){ return this.call('admin.ticket.refund', {ticketId, amount, method}, {retry:0}); },
   adminTicketKeep(ticketId){ return this.call('admin.ticket.keep', {ticketId}); },
   adminTicketMove(ticketId, toCourseId){ return this.call('admin.ticket.move', {ticketId, toCourseId}, {retry:0}); },
@@ -2059,6 +2090,7 @@ const GasApi = {
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
   adminLinkHide(id, hidden){ return this.call('admin.link.hide', {id, hidden}, {retry:0}); },
+  adminLinkMode(id, mode, until){ return this.call('admin.link.mode', {id, mode, until}, {retry:0}); },
   adminLinkMove(id, dir){ return this.call('admin.link.move', {id, dir}, {retry:0}); },
   adminDeleteMember(memberId){ return this.call('admin.member.delete', {memberId}, {retry:0}); },
   feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
@@ -2169,7 +2201,7 @@ const validName = n => /^[\u3400-\u9fffA-Za-z][\u3400-\u9fffA-Za-z\u00b7\u30fb\u
 function errText(e){
   const k = e && e.message;
   return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。',
-    FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
+    FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', MEAL_UNAVAILABLE:'便當系統暫時讀不到，等一下再試。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
     PHOTO_BIG:'照片太大了，請換一張。', TOO_MANY_PHOTOS:'每篇最多 3 張照片。', TEXT_TOO_LONG:'字數太多了，請精簡一點。',
     BUSY:'現在使用的人很多，請等幾秒再按一次。', TOO_MANY_POSTS:'今天已經發很多篇了，明天再分享吧。',
     LOGIN_REQUIRED:'請重新登入。', LOGIN_EXPIRED:'登入已過期，請重新登入。', NOT_APPROVED:'你的帳號還沒有通過審核或已停用，請洽管理員。',
@@ -3775,7 +3807,7 @@ const TRIP_KIND = {
   travel: { icon:'✈️', name:'我的旅遊', sub:'查自己的行程', empty:'目前沒有開放查詢的團', add:'＋ 新增一團', hint:'夥伴看到的順序就是這裡的順序。<br>團結束了按「隱藏」，<br>資料不會刪掉。' },
   hsr:    { icon:'🚄', name:'我的高鐵', sub:'登記車票、查車廂座位', empty:'目前沒有開放登記', add:'＋ 新增高鐵連結', hint:'有搭高鐵的活動、要開放登記時，<br>按「開放」夥伴就看得到。' },
   notice: { icon:'📢', name:'跑馬燈公告', sub:'', empty:'目前沒有公告', add:'＋ 新增一則公告', hint:'會在 APP 最上面一直跑。<br>夥伴點一下，可以看完整內容。<br>過期了按「隱藏」就不跑了。' },
-  meal:   { icon:'🍽️', name:'週一便當', sub:'登記星期一上課的便當', empty:'目前沒有開放登記', add:'＋ 貼上週一便當的網址', hint:'星期一上課的便當登記網頁。<br>每週換菜色，<br>按「修改」改小字說明就好。' } };
+  meal:   { icon:'🍽️', name:'週一便當', sub:'登記星期一上課的便當', empty:'目前沒有開放登記', add:'＋ 貼上週一便當的網址', hint:'星期一上課的便當登記網頁。<br>每週換菜色，<br>按「修改」改小字說明就好。<br>選「每週一自動打開」，<br>星期一 APP 就看得到，時間到自動關。<br>（LINE 的連結照舊，不受影響）' } };
 const TRIP_ORDER = ['travel','hsr','meal'];
 const LINK_ADMIN_ORDER = ['notice', ...TRIP_ORDER];   // 後台：跑馬燈公告放最上面
 const tripShort = t => String(t||'').replace(/^\s*\d{4}\s*/, '').replace(/(之旅|查詢|登記)$/, '').trim();
@@ -3801,12 +3833,27 @@ function tripSheet(kind){
   const K = TRIP_KIND[kind], admin = isAdminMe(), { open, all } = tripLinks(kind), list = admin ? all : open;
   const bg = document.createElement('div'); bg.className='sheet-bg';
   bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>${K.icon} ${K.name}</h3><button data-x>關閉</button></div>
-    <div class="sheet-b">${list.length ? `<div class="muted mb">${{travel:'選要查的團，<br>會打開那一團的查詢網頁。', hsr:'會打開高鐵車票的網頁。', meal:'會打開週一便當的登記網頁。'}[kind]}</div>
+    <div class="sheet-b">${kind==='meal' && canSeeMeal() ? '<div class="meal-stats" id="meal-stats"><div class="muted">讀取這週便當份數…</div></div>' : ''}${list.length ? `<div class="muted mb">${{travel:'選要查的團，<br>會打開那一團的查詢網頁。', hsr:'會打開高鐵車票的網頁。', meal:'會打開週一便當的登記網頁。'}[kind]}</div>
       <div class="trip-list">${list.map(l=>`<a class="trip-btn" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="t"><b>${esc(l.title)}</b>${l.note?`<span>${esc(l.note)}</span>`:''}${l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':''}</span><span class="go" aria-hidden="true">›</span></a>`).join('')}</div>`
       : `<div class="muted">${K.empty}。</div>`}
     ${admin ? `<div class="notice info small mt">${open.length ? '這裡是管理員才看得到的說明。' : '現在夥伴看不到這一行。'}<br>新增、隱藏、開放，<br>到後台「公告・入口設定」設定。</div><button class="btn btn-outline mt" data-act="admin-links">到後台設定</button>` : ''}</div></div>`;
   bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]') || e.target.closest('a,[data-act]')) setTimeout(()=>bg.remove(), 0); });
   document.body.appendChild(bg);
+  if (kind==='meal' && canSeeMeal()) drawMealStats();
+}
+const canSeeMeal = () => isAdminMe() || !!(S.me && S.me.mealView);
+/** 週一便當份數（管理員＋被允許的人才看得到；份數統計＋誰訂了幾份） */
+async function drawMealStats(){
+  let r; try { r = await api.mealStats(); } catch(e) { const b = $('#meal-stats'); if (b) b.innerHTML = `<div class="muted">${errText(e)}</div>`; return; }
+  const box = $('#meal-stats'); if (!box) return;
+  const chips = a => a.map(x=>`<span class="ms-chip">${esc(x.name)} <b>${x.n}</b></span>`).join('');
+  box.innerHTML = `<div class="ms-h">${esc(r.title || '這週週一便當')}</div>
+    <div class="ms-big"><b>${r.portions}</b><span>份</span><small>${r.orders} 筆登記${r.money ? `・約 ${Number(r.money).toLocaleString()} 元` : ''}</small></div>
+    <div class="muted small">${esc(r.meal || '')}${r.deadline ? `・截止 ${esc(r.deadline)}` : ''}${r.open ? '' : '・<b class="bad-t">已停止登記</b>'}</div>
+    ${r.drinks.length ? `<div class="ms-row"><span class="k">飲料</span><div class="ms-chips">${chips(r.drinks)}</div></div>` : ''}
+    ${r.ways.length ? `<div class="ms-row"><span class="k">用餐</span><div class="ms-chips">${chips(r.ways)}</div></div>` : ''}
+    ${(r.people||[]).length ? `<div class="ms-who"><div class="ms-who-h">誰訂了幾份（照訂的先後）</div>${r.people.map((x,i)=>`<div class="ms-p"><span class="no">${i+1}</span><b>${esc(x.name)}</b><span class="n">${x.n} 份</span><span class="d">${esc([x.drinks.join('、'), x.way].filter(Boolean).join('・'))}${x.note?`<br><i>${esc(x.note)}</i>`:''}</span></div>`).join('')}</div>` : '<div class="muted small mt">還沒有人訂。</div>'}
+    <div class="muted small mt">只有被允許的人看得到・${esc(String(r.at || '').slice(11, 16))} 更新</div>`;
 }
 
 /* =====================================================================
@@ -3853,9 +3900,11 @@ function appTile(x){
 }
 function tripTile(kind){
   const T = TRIP_TILE[kind], { open, all } = tripLinks(kind), admin = isAdminMe();
-  if (!open.length && !admin) return null;
-  if (!open.length) return { ...T, act: all.length ? 'trip-open' : 'admin-links', k: kind, off: true };
+  const mv = kind==='meal' && canSeeMeal();   // 看得到便當份數的人：點便當先看份數（2026-11-25 13:35）
+  if (!open.length && !admin && !mv) return null;
+  if (!open.length) return { ...T, act: (all.length || mv) ? 'trip-open' : 'admin-links', k: kind, off: true };
   if (kind==='hsr') return { ...T, act:'hsr-open', k: kind };   // 高鐵：兩個大按鈕「我要登記」「查我的車票」（2026-11-25）
+  if (mv) return { ...T, act:'trip-open', k: kind };
   if (open.length===1 && !(admin && all.length>1)) return { ...T, href: open[0].url };
   return { ...T, act:'trip-open', k: kind };
 }
@@ -4513,8 +4562,10 @@ async function renderAdminLinks(main){
   S.links = all.map(l=>({...l})); setTopTitle();   // 管理員的入口、跑馬燈跟著變（不用再重拿整個首頁）
   const row = (l, i, n) => `<div class="mrow cs-row${l.hidden?' is-hidden':''}">
       <div class="info"><b>${esc(l.title)}</b>${l.note?`<div class="muted small">${esc(l.note)}</div>`:''}
-        <div class="chips">${l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':'<span class="pill ok">'+(l.kind==='notice'?'跑馬燈播放中':'開放中')+'</span>'}${l.url?`<a class="pill brand" href="${esc(l.url)}" target="_blank" rel="noopener">打開看看 ›</a>`:''}</div></div>
-      <div class="cs-btns"><button class="btn ${l.hidden?'btn-primary':'btn-outline'} btn-sm" data-act="ln-hide" data-id="${l.id}" data-on="${l.hidden?'0':'1'}">${l.hidden?'開放':'隱藏'}</button>
+        <div class="chips">${l.sched ? (l.openNow ? '<span class="pill ok">📅 今天星期一・開放中</span>' : '<span class="pill brand">📅 每週一自動打開</span>') : l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':'<span class="pill ok">'+(l.kind==='notice'?'跑馬燈播放中':'開放中')+'</span>'}${l.url?`<a class="pill brand" href="${esc(l.url)}" target="_blank" rel="noopener">打開看看 ›</a>`:''}</div>
+        ${l.kind==='meal' ? (l.sched ? `<div class="ln-sched">每個星期一 00:00 打開，幾點關：<span class="seg-mini">${['12:00','15:00','17:00','18:00','21:00'].map(t=>`<button data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="${t}" class="${l.until===t?'on':''}">${t}</button>`).join('')}</span></div>`
+          : `<div class="ln-sched"><button class="btn btn-ghost btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="18:00">📅 改成每週一自動打開</button></div>`) : ''}</div>
+      <div class="cs-btns">${l.sched ? `<button class="btn btn-outline btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="open">改成一直開放</button><button class="btn btn-outline btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="hidden">隱藏</button>` : `<button class="btn ${l.hidden?'btn-primary':'btn-outline'} btn-sm" data-act="ln-hide" data-id="${l.id}" data-on="${l.hidden?'0':'1'}">${l.hidden?'開放':'隱藏'}</button>`}
         <button class="btn btn-ghost btn-sm" data-act="ln-edit" data-id="${l.id}">修改</button>
         ${n>1?`<div class="ln-move">${i>0?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="-1" aria-label="往上移">▲</button>`:''}${i<n-1?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="1" aria-label="往下移">▼</button>`:''}</div>`:''}</div></div>`;
   const sec = k => { const K = TRIP_KIND[k], L = all.filter(x=>x.kind===k);
@@ -4964,6 +5015,9 @@ async function renderAdminMember(main){
       <div class="lbl" style="margin:14px 0 6px">身分</div>
       <div class="seg title-seg" role="group" aria-label="身分">${[['','一般夥伴'],['company','公司專員'],['ceo','皇家CEO']].map(([k,t])=>`<button data-act="set-title" data-id="${m.id}" data-t="${k}" data-name="${esc(m.name)}" class="${(m.title||'')===k?'on':''}">${t}</button>`).join('')}</div>
       <div class="muted small mt">公司專員、皇家CEO：不用繳月費、不用打卡（不算在活動名單和打卡統計裡）、自己上現場課免費。</div>
+      <div class="lbl" style="margin:14px 0 6px">週一便當份數</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><button class="btn ${m.mealView?'btn-outline':'btn-ghost'} btn-sm" data-act="meal-viewer" data-id="${m.id}" data-on="${m.mealView?'0':'1'}">${m.mealView?'取消（不讓他看）':'🍽️ 讓他看週一便當份數'}</button>
+        <span class="muted small">${m.mealView?'✅ 他點「便當」就看得到這週誰訂了幾份。':'打開後，他點「便當」就看得到這週誰訂了幾份。'}</span></div>
       <div class="row mt"><button class="btn btn-sm del-btn" data-act="member-del" data-id="${m.id}" data-name="${esc(m.name)}" data-up="${esc(m.uplineName||'')}" style="width:auto">🗑 刪除這位夥伴</button></div>`}
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
@@ -5510,6 +5564,10 @@ document.addEventListener('click', async e=>{
     case 'ln-hide': { const hide = el.dataset.on==='1'; el.disabled = true;
       try { await api.adminLinkHide(el.dataset.id, hide); toast(hide ? '已隱藏，夥伴看不到了' : '已開放，夥伴看得到了', 'ok'); renderAdminLinks($('#main')); }
       catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
+    case 'ln-mode': { el.disabled = true; const m = el.dataset.m;
+      try { await api.adminLinkMode(el.dataset.id, m, el.dataset.u); QuickCache.clear();
+        toast(m==='mon' ? `✅ 每個星期一 00:00 自動打開，${el.dataset.u} 自動關` : m==='open' ? '已改成一直開放' : '已隱藏，夥伴看不到了', 'ok'); renderAdminLinks($('#main')); }
+      catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     case 'ln-move': { el.disabled = true;
       try { await api.adminLinkMove(el.dataset.id, +el.dataset.dir); renderAdminLinks($('#main')); }
       catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
@@ -5571,6 +5629,10 @@ document.addEventListener('click', async e=>{
     case 'set-staff': { const on = el.dataset.on==='1';
       if (!await confirmBox(on?'設成工作人員？\n他可以在「我的帳號」用掃描入場，看不到後台其他資料。':'取消他的工作人員身分？', on?'設成工作人員':'取消工作人員', !on)) break;
       try { await api.adminSetRole(el.dataset.id, on?'staff':'member'); toast(on?'已設成工作人員':'已取消工作人員','ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
+      break; }
+    case 'meal-viewer': {
+      const on = el.dataset.on === '1';
+      try { await api.adminMealViewer(el.dataset.id, on); toast(on ? '已打開，他點「便當」就看得到份數' : '已取消', 'ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
       break; }
     case 'set-title': {
       if (el.classList.contains('on')) break;
