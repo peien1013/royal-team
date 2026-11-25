@@ -40,6 +40,27 @@ img{max-width:100%;display:block}
 .topbar .tb-text small{display:block;font-size:13px;opacity:.85;letter-spacing:2px;line-height:1.2}
 .topbar .tb-text small.hidden{display:none}
 .topbar h1.act{font-size:clamp(14px,4.7vw,19px);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar h1.hidden{display:none}
+/* 跑馬燈公告（2026-11-25 08:13） */
+.tb-marq{display:block;width:100%;overflow:hidden;background:none;border:0;padding:0;margin:1px 0 0;color:#fff;font:inherit;font-size:clamp(16px,4.8vw,19px);font-weight:800;line-height:1.35;text-align:left;cursor:pointer;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent);mask:linear-gradient(90deg,transparent,#000 10px,#000 calc(100% - 14px),transparent)}
+.tb-marq.hidden{display:none}
+.mq-track{display:inline-flex;white-space:nowrap;will-change:transform}
+.mq-track>span{padding-right:48px}
+.mq-track.run{animation:mq-run linear infinite}
+.mq-track.vert{display:block}
+.topbar .tb-text small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mq-seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mq-seg button{min-height:64px;border-radius:16px;border:2px solid var(--line);background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px;font:inherit;color:var(--text)}
+.mq-seg button b{font-size:17px}.mq-seg button small{font-size:13px;color:var(--muted)}
+.mq-seg button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark)}.mq-one{display:inline-block;white-space:nowrap;will-change:transform}
+@keyframes mq-run{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.mq-track.run{animation:none}}
+.topbar.event .tb-marq{color:#FFF6DA}
+.notice-list{display:grid;gap:12px}
+.nt-item{border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.nt-t{font-size:19px;font-weight:800;line-height:1.45}
+.nt-n{color:var(--muted);margin-top:4px;white-space:pre-line}
 .topbar .tb-btn{background:rgba(255,255,255,.16);border:0;color:#fff;border-radius:12px;
   min-height:44px;padding:0 14px;font-size:16px}
 .demo-strip{background:#FFF6D9;color:#6B4E00;font-size:15px;padding:6px 16px;text-align:center;border-bottom:1px solid #F0DFA6}
@@ -233,9 +254,34 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .cs-two{display:grid;grid-template-columns:1fr;gap:0 10px}
 @media (min-width:520px){.cs-two{grid-template-columns:1fr 1fr}}
 .cs-form textarea.inp{min-height:96px}
-/* 我的旅遊・我的高鐵（2026-11-25） */
-.entry-card.is-off{opacity:.62}
-a.entry-card{color:inherit;text-decoration:none}
+/* 我的帳號：個人小卡＋桌面圖示（2026-11-25 08:02）；自己排列（08:06） */
+.app-card{padding:6px 8px 10px}
+.card.fold{padding:0 18px}.fold>summary{list-style:none;cursor:pointer;padding:16px 0;font-size:17px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.fold>summary::-webkit-details-marker{display:none}.fold>summary::after{content:'›';font-size:24px;color:var(--muted);transition:transform .2s}
+.fold[open]>summary::after{transform:rotate(90deg)}.fold[open]{padding-bottom:16px}
+.tile-bar{background:var(--brand-soft);border-radius:14px;padding:12px 14px;margin:2px 4px 6px}   /* 放在圖示下面：按住進入排列時圖示不會跳 */
+.tiles-edit-link{display:block;margin:0 auto 4px;font-size:15px}
+.app-tile{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app-grid.editing .app-tile{touch-action:none}
+.app-grid.editing .app-tile .ai{animation:tile-wig .26s ease-in-out infinite alternate}
+.app-grid.editing .app-tile:nth-child(2n) .ai{animation-delay:-.13s}
+@keyframes tile-wig{from{transform:rotate(-3deg)}to{transform:rotate(3deg)}}
+.app-tile.dragging{position:relative;z-index:5}
+.app-tile.dragging .ai{animation:none!important;box-shadow:0 12px 26px rgba(0,0,0,.2)}
+.app-tile.picked .ai{animation:none!important;outline:3px solid var(--brand);outline-offset:3px}
+@media (prefers-reduced-motion: reduce){.app-grid.editing .app-tile .ai{animation:none}}
+.acct-head{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;cursor:pointer;font:inherit;color:var(--text)}
+.acct-head .ah-t{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.acct-head .ah-name{font-size:22px;font-weight:800;line-height:1.3}
+.acct-head .ah-tw{font-size:15px;color:var(--muted)}
+.acct-head .ah-go{font-size:30px;color:var(--muted);line-height:1}
+.app-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 4px;padding:16px 0 12px}
+.app-tile{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:0;padding:0;color:var(--text);text-decoration:none;cursor:pointer;font:inherit;min-width:0;-webkit-tap-highlight-color:transparent}
+.app-tile .ai{width:62px;height:62px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:31px;line-height:1;box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);transition:transform .12s}
+.app-tile:active .ai{transform:scale(.92)}
+.app-tile .al{font-size:16px;font-weight:700;line-height:1.2}
+.app-tile.off .ai,.app-tile.off .al{opacity:.42}
+.app-tile .ao{font-size:12px;color:var(--muted);margin-top:-5px}
 .trip-list{display:grid;gap:10px}
 .trip-btn{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--text);text-decoration:none;min-height:66px}
 .trip-btn:active{background:var(--brand-soft)}
@@ -1316,7 +1362,9 @@ const MockDB = (() => {
     { id:'L2', kind:'travel', title:'2027 上海創心之旅', note:'', url:'https://peien1013.github.io/shanghai-2027/', hidden:false },
     { id:'L3', kind:'travel', title:'2027 巴黎瑞士', note:'', url:'https://peien1013.github.io/paris-swiss-2027/', hidden:false },
     { id:'L4', kind:'hsr', title:'高鐵車票登記・查詢', note:'登記車票、查車廂座位', url:'https://peien1013.github.io/thsr-ticket/', hidden:true },
-    { id:'L5', kind:'meal', title:'週一便當登記', note:'本週：滷排骨佐蔬食', url:'https://reurl.cc/mp5pq7', hidden:false } ];
+    { id:'L5', kind:'meal', title:'週一便當登記', note:'本週：滷排骨佐蔬食', url:'https://reurl.cc/mp5pq7', hidden:false },
+    { id:'L6', kind:'notice', title:'12/1（一）18:45 BOM 線上課，按「皇家學院」進教室', note:'老師：王俐涵、林孝恩\n不用輸入密碼', url:'', hidden:false },
+    { id:'L7', kind:'notice', title:'泰精彩之旅 12/19 出發，護照記得帶', note:'', url:'https://peien1013.github.io/thailand-2026/', hidden:false } ];
   return { T, members, byId, ME, activity, courses, posts, SCENES, pendingApplicants, requests:new Map(), audit:[], tickets, newTicket, honors,
     dreams, pastActs, links, ...(() => {   // 上下線示範：我（王小美）→ 3 位直接下線 → 再往下兩代
       const up = (i, j) => { if (members[i] && members[j]) members[i].uplineId = members[j].id; };
@@ -1471,7 +1519,7 @@ const MockApi = {
   async getHome(){ await this._wait(); const me=this._me(), joined = mockJoined(me), T = todayStr();
     return { me:mockMe(me), activity:MockDB.activity, joined, reg:mockRegStatus(me), todayDone: MockDB.posts.some(p=>p.authorId===me.id && p.status==='active' && !p.courseId && p.actionDate===T),
       progress: joined ? computeDays(me.id, MockDB.activity) : null, honors:mockHonorBoard().strip, dreams:mockDreamsHome(), teamCount: mockDownline(me.id).length,
-      links: MockDB.links.map(l=>({...l})),   // 示範版：切換管理員檢視時不重拿首頁，所以全部給（夥伴畫面本來就只顯示開放中的）
+      links: MockDB.links.map(l=>({...l})), marquee: MockDB.marqueeMode || 'v', marqueeTimes: MockDB.marqueeTimes || 'loop',   // 示範版：切換管理員檢視時不重拿首頁，所以全部給（夥伴畫面本來就只顯示開放中的）
       badges: Object.fromEntries(MockDB.members.map(m=>{ const r = S.role==='admin' || RANKS.some(x=>x.k===m.rank && (x.img||x.te)) ? (m.rank||'') : '';
         return [m.id, { r, c:m.coe||0 }]; }).filter(([,b])=>b.r||b.c)) }; },
   async applyUplines(){ await this._wait(); return MockDB.members.map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color })).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')); },
@@ -1766,9 +1814,12 @@ const MockApi = {
     const id = uid('C'); MockDB.courses.push({ id, announce:'', ...c }); return { ok:true, id }; },
   async adminCourseHide(id, hidden){ await this._wait(); const x = MockDB.courses.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND'); x.hidden = hidden!==false; return { ok:true, hidden:x.hidden }; },
   async adminLinkAll(){ await this._wait(); return { links: MockDB.links.map(l=>({...l})) }; },
+  async adminSettingSet(key, value){ await this._wait(); const ok = { marqueeMode:['v','h'], marqueeTimes:['loop','3'] }[key];
+    if (!ok || !ok.includes(value)) throw new Error('BAD_REQUEST'); MockDB[key] = value; return { ok:true, key, value }; },
+  async meTilesSet(order){ await this._wait(); const m = this._me(); m.tiles = order.slice(); return { ok:true, tiles:m.tiles }; },
   async adminLinkSave(p){ await this._wait();
-    const t = String(p.title||'').trim(), u = String(p.url||'').trim(); if (!t) throw new Error('LINK_TITLE_REQUIRED'); if (!u) throw new Error('LINK_URL_REQUIRED'); if (!/^https:\/\/\S+$/i.test(u)) throw new Error('LINK_BAD_URL');
-    const kind = ['hsr','meal'].includes(p.kind) ? p.kind : 'travel';
+    const t = String(p.title||'').trim(), u = String(p.url||'').trim(); if (!t) throw new Error('LINK_TITLE_REQUIRED'); if (!u && p.kind!=='notice') throw new Error('LINK_URL_REQUIRED'); if (u && !/^https:\/\/\S+$/i.test(u)) throw new Error('LINK_BAD_URL');
+    const kind = ['hsr','meal','notice'].includes(p.kind) ? p.kind : 'travel';
     if (p.id) { const x = MockDB.links.find(y=>y.id===p.id); if (!x) throw new Error('NOT_FOUND');
       if (x.kind!==kind) { MockDB.links.splice(MockDB.links.indexOf(x), 1); MockDB.links.push(x); } Object.assign(x, { kind, title:t, note:p.note||'', url:u }); return { ok:true, id:p.id }; }
     const id = uid('L'); MockDB.links.push({ id, kind, title:t, note:p.note||'', url:u, hidden:false }); return { ok:true, id }; },
@@ -1932,6 +1983,8 @@ const GasApi = {
   adminCourseSave(c){ return this.call('admin.course.save', c, {retry:0}); },
   adminCourseHide(id, hidden){ return this.call('admin.course.hide', {id, hidden}, {retry:0}); },
   adminLinkAll(){ return this.call('admin.link.all', {}); },
+  meTilesSet(order){ return this.call('me.tiles.set', {order}); },
+  adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
   adminLinkHide(id, hidden){ return this.call('admin.link.hide', {id, hidden}, {retry:0}); },
   adminLinkMove(id, dir){ return this.call('admin.link.move', {id, dir}, {retry:0}); },
@@ -1953,7 +2006,7 @@ const QC_DROP = {
   'post.create':['growth:me','courses'],   // 我的日誌列表：發文後直接把新的一篇放進去（見 submitPost） 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
   'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
   'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
-  'reg.apply':['growth:me'], 'team.addDown':[], 'team.removeDown':[], 'me.badge.set':['honors'],
+  'reg.apply':['growth:me'], 'me.tiles.set':[], 'admin.setting.set':[], 'team.addDown':[], 'team.removeDown':[], 'me.badge.set':['honors'],
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
 };
@@ -2517,7 +2570,7 @@ async function enterApp(method){   // 示範模式
    ===================================================================== */
 function renderShell(){
   $('#app').innerHTML = `<div class="shell" id="shell">
-    <header class="topbar"><img class="logo" src="${LOGO}" alt=""><div class="tb-text"><small id="tb-sub" class="hidden">皇家團隊</small><h1 id="tb-title">皇家團隊</h1></div>
+    <header class="topbar"><img class="logo" src="${LOGO}" alt=""><div class="tb-text"><small id="tb-sub" class="hidden">皇家團隊</small><h1 id="tb-title">皇家團隊</h1><button class="tb-marq hidden" id="tb-marq" data-act="notice-open" aria-label="看公告"><span class="mq-track" id="mq-track"></span></button></div>
       <button class="tb-btn tb-admin hidden" id="tb-admin" data-act="open-admin" aria-label="管理後台">🛠 後台<span class="tb-dot hidden" id="tb-admin-n"></span></button>
       <button class="tb-btn hidden" id="tb-back" data-act="back">‹ 返回</button></header>
     <main id="main"></main></div>
@@ -2624,7 +2677,7 @@ function goStart(){
   go(wantAdmin ? 'account' : 'home', wantAdmin ? {sub:'admin'} : {});
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
-function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.newApplicants=h.newApplicants||0; S.badges=h.badges||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[]; S.links=h.links||[];
+function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.newApplicants=h.newApplicants||0; S.badges=h.badges||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[]; S.links=h.links||[]; S.marquee=h.marquee==='h'?'h':'v'; S.marqueeTimes=h.marqueeTimes==='3'?'3':'loop';
   S.acts = h.acts || []; S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
@@ -2636,7 +2689,61 @@ function setTopTitle(){
   const T = todayStr(), live = hasAct && S.act.end >= T;   // 活動還沒結束：金框看板
   const bar = t.closest('.topbar'); if (bar) bar.classList.toggle('event', live);
   sub.textContent = !hasAct ? '皇家團隊' : S.act.start > T ? '🏆 皇家團隊・即將開始' : S.act.end >= T ? '🏆 皇家團隊・進行中' : '皇家團隊';
+  // 有公告：大字那一行變成跑馬燈，活動名稱移到上面小字（2026-11-25 08:13 使用者：「這裡變成我的通知跑馬燈」）
+  const ns = notices(), mq = $('#tb-marq');
+  if (mq) {
+    mq.classList.toggle('hidden', !ns.length); t.classList.toggle('hidden', !!ns.length);
+    if (ns.length) { sub.classList.remove('hidden'); sub.textContent = hasAct ? '🏆 ' + S.act.name : '🏆 皇家團隊'; drawMarquee(ns); }
+  }
   requestAnimationFrame(fitTopTitle);
+}
+const notices = () => (S.links||[]).filter(l=>l.kind==='notice' && !l.hidden);
+/** 跑馬燈兩種跑法（後台選）：
+ *  v 由下而上：一則一則換，每則停 2 秒；太長的停一下再往左滑出後半段（長輩讀得完）
+ *  h 從右到左：所有公告接成一條一直跑（每秒約 45px）
+ *  手機設定「減少動態」就停著不跑；點一下都可以看全部內容。 */
+let mqTimer = null;
+const reducedMotion = () => !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+function drawMarquee(ns){
+  const tr = $('#mq-track'), box = $('#tb-marq'); if (!tr || !box) return;
+  const key = S.marquee + S.marqueeTimes + '|' + ns.map(n=>n.title).join('|'), rounds = S.marqueeTimes === '3' ? 3 : 0;   // 0＝一直跑
+  if (tr.dataset.text === key) return; tr.dataset.text = key;
+  clearTimeout(mqTimer); tr.classList.remove('run','vert'); tr.style.animationDuration = '';
+  if (S.marquee === 'h' || reducedMotion()) {
+    const text = '📢 ' + ns.map(n=>n.title).join('　　✦　　');
+    tr.innerHTML = `<span>${esc(text)}</span>`;
+    if (reducedMotion()) return;
+    requestAnimationFrame(()=>{ const w = tr.firstChild.offsetWidth; if (w <= box.clientWidth) return;
+      tr.innerHTML = `<span>${esc(text)}</span><span aria-hidden="true">${esc(text)}</span>`;
+      tr.style.animationDuration = Math.max(8, Math.round((w + 48) / 45)) + 's'; tr.style.animationIterationCount = rounds || 'infinite'; tr.classList.add('run'); });
+    return;
+  }
+  tr.classList.add('vert'); let i = 0;
+  const step = () => {
+    if (!document.body.contains(tr) || tr.dataset.text !== key) return;
+    if (rounds && i >= rounds * ns.length) { tr.innerHTML = `<span class="mq-one">📢 ${esc(ns[0].title)}</span>`; return; }   // 跑完三輪：停在第一則（點一下看全部）
+    const n = ns[i % ns.length], first = i === 0; i++;
+    tr.innerHTML = `<span class="mq-one">📢 ${esc(n.title)}</span>`; const sp = tr.firstChild;
+    if (!first || ns.length > 1) sp.animate([{ transform:'translateY(100%)', opacity:0 }, { transform:'translateY(0)', opacity:1 }], { duration:450, easing:'ease-out' });
+    const over = Math.max(0, sp.offsetWidth - box.clientWidth + 14), slide = over ? Math.round(over / 45 * 1000) : 0;
+    if (over) sp.animate([{ transform:'translateX(0)' }, { transform:`translateX(${-over}px)` }], { duration:slide, delay:2200, easing:'linear', fill:'forwards' });
+    if (ns.length === 1 && !over) return;   // 只有一則、又放得下：停著就好
+    mqTimer = setTimeout(()=>{
+      sp.animate([{ transform:`translate(${-over}px,0)`, opacity:1 }, { transform:`translate(${-over}px,-100%)`, opacity:0 }], { duration:400, easing:'ease-in', fill:'forwards' });
+      mqTimer = setTimeout(step, 400);
+    }, 450 + 2000 + (over ? slide + 1800 : 0));
+  };
+  step();
+}
+function noticeSheet(){
+  const ns = notices(); if (!ns.length) return;
+  const bg = document.createElement('div'); bg.className='sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>📢 公告</h3><button data-x>關閉</button></div>
+    <div class="sheet-b"><div class="notice-list">${ns.map(n=>`<div class="nt-item"><div class="nt-t">${esc(n.title)}</div>${n.note?`<div class="nt-n">${esc(n.note)}</div>`:''}
+      ${n.url?`<a class="btn btn-primary btn-sm mt" href="${esc(n.url)}" target="_blank" rel="noopener">打開看看 ›</a>`:''}</div>`).join('')}</div>
+    ${isAdminMe()?'<button class="btn btn-outline mt" data-act="admin-links">到後台改公告</button>':''}</div></div>`;
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]') || e.target.closest('a,[data-act]')) setTimeout(()=>bg.remove(), 0); });
+  document.body.appendChild(bg);
 }
 /** 活動名稱一定排成一行：放不下就把字縮小一點（最小 12px），不截斷 */
 function fitTopTitle(){
@@ -2649,8 +2756,8 @@ window.addEventListener('resize', ()=>requestAnimationFrame(fitTopTitle));
 if (window.matchMedia) { const mq = matchMedia('(min-width:1024px)'); const f = () => { if (S.sub==='admin' && $('#mlist') && ADM) drawMemberList(); };
   mq.addEventListener ? mq.addEventListener('change', f) : mq.addListener(f); }
 /* 括號、引號黏住旁邊的字：不會出現「（」在行尾、「）」在行首這種斷法（使用者寫的內容不動） */
-const GLUE_SKIP = '.uc,.post-text,.cmt,textarea,input,script,style,svg';
-const PHRASE_SKIP = GLUE_SKIP + ',.ph,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
+const GLUE_SKIP = '.uc,.post-text,.cmt,.tb-marq,textarea,input,script,style,svg';
+const PHRASE_SKIP = GLUE_SKIP + ',.ph,.app-tile,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
 const PH_RE = /[^，。、；：！？]+[，。、；：！？]*[」』）》〉】\u2060]*|[，。、；：！？]+/g;
 /** 說明文字依標點切成一小段一小段，換行只發生在段落之間。
  *  2026-11-25 變快：一次收集、先讀完所有樣式再一起改（以前一個一個改，手機要重排好多次） */
@@ -2727,6 +2834,7 @@ function go(tab, opts={}){
   if (S.sub==='adminCourses') return renderAdminCourses(main);
   if (S.sub==='adminCourseEdit') return renderAdminCourseEdit(main);
   if (S.sub==='adminLinks') return renderAdminLinks(main);
+  if (S.sub==='settings') return renderSettings(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
   if (S.sub==='staffScan') return renderStaffScan(main);
@@ -3543,18 +3651,12 @@ async function renderMyTickets(main){
 const TRIP_KIND = {
   travel: { icon:'✈️', name:'我的旅遊', sub:'查自己的行程', empty:'目前沒有開放查詢的團', add:'＋ 新增一團', hint:'夥伴看到的順序就是這裡的順序。<br>團結束了按「隱藏」，<br>資料不會刪掉。' },
   hsr:    { icon:'🚄', name:'我的高鐵', sub:'登記車票、查車廂座位', empty:'目前沒有開放登記', add:'＋ 新增高鐵連結', hint:'有搭高鐵的活動、要開放登記時，<br>按「開放」夥伴就看得到。' },
+  notice: { icon:'📢', name:'跑馬燈公告', sub:'', empty:'目前沒有公告', add:'＋ 新增一則公告', hint:'會在 APP 最上面一直跑。<br>夥伴點一下，可以看完整內容。<br>過期了按「隱藏」就不跑了。' },
   meal:   { icon:'🍽️', name:'週一便當', sub:'登記星期一上課的便當', empty:'目前沒有開放登記', add:'＋ 貼上週一便當的網址', hint:'星期一上課的便當登記網頁。<br>每週換菜色，<br>按「修改」改小字說明就好。' } };
 const TRIP_ORDER = ['travel','hsr','meal'];
+const LINK_ADMIN_ORDER = ['notice', ...TRIP_ORDER];   // 後台：跑馬燈公告放最上面
 const tripShort = t => String(t||'').replace(/^\s*\d{4}\s*/, '').replace(/(之旅|查詢|登記)$/, '').trim();
 function tripLinks(kind){ const all = (S.links||[]).filter(l=>l.kind===kind); return { open: all.filter(l=>!l.hidden), all }; }
-function tripEntryHTML(kind){
-  const K = TRIP_KIND[kind], { open, all } = tripLinks(kind), admin = isAdminMe();
-  if (!open.length && !admin) return '';
-  if (!open.length) return `<button class="card entry-card is-off" data-act="${all.length?'trip-open':'admin-links'}" data-k="${kind}"><span>${K.icon} ${K.name}</span><span class="muted">${all.length?'還沒開放':'還沒放網址'}・夥伴看不到這一行 ›</span></button>`;
-  const sub = kind==='travel' && open.length>1 ? `${open.slice(0,3).map(l=>tripShort(l.title)).join('・')}${open.length>3?` 等 ${open.length} 團`:''}　${K.sub}` : (open.length===1 && open[0].note ? `${open[0].note}　${K.sub}` : K.sub);
-  if (open.length===1 && !(admin && all.length>1)) return `<a class="card entry-card" href="${esc(open[0].url)}" target="_blank" rel="noopener" data-act="trip-link"><span>${K.icon} ${K.name}</span><span class="muted">${esc(sub)} ›</span></a>`;
-  return `<button class="card entry-card" data-act="trip-open" data-k="${kind}"><span>${K.icon} ${K.name}</span><span class="muted">${esc(sub)} ›</span></button>`;
-}
 function tripSheet(kind){
   const K = TRIP_KIND[kind], admin = isAdminMe(), { open, all } = tripLinks(kind), list = admin ? all : open;
   const bg = document.createElement('div'); bg.className='sheet-bg';
@@ -3562,7 +3664,7 @@ function tripSheet(kind){
     <div class="sheet-b">${list.length ? `<div class="muted mb">${{travel:'選要查的團，<br>會打開那一團的查詢網頁。', hsr:'會打開高鐵車票的網頁。', meal:'會打開週一便當的登記網頁。'}[kind]}</div>
       <div class="trip-list">${list.map(l=>`<a class="trip-btn" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="t"><b>${esc(l.title)}</b>${l.note?`<span>${esc(l.note)}</span>`:''}${l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':''}</span><span class="go" aria-hidden="true">›</span></a>`).join('')}</div>`
       : `<div class="muted">${K.empty}。</div>`}
-    ${admin ? `<div class="notice info small mt">${open.length ? '這裡是管理員才看得到的說明。' : '現在夥伴看不到這一行。'}<br>新增、隱藏、開放，<br>到後台「旅遊・高鐵・便當入口」設定。</div><button class="btn btn-outline mt" data-act="admin-links">到後台設定</button>` : ''}</div></div>`;
+    ${admin ? `<div class="notice info small mt">${open.length ? '這裡是管理員才看得到的說明。' : '現在夥伴看不到這一行。'}<br>新增、隱藏、開放，<br>到後台「公告・入口設定」設定。</div><button class="btn btn-outline mt" data-act="admin-links">到後台設定</button>` : ''}</div></div>`;
   bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]') || e.target.closest('a,[data-act]')) setTimeout(()=>bg.remove(), 0); });
   document.body.appendChild(bg);
 }
@@ -3570,30 +3672,21 @@ function tripSheet(kind){
 /* =====================================================================
    我的帳號
    ===================================================================== */
+/** 我的帳號（2026-11-25 08:02 使用者：「太多東西了」「做成像手機桌面這樣 APP 呈現」「如新 TW，不要寫皇家號碼」）
+ *  上面：個人小卡（點進去＝設定）；下面：一排四個、兩個字的圖示。沒開放的不出現。 */
 function renderAccount(main){
-  const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
+  const me = S.me, admin = me.role==='admin';
   main.innerHTML = `
-    <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
-      <h2 style="margin:0">${esc(me.name)}${badgeHTML(me.id)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+    <button class="card acct-head" data-act="acct-settings">${avatarHTML(me,'lg')}<span class="ah-t">
+      <span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>
+      <span class="ah-tw">${me.tw ? '如新 '+esc(me.tw) : '如新 TW　還沒填'}${me.tw&&me.twStatus==='pending'?' <span class="pill pend">待確認</span>':''}</span>
+      ${admin?'<span class="pill ok">👑 管理員</span>':''}</span><span class="ah-go" aria-hidden="true">›</span></button>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
-    ${me.role==='admin' ? '' : myBadgeCardHTML()}
-    <button class="card entry-card" data-act="dreams"><span>✨ 我們的夢想</span><span class="muted">我的夢想和夥伴的夢想版 ›</span></button>
-    <button class="card entry-card" data-act="honors"><span>🏆 榮譽名人榜</span><span class="muted">活動達標、晉升、業績表揚 ›</span></button>
-    ${TRIP_ORDER.map(tripEntryHTML).join('')}
-    <button class="card entry-card" data-act="team"><span>👥 我的團隊</span><span class="muted">下線的打卡進度、新增／移除下線 ›</span></button>
-    <button class="card entry-card" data-act="my-tickets"><span>🎫 我的票券</span><span class="muted">現場課的入場 QR、轉讓、取消 ›</span></button>
-    <div class="card"><h3>基本資料</h3>
-      <div class="kv"><span class="k">如新 TW 帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}${me.tw&&me.twStatus==='pending'?' <span class="pill pend">待確認</span>':''}</span></div>
-      ${same.length?`<div class="kv"><span class="k">同戶別夥伴</span><span class="v">${same.map(esc).join('、')}</span></div>`:''}
-      <div class="kv"><span class="k">加入日期</span><span class="v">${mdZh(me.joined)}</span></div>
-      <div class="hint">TW 帳號只有你和管理員看得到，不會出現在動態牆。</div></div>
-    <div class="card"><h3>登入方式</h3>
-      <div class="kv"><span class="k">LINE</span><span class="v">${has('LINE')?'<span class="pill ok">已綁定</span>':'<span class="pill gray">未綁定</span>'}</span></div>
-      <div class="kv"><span class="k">Email</span><span class="v">${has('EMAIL')?'<span class="pill ok">已綁定</span>':'<span class="pill gray">未綁定</span>'}</span></div>
-      <button class="btn btn-outline mt" data-act="logout">登出</button>
-      <button class="link-btn danger mt" data-act="logout-all">換手機或不放心？登出所有裝置</button></div>
-    ${installCardHTML()}
-    ${me.role==='admin' && CONFIG.MODE==='live' ? '<div class="card"><h3>管理員</h3><button class="btn btn-primary" data-act="open-admin">進入管理後台</button></div>' : ''}
+    <div class="card app-card"><div class="app-grid" id="app-grid">${appTilesHTML()}</div>
+      <button class="link-btn tiles-edit-link" data-act="tiles-edit">↕ 排列圖示</button>
+      <div class="tile-bar hidden" id="tile-bar"><div class="muted">按住圖示，拖到想放的位置。<br>或先點一個，再點要放的位置。</div>
+        <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px"><button class="btn btn-primary btn-sm" data-act="tiles-done">完成</button><button class="btn btn-ghost btn-sm" data-act="tiles-reset">恢復原本順序</button></div></div></div>
+    ${admin && CONFIG.MODE==='live' ? '<div class="card"><h3>管理員</h3><button class="btn btn-primary" data-act="open-admin">進入管理後台</button></div>' : ''}
     ${(me.role==='staff' && CONFIG.MODE==='live') || (CONFIG.MODE!=='live' && S.role==='staff') ? '<div class="card"><h3>🧑‍💼 工作人員</h3><div class="muted mb">現場課入場時，用手機鏡頭或掃描槍掃夥伴的 QR。</div><button class="btn btn-primary" data-act="open-staff">📷 掃描入場</button></div>' : ''}
     ${CONFIG.MODE==='live' ? '' : `<div class="card" style="border:2px dashed var(--pend)"><h3>檢視設定</h3>
       <div class="switch"><span>以管理員身分查看</span><input type="checkbox" id="sw-admin" ${S.role==='admin'?'checked':''}></div>
@@ -3603,13 +3696,119 @@ function renderAccount(main){
       <div class="switch"><span>模擬網路很慢</span><input type="checkbox" id="sw-slow" ${Demo.slow?'checked':''}></div>
       ${S.role==='admin'?'<button class="btn btn-primary mt" data-act="open-admin">進入管理後台</button>':''}
     </div>`}`;
+  initTileGrid();
   if (CONFIG.MODE==='live') return;
-  $('#sw-admin').addEventListener('change', e=>{ S.role = e.target.checked?'admin':'member'; renderAccount(main); });
-  $('#sw-staff').addEventListener('change', e=>{ S.role = e.target.checked?'staff':'member'; renderAccount(main); });
+  $('#sw-admin').addEventListener('change', e=>{ S.role = e.target.checked?'admin':'member'; S.me.role = S.role; renderAccount(main); });
+  $('#sw-staff').addEventListener('change', e=>{ S.role = e.target.checked?'staff':'member'; S.me.role = S.role; renderAccount(main); });
   $('#sw-nojoin').addEventListener('change', async e=>{ Demo.notJoined = e.target.checked; await loadHome(); setNav(); toast(e.target.checked?'底部按鈕變成「我的成長」':'底部按鈕變回「我的進度」'); });
   $('#sw-fail').addEventListener('change', e=>{ Demo.failNext = e.target.checked; toast(e.target.checked?'下一次送出會失敗，用來看錯誤提示':'已關閉'); });
   $('#sw-slow').addEventListener('change', e=>{ Demo.slow = e.target.checked; });
 }
+/** 桌面圖示：夢想・榮譽・旅遊・高鐵・便當・團隊・票券・設定 */
+const TRIP_TILE = { travel:{ ic:'✈️', t:'旅遊', c:'#E4F0FB' }, hsr:{ ic:'🚄', t:'高鐵', c:'#FCEBE4' }, meal:{ ic:'🍽️', t:'便當', c:'#E9F5DC' } };
+function appTile(x){
+  const inner = `<span class="ai" style="background:${x.c}" aria-hidden="true">${x.ic}</span><span class="al">${x.t}</span>${x.off?'<span class="ao">未開放</span>':''}`;
+  return x.href ? `<a class="app-tile" href="${esc(x.href)}" target="_blank" rel="noopener" draggable="false" data-act="trip-link" data-key="${x.key}">${inner}</a>`
+    : `<button class="app-tile${x.off?' off':''}" data-act="${x.act}"${x.k?` data-k="${x.k}"`:''} data-key="${x.key}">${inner}</button>`;
+}
+function tripTile(kind){
+  const T = TRIP_TILE[kind], { open, all } = tripLinks(kind), admin = isAdminMe();
+  if (!open.length && !admin) return null;
+  if (!open.length) return { ...T, act: all.length ? 'trip-open' : 'admin-links', k: kind, off: true };
+  if (open.length===1 && !(admin && all.length>1)) return { ...T, href: open[0].url };
+  return { ...T, act:'trip-open', k: kind };
+}
+const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','team','tickets','settings'];
+/** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
+function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
+function appTilesHTML(){
+  const T = { dreams:{ act:'dreams', ic:'✨', t:'夢想', c:'#F0ECFF' }, honors:{ act:'honors', ic:'🏆', t:'榮譽', c:'#FFF3D6' },
+    travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
+    team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' } };
+  return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k })).join('');
+}
+/* ---------- 自己排圖示（2026-11-25 08:06 使用者：「讓使用者自己排列順序，像手機這樣可以自己排列和移動」）----------
+   按住 0.5 秒（或按「↕ 排列圖示」）→ 圖示會抖動 → 拖到想放的位置；手不穩也可以「先點一個、再點要放的位置」。
+   放好就存到後端（Members.tiles），換手機、LINE 裡或桌面圖示打開都一樣。 */
+let tileSaveT = null;
+function tileSave(){
+  const g = $('#app-grid'); if (!g) return;
+  const vis = [...g.querySelectorAll('.app-tile')].map(x=>x.dataset.key), full = tileOrder(); let i = 0;
+  const order = full.map(k => vis.includes(k) ? vis[i++] : k);   // 沒顯示的（例如高鐵沒開放）留在原本的位置
+  S.me.tiles = order; clearTimeout(tileSaveT);
+  tileSaveT = setTimeout(()=>{ api.meTilesSet(order).catch(()=>toast('順序沒存到，請再排一次','err')); }, 700);
+}
+function tileEdit(on){
+  const g = $('#app-grid'); if (!g) return;
+  g.classList.toggle('editing', on); $('#tile-bar').classList.toggle('hidden', !on);
+  const l = $('.tiles-edit-link'); if (l) l.classList.toggle('hidden', on);
+  g.querySelectorAll('.picked').forEach(x=>x.classList.remove('picked'));
+}
+function initTileGrid(){
+  const g = $('#app-grid'); if (!g) return;
+  let press = null, drag = null, swallow = false;
+  const tileAt = (x, y, skip) => [...g.querySelectorAll('.app-tile')].find(t => { if (t===skip) return false; const r = t.getBoundingClientRect(); return x>r.left && x<r.right && y>r.top && y<r.bottom; });
+  const moveTo = (t, over) => { const all = [...g.querySelectorAll('.app-tile')]; if (all.indexOf(t) < all.indexOf(over)) over.after(t); else over.before(t); };
+  // 排列時：點圖示不要打開、不要換頁
+  g.addEventListener('click', e=>{ if (g.classList.contains('editing') || swallow) { e.preventDefault(); e.stopPropagation(); swallow = false; } }, true);
+  g.addEventListener('contextmenu', e=>{ if (e.target.closest('.app-tile')) e.preventDefault(); });
+  g.addEventListener('pointerdown', e=>{
+    const t = e.target.closest('.app-tile'); if (!t) return;
+    if (!g.classList.contains('editing')) {   // 按住 0.55 秒進入排列
+      const x0 = e.clientX, y0 = e.clientY;
+      press = { x0, y0, timer: setTimeout(()=>{ press = null; swallow = true; tileEdit(true); if (navigator.vibrate) navigator.vibrate(30); }, 550) };
+      return; }
+    drag = { t, x0:e.clientX, y0:e.clientY, dx:0, dy:0, moved:false };
+    try { t.setPointerCapture(e.pointerId); } catch(_){}
+  });
+  g.addEventListener('pointermove', e=>{
+    if (press && Math.hypot(e.clientX-press.x0, e.clientY-press.y0) > 10) { clearTimeout(press.timer); press = null; }
+    if (!drag) return;
+    const dx = e.clientX-drag.x0, dy = e.clientY-drag.y0;
+    if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+    if (!drag.moved) { drag.moved = true; drag.t.classList.add('dragging'); g.querySelectorAll('.picked').forEach(x=>x.classList.remove('picked')); }
+    e.preventDefault();
+    const over = tileAt(e.clientX, e.clientY, drag.t);
+    if (over) {   // 換位置：記住手指下的位置不要跳
+      const b0 = drag.t.getBoundingClientRect(); moveTo(drag.t, over); const b1 = drag.t.getBoundingClientRect();
+      drag.x0 += b1.left - b0.left; drag.y0 += b1.top - b0.top; }
+    drag.t.style.transform = `translate(${e.clientX-drag.x0}px,${e.clientY-drag.y0}px) scale(1.1)`;
+  });
+  const end = e=>{
+    if (press) { clearTimeout(press.timer); press = null; }
+    if (!drag) return;
+    const d = drag; drag = null; d.t.style.transform = ''; d.t.classList.remove('dragging');
+    if (d.moved) { tileSave(); return; }
+    // 沒拖：先點一個、再點要放的位置
+    const picked = g.querySelector('.picked');
+    if (!picked) d.t.classList.add('picked');
+    else if (picked === d.t) picked.classList.remove('picked');
+    else { picked.classList.remove('picked'); moveTo(picked, d.t); tileSave(); }
+  };
+  g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
+}
+/** 設定：大頭照、我的徽章、基本資料、登入方式、登出、放到手機桌面 */
+function renderSettings(main){
+  const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
+  main.innerHTML = `
+    <div class="card center"><div class="avatar-edit">${avatarHTML(me,'xl')}<button class="btn btn-ghost btn-sm" data-act="avatar-change">📷 更換大頭照</button></div>
+      <h2 style="margin:0">${esc(me.name)}${badgeHTML(me.id)}</h2>${me.role==='admin'?'<div><span class="pill ok">👑 管理員</span></div>':''}${CONFIG.SHOW_TEAM?'<div class="muted">'+esc(me.team)+'</div>':''}</div>
+    ${me.role==='admin' ? '' : myBadgeCardHTML()}
+    <div class="card"><h3>基本資料</h3>
+      <div class="kv"><span class="k">如新 TW 帳號</span><span class="v">${me.tw?esc(me.tw):'（未填）'}${me.tw&&me.twStatus==='pending'?' <span class="pill pend">待確認</span>':''}</span></div>
+      ${same.length?`<div class="kv"><span class="k">同戶別夥伴</span><span class="v">${same.map(esc).join('、')}</span></div>`:''}
+      <div class="kv"><span class="k">加入日期</span><span class="v">${mdZh(me.joined)}</span></div>
+      <div class="hint">TW 帳號只有你和管理員看得到，不會出現在動態牆。</div></div>
+    ${installCardHTML()}
+    <details class="card fold"><summary>🔐 登入方式・登出</summary>
+      <div class="muted small mb">綁好就不用再登入，平常不用登出。</div>
+      <div class="kv"><span class="k">LINE</span><span class="v">${has('LINE')?'<span class="pill ok">已綁定</span>':'<span class="pill gray">未綁定</span>'}</span></div>
+      <div class="kv"><span class="k">Email</span><span class="v">${has('EMAIL')?'<span class="pill ok">已綁定</span>':'<span class="pill gray">未綁定</span>'}</span></div>
+      <button class="btn btn-outline mt" data-act="logout">登出</button>
+      <button class="link-btn danger mt" data-act="logout-all">換手機或不放心？登出所有裝置</button></details>`;
+}
+/** 換了大頭照、徽章：重畫現在這一頁 */
+function rerenderAcct(){ const m = $('#main'); if (S.sub==='settings') renderSettings(m); else if (S.tab==='account' && !S.sub) renderAccount(m); }
 
 /* =====================================================================
    榮譽名人榜：首頁上方輪播（照片＋名字＋達成什麼）＋獨立頁面（再加聘階、感言）
@@ -4148,21 +4347,23 @@ async function renderAdminLinks(main){
   try { ADML = await qget('admlinks', () => api.adminLinkAll(), () => { if (S.sub==='adminLinks') renderAdminLinks(main); }); }
   catch(e){ main.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
   const all = ADML.links || [];
-  S.links = all.map(l=>({...l}));   // 管理員的「我的帳號」入口跟著變（不用再重拿整個首頁）
+  S.links = all.map(l=>({...l})); setTopTitle();   // 管理員的入口、跑馬燈跟著變（不用再重拿整個首頁）
   const row = (l, i, n) => `<div class="mrow cs-row${l.hidden?' is-hidden':''}">
       <div class="info"><b>${esc(l.title)}</b>${l.note?`<div class="muted small">${esc(l.note)}</div>`:''}
-        <div class="chips">${l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':'<span class="pill ok">開放中</span>'}<a class="pill brand" href="${esc(l.url)}" target="_blank" rel="noopener">打開看看 ›</a></div></div>
+        <div class="chips">${l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':'<span class="pill ok">'+(l.kind==='notice'?'跑馬燈播放中':'開放中')+'</span>'}${l.url?`<a class="pill brand" href="${esc(l.url)}" target="_blank" rel="noopener">打開看看 ›</a>`:''}</div></div>
       <div class="cs-btns"><button class="btn ${l.hidden?'btn-primary':'btn-outline'} btn-sm" data-act="ln-hide" data-id="${l.id}" data-on="${l.hidden?'0':'1'}">${l.hidden?'開放':'隱藏'}</button>
         <button class="btn btn-ghost btn-sm" data-act="ln-edit" data-id="${l.id}">修改</button>
         ${n>1?`<div class="ln-move">${i>0?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="-1" aria-label="往上移">▲</button>`:''}${i<n-1?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="1" aria-label="往下移">▼</button>`:''}</div>`:''}</div></div>`;
   const sec = k => { const K = TRIP_KIND[k], L = all.filter(x=>x.kind===k);
     return `<div class="card"><h3>${K.icon} ${K.name}</h3><div class="muted small mb">${K.hint}</div>
+      ${k==='notice' ? `<div class="lbl" style="margin-top:0">跑法</div><div class="mq-seg mb" id="mq-mode">${[['v','⬆️ 由下而上','一則一則換'],['h','⬅️ 從右到左','接成一條跑']].map(([m,t,d])=>`<button type="button" data-act="mq-mode" data-m="${m}" class="${S.marquee===m?'on':''}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>
+        <div class="lbl" style="margin-top:0">跑幾次</div><div class="mq-seg mb" id="mq-times">${[['loop','🔁 一直跑','打開 APP 就一直跑'],['3','3️⃣ 跑三輪就停','停在第一則']].map(([m,t,d])=>`<button type="button" data-act="mq-times" data-m="${m}" class="${S.marqueeTimes===m?'on':''}"><b>${t}</b><small>${d}</small></button>`).join('')}</div>` : ''}
       ${L.length ? `<div class="mlist">${L.map((l,i)=>row(l,i,L.length)).join('')}</div>` : '<div class="muted">還沒有連結。</div>'}
       <button class="btn btn-outline btn-sm mt" data-act="ln-new" data-k="${k}">${K.add}</button></div>`; };
-  main.innerHTML = `<div class="card"><h2 style="margin:0 0 4px">✈️ 旅遊・高鐵・便當入口</h2>
-      <div class="muted">夥伴在「我的帳號」點進去，<br>就會打開這裡的網頁。<br>改完馬上生效。</div></div>${TRIP_ORDER.map(sec).join('')}`;
+  main.innerHTML = `<div class="card"><h2 style="margin:0 0 4px">📢 公告・旅遊・高鐵・便當</h2>
+      <div class="muted">最上面的跑馬燈公告，<br>和「我的帳號」裡的旅遊、高鐵、便當，<br>都在這裡設定。改完馬上生效。</div></div>${LINK_ADMIN_ORDER.map(sec).join('')}`;
 }
-const LN_NOTE_EG = { travel:'例如：12/19 出發', hsr:'例如：登記車票、查車廂座位', meal:'例如：本週：滷排骨佐蔬食' };
+const LN_NOTE_EG = { travel:'例如：12/19 出發', hsr:'例如：登記車票、查車廂座位', meal:'例如：本週：滷排骨佐蔬食', notice:'例如：老師：王俐涵、林孝恩' };
 function openLinkEdit(base, kind){
   S.lnDraft = base ? { ...base } : { id:'', kind: TRIP_KIND[kind] ? kind : 'travel', title: kind==='meal' ? '週一便當登記' : '', note:'', url:'' };
   go('account', {sub:'adminLinkEdit'});
@@ -4172,15 +4373,16 @@ function renderAdminLinkEdit(main){
   const isNew = !l.id;
   main.innerHTML = `<div class="card cs-form"><h2 style="margin:0 0 6px">${isNew ? TRIP_KIND[l.kind].add : '修改'}</h2>
     <label class="lbl">放在哪裡</label>
-    <div class="seg" id="ln-kind">${TRIP_ORDER.map(k=>`<button type="button" data-k="${k}" class="${l.kind===k?'on':''}">${TRIP_KIND[k].icon} ${TRIP_KIND[k].name.replace(/^我的|^週一/,'')}</button>`).join('')}</div>
-    <label class="lbl" for="ln-title">名稱<span class="req">必填</span></label><input class="inp" id="ln-title" maxlength="40" placeholder="例如：2027 上海創心之旅" value="${esc(l.title)}">
-    <label class="lbl" for="ln-note">小字說明<span class="muted small" style="font-weight:400">（可不填）</span></label><input class="inp" id="ln-note" maxlength="40" placeholder="${LN_NOTE_EG[l.kind]}" value="${esc(l.note)}">
-    <label class="lbl" for="ln-url">網址<span class="req">必填</span></label><input class="inp" id="ln-url" inputmode="url" placeholder="https://…" value="${esc(l.url)}">
+    <div class="seg" id="ln-kind" style="grid-template-columns:repeat(2,1fr)">${LINK_ADMIN_ORDER.map(k=>`<button type="button" data-k="${k}" class="${l.kind===k?'on':''}">${TRIP_KIND[k].icon} ${TRIP_KIND[k].name.replace(/^我的|^週一|^跑馬燈/,'')}</button>`).join('')}</div>
+    <label class="lbl" for="ln-title" id="ln-title-l">${l.kind==='notice'?'公告內容':'名稱'}<span class="req">必填</span></label><input class="inp" id="ln-title" maxlength="80" placeholder="${l.kind==='notice'?'例如：12/1（一）18:45 BOM 線上課':'例如：2027 上海創心之旅'}" value="${esc(l.title)}">
+    <label class="lbl" for="ln-note">${l.kind==='notice'?'點開後看到的補充說明':'小字說明'}<span class="muted small" style="font-weight:400">（可不填）</span></label><input class="inp" id="ln-note" maxlength="200" placeholder="${LN_NOTE_EG[l.kind]}" value="${esc(l.note)}">
+    <label class="lbl" for="ln-url">網址${l.kind==='notice'?'<span class="muted small" style="font-weight:400">（可不填）</span>':'<span class="req">必填</span>'}</label><input class="inp" id="ln-url" inputmode="url" placeholder="https://…" value="${esc(l.url)}">
     <div class="hint">打開要連過去的網頁，<br>從網址列整個複製貼上。</div>
     <div id="ln-err" class="notice err hidden mt"></div>
     <button class="btn btn-primary mt" data-act="ln-save">${isNew ? '新增' : '儲存修改'}</button>
     <button class="btn btn-outline" data-act="back">取消</button></div>`;
-  $('#ln-kind').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return; l.kind = b.dataset.k; $$('#ln-kind [data-k]').forEach(x=>x.classList.toggle('on', x===b)); $('#ln-note').placeholder = LN_NOTE_EG[l.kind]; };
+  $('#ln-kind').onclick = e => { const b = e.target.closest('[data-k]'); if (!b) return;
+    l.title = $('#ln-title').value; l.note = $('#ln-note').value; l.url = $('#ln-url').value; l.kind = b.dataset.k; renderAdminLinkEdit(main); };
   if (isNew) setTimeout(()=>{ const f = $('#ln-title'); if (f) f.focus(); }, 50);
 }
 
@@ -4475,8 +4677,8 @@ async function renderAdmin(main){
           : '<div class="muted">還沒有人達標。</div>'}</div>`; })() : ''}
     <div class="card"><h3>📚 課程管理</h3><div class="muted mb">星期一 BOM、線上課、現場課，<br>都在這裡新增、修改。<br>夥伴在皇家學院看到的，<br>就是這裡的課。</div>
       <button class="btn btn-primary btn-sm" data-act="admin-courses">課程管理・新增課程</button></div>
-    <div class="card"><h3>✈️ 旅遊・高鐵・便當入口</h3><div class="muted mb">夥伴在「我的帳號」點<br>「我的旅遊」「我的高鐵」<br>「週一便當」，<br>就會打開這裡設定的網頁。<br>新增一團、團結束隱藏、<br>高鐵要登記時按開放。</div>
-      <button class="btn btn-primary btn-sm" data-act="admin-links">旅遊・高鐵・便當入口設定</button></div>
+    <div class="card"><h3>📢 跑馬燈公告・旅遊・高鐵・便當</h3><div class="muted mb">最上面一直跑的公告，<br>和「我的帳號」裡的<br>旅遊、高鐵、便當圖示，<br>都在這裡設定。</div>
+      <button class="btn btn-primary btn-sm" data-act="admin-links">公告・入口設定</button></div>
     <div class="card"><h3>🎫 課程收費與入場</h3><div class="mlist">
       ${onsite.length ? onsite.map(c=>`<button class="mrow" data-act="admin-course" data-id="${c.id}">
         <div class="info"><b>${esc(c.title)}</b><div class="muted small">${mdZh(c.date)} ${esc(c.time)}・${c.fee?'NT$'+c.fee.toLocaleString():'免費'}</div>
@@ -4925,7 +5127,7 @@ document.addEventListener('click', async e=>{
         S.me.avatarUrl = r.avatarUrl;
         S.feed.items.forEach(p=>{ if (p.author.id===S.me.id) p.author.avatarUrl = r.avatarUrl; });
         if (S.myPosts) S.myPosts.forEach(p=>{ p.author.avatarUrl = r.avatarUrl; });
-        toast('大頭照已更新','ok'); renderAccount($('#main'));
+        toast('大頭照已更新','ok'); rerenderAcct();
       } catch(err){ toast(errText(err),'err'); el.disabled=false; el.textContent='📷 更換大頭照'; }
       break; }
     case 'ap-next': case 'ap-prev': {
@@ -4990,7 +5192,7 @@ document.addEventListener('click', async e=>{
         S.badges = S.badges || {}; const nb = { r: r.r, c: r.c };
         if (nb.r || nb.c) S.badges[id] = nb; else delete S.badges[id];
         QuickCache.dropPrefix('home'); toast((act==='my-rank' ? v : v > 0) ? '✨ 好了！動態牆上你的名字後面會出現徽章' : '已拿掉','ok');
-        if ($('#my-badge')) renderAccount($('#main')); }
+        rerenderAcct(); }
       catch(err){ toast(errText(err),'err'); } break; }
     case 'dream-edit': S.dreamBack = S.sub; go(S.tab, {sub:'dreamEdit'}); break;
     case 'dream-tick': dreamTick(+el.dataset.i); break;
@@ -5086,6 +5288,18 @@ document.addEventListener('click', async e=>{
     case 'admin-roster': go('account', {sub:'adminRoster'}); break;
     case 'admin-courses': go('account', {sub:'adminCourses'}); break;
     case 'admin-links': go('account', {sub:'adminLinks'}); break;
+    case 'acct-settings': go('account', {sub:'settings'}); break;
+    case 'tiles-edit': tileEdit(true); break;
+    case 'notice-open': noticeSheet(); break;
+    case 'mq-mode': case 'mq-times': {   // 跑馬燈跑法、次數（後台）
+      const m = el.dataset.m, f = act==='mq-mode' ? 'marquee' : 'marqueeTimes', box = act==='mq-mode' ? '#mq-mode' : '#mq-times';
+      if (m === S[f]) break; const old = S[f]; S[f] = m;
+      $$(box+' [data-m]').forEach(x=>x.classList.toggle('on', x.dataset.m===m)); setTopTitle();
+      try { await api.adminSettingSet(act==='mq-mode' ? 'marqueeMode' : 'marqueeTimes', m);
+        toast({ v:'跑馬燈改成由下而上', h:'跑馬燈改成從右到左', loop:'跑馬燈改成一直跑', '3':'跑馬燈改成跑三輪就停' }[m], 'ok'); }
+      catch(err){ S[f] = old; $$(box+' [data-m]').forEach(x=>x.classList.toggle('on', x.dataset.m===old)); setTopTitle(); toast(errText(err),'err'); } break; }
+    case 'tiles-done': tileEdit(false); toast('已排好','ok'); break;
+    case 'tiles-reset': S.me.tiles = []; clearTimeout(tileSaveT); api.meTilesSet([]).catch(()=>{}); $('#app-grid').innerHTML = appTilesHTML(); break;
     case 'trip-open': tripSheet(el.dataset.k); break;
     case 'trip-link': return;   // 只有一個連結：讓瀏覽器直接打開
     case 'ln-new': openLinkEdit(null, el.dataset.k); break;
@@ -5095,10 +5309,10 @@ document.addEventListener('click', async e=>{
       const raw = v('ln-url'), m = raw.match(/https:\/\/[^\s<>"'，。）)]+/i);   // 整段文字貼進來也可以，自動抓出網址
       Object.assign(l, { title:v('ln-title'), note:v('ln-note'), url: m ? m[0] : (/^[\w-]+(\.[\w-]+)+\//.test(raw) ? 'https://' + raw : raw) });
       if (!l.title) { x.textContent = '請填名稱，例如：2027 上海創心之旅。'; x.classList.remove('hidden'); $('#ln-title').focus(); break; }
-      if (!l.url) { x.textContent = '請貼上網址。'; x.classList.remove('hidden'); $('#ln-url').focus(); break; }
+      if (!l.url && l.kind!=='notice') { x.textContent = '請貼上網址。'; x.classList.remove('hidden'); $('#ln-url').focus(); break; }
       el.disabled = true; el.textContent = '儲存中…';
       try { await api.adminLinkSave({ id:l.id, kind:l.kind, title:l.title, note:l.note, url:l.url });
-        toast(l.id ? '已儲存' : `✅ 已新增，夥伴在「${TRIP_KIND[l.kind].name}」就看得到`, 'ok'); S.lnDraft = null; go('account', {sub:'adminLinks'}); }
+        toast(l.id ? '已儲存' : l.kind==='notice' ? '✅ 已新增，最上面的跑馬燈就會跑' : `✅ 已新增，夥伴在「${TRIP_KIND[l.kind].name}」就看得到`, 'ok'); S.lnDraft = null; go('account', {sub:'adminLinks'}); }
       catch(err){ el.disabled = false; el.textContent = l.id ? '儲存修改' : '新增'; x.textContent = errText(err); x.classList.remove('hidden'); }
       break; }
     case 'ln-hide': { const hide = el.dataset.on==='1'; el.disabled = true;
