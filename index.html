@@ -1899,7 +1899,7 @@ const MockApi = {
     const id = uid('C'); MockDB.courses.push({ id, announce:'', ...c }); return { ok:true, id }; },
   async adminCourseHide(id, hidden){ await this._wait(); const x = MockDB.courses.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND'); x.hidden = hidden!==false; return { ok:true, hidden:x.hidden }; },
   async adminLinkAll(){ await this._wait(); return { links: MockDB.links.map(l=>({...l})) }; },
-  async adminSettingSet(key, value){ await this._wait(); const ok = { marqueeMode:['v','h'], marqueeTimes:['loop','3'] }[key];
+  async adminSettingSet(key, value){ await this._wait(); const ok = { marqueeMode:['v','h'], marqueeTimes:['loop','3'], autoApprove:['Y','N'] }[key];
     if (!ok || !ok.includes(value)) throw new Error('BAD_REQUEST'); MockDB[key] = value; return { ok:true, key, value }; },
   async meTilesSet(order){ await this._wait(); const m = this._me(); m.tiles = order.slice(); return { ok:true, tiles:m.tiles }; },
   async adminLinkSave(p){ await this._wait();
@@ -1922,7 +1922,11 @@ const MockApi = {
       return { id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, tw:m.tw||'', role:m.role||'member', status:m.status||'approved', joined:todayStr(),
         upId: up?up.id:'', upName: up?up.name:'', upText:'', headId: x.d?x.h.id:'', headName: x.d?x.h.name:'', depth:x.d, downs: MockDB.members.filter(k=>k.uplineId===m.id).length,
         fee: st[i%5], feeLast5:'', acts: mockJoined(m) ? [MockDB.activity.name] : [] }; }) }; },
-  async adminDeleteMember(id){ await this._wait(); const m = MockDB.byId[id]; if (!m) throw new Error('NOT_FOUND'); const kids = MockDB.members.filter(k=>k.uplineId===id);
+  async adminSecurity(){ await this._wait(); return { autoApprove: MockDB.autoApprove || 'Y', logoutAllAt: MockDB.logoutAllAt || '', blocked: (MockDB.blocked||[]).slice(), alertEmail: true, notifyTo: '有' }; },
+  async adminUnblock(key){ await this._wait(); MockDB.blocked = (MockDB.blocked||[]).filter(b=>b.key!==key); return { ok:true }; },
+  async adminLogoutEveryone(){ await this._wait(); MockDB.logoutAllAt = new Date().toLocaleString('sv-SE').slice(0,19); return { ok:true, at:MockDB.logoutAllAt }; },
+  async adminDeleteMember(id, block){ await this._wait(); const m = MockDB.byId[id]; if (!m) throw new Error('NOT_FOUND'); const kids = MockDB.members.filter(k=>k.uplineId===id);
+    if (block) (MockDB.blocked = MockDB.blocked || []).push({ key:'blocked:LINE:'+id, name:m.name, provider:'LINE', loginName:m.name });
     kids.forEach(k=>{ k.uplineId = m.uplineId||''; }); MockDB.members = MockDB.members.filter(k=>k.id!==id); return { ok:true, moved:kids.length, movedTo:(MockDB.byId[m.uplineId]||{}).name||'' }; },
   async adminTree(){ await this._wait(); return { members: MockDB.members.filter(m=>m.status!=='pending').map(m=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, up:m.uplineId||'', role:m.role||'member', joined:'', upText:m.uplineText||'' })) }; },
   async adminDepositRefund(a, id, on){ await this._wait(); return { ok:true, refunded:on }; },
@@ -2102,7 +2106,10 @@ const GasApi = {
   adminLinkHide(id, hidden){ return this.call('admin.link.hide', {id, hidden}, {retry:0}); },
   adminLinkMode(id, mode, until){ return this.call('admin.link.mode', {id, mode, until}, {retry:0}); },
   adminLinkMove(id, dir){ return this.call('admin.link.move', {id, dir}, {retry:0}); },
-  adminDeleteMember(memberId){ return this.call('admin.member.delete', {memberId}, {retry:0}); },
+  adminDeleteMember(memberId, block){ return this.call('admin.member.delete', {memberId, block:!!block}, {retry:0}); },
+  adminSecurity(){ return this.call('admin.security.get', {}, {retry:1}); },          // 安全・緊急關門（2026-11-25）
+  adminUnblock(key){ return this.call('admin.security.unblock', {key}, {retry:0}); },
+  adminLogoutEveryone(){ return this.call('admin.security.logoutAll', {}, {retry:0}); },
   feeApply(p){ return this.call('fee.apply', p, {retry:0}); },
   adminFeeList(month){ return this.call('admin.fee.list', month ? {month} : {}); },
   adminFeeSet(memberId, month, to, method){ return this.call('admin.fee.set', Array.isArray(month) ? {memberId, months:month, to, method} : {memberId, month, to, method}, {retry:0}); },
@@ -2124,7 +2131,7 @@ const QC_DROP = {
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
 };
-const QC_ADMIN_READS = ['admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
+const QC_ADMIN_READS = ['admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
   mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
@@ -4914,6 +4921,25 @@ function installCardHTML(){
    管理後台（原型）
    ===================================================================== */
 let ADM = null;
+/** 後台：安全・緊急關門（2026-11-25 使用者：「有什麼是你後台甚至是程式碼上可以擋的嗎?」）
+ *  暫停新人加入（改成要審核）、所有人重新登入、封鎖名單。有異常時後端會寄信給管理員。 */
+async function drawSecurity(){
+  const box = $('#adm-sec'); if (!box) return;
+  let r; try { r = await api.adminSecurity(); } catch(e) { box.innerHTML = '<h3>🚨 安全・緊急關門</h3><div class="muted">暫時讀不到，等一下再回來看。</div>'; return; }
+  if (!$('#adm-sec')) return;
+  const open = r.autoApprove !== 'N';
+  box.innerHTML = `<h3>🚨 安全・緊急關門</h3>
+    <div class="kv"><span class="k">新夥伴加入</span><span class="v">${open ? '<span class="pill ok">填好就直接加入</span>' : '<span class="pill pend">要你審核</span>'}</span></div>
+    <button class="btn ${open?'btn-danger':'btn-primary'} btn-sm mt" data-act="sec-auto" data-v="${open?'N':'Y'}">${open ? '⏸ 暫停新人加入（改成要審核）' : '▶ 恢復填好就直接加入'}</button>
+    <div class="hint">網址外流、有不認識的人一直進來時按。暫停期間新來的人會在「待審核」等你。</div>
+    <button class="btn btn-outline btn-sm mt" data-act="sec-logout">🔒 所有人重新登入</button>
+    <div class="hint">懷疑有人用別人的手機或帳號時按。大家要重新按一次 LINE 登入；你自己不會被登出。${r.logoutAllAt ? `<br>上次按：${esc(r.logoutAllAt.slice(5,16))}` : ''}</div>
+    <details class="fold mt"><summary>封鎖名單 ${r.blocked.length} 人</summary>
+      ${r.blocked.length ? `<div class="mlist">${r.blocked.map(b=>`<div class="mrow"><div class="info"><b>${esc(b.name||'（沒有名字）')}</b><div class="muted small">${b.provider==='EMAIL'?'Email':'LINE'}${b.loginName&&b.loginName!==b.name?'：'+esc(b.loginName):''}</div></div>
+        <button class="btn btn-ghost btn-sm" data-act="sec-unblock" data-key="${esc(b.key)}" data-name="${esc(b.name||'')}">解除封鎖</button></div>`).join('')}</div>`
+        : '<div class="muted small mt">沒有人被封鎖。在夥伴總表刪除時選「刪除並封鎖」，就會出現在這裡。</div>'}</details>
+    <div class="hint mt">${r.alertEmail && r.notifyTo ? '有人動作特別多、或 1 小時內突然很多新人加入時，會自動寄信到你的 Gmail。' : '異常通知信目前關閉（試算表「設定」的 alertEmail）。'}</div>`;
+}
 /** 後台：誰在線上（只有管理員看得到；5 分鐘內有用 APP＝正在線上，1 小時內＝剛剛來過） */
 async function drawOnline(){
   const box = $('#adm-online'); if (!box) return;
@@ -4956,6 +4982,7 @@ async function renderAdmin(main){
     <div class="adm-body"><div class="adm-side">
     <div class="card"><h3>📋 夥伴總表</h3><div class="muted mb">每個人是誰、誰的下線、哪一條線，<br>這個月月費、參加了哪些班，<br>一張表看完。</div>
       <button class="btn btn-primary btn-sm" data-act="admin-roster">看夥伴總表</button></div>
+    <div class="card" id="adm-sec"><h3>🚨 安全・緊急關門</h3><div class="muted">讀取中…</div></div>
     <div class="card"><h3>💳 皇家主任月費</h3><div class="muted mb">${s.feeEnforce?'每人每月 NT$300，每月 5 號前繳；<br>過期沒繳的人進不了 APP。':'記錄每個人每月的繳費。<br>年繳、季繳可以一次勾好。<br>目前只記錄，不會擋人。'}</div>
       <button class="btn btn-primary btn-sm" data-act="admin-fee">月費名單・更新繳費</button></div>
     ${act&&act.feeMode==='deposit'&&act.fee>0 ? (()=>{ const ok = ADM.rows.filter(r=>r.pr.reached && r.m.paid), todo = ok.filter(r=>!r.m.refunded);
@@ -4994,7 +5021,7 @@ async function renderAdmin(main){
         <div class="row mt" style="flex-wrap:wrap">${window.self!==window.top?'':'<button class="btn btn-ghost btn-sm" data-act="export-csv">下載 CSV</button>'}<button class="btn btn-ghost btn-sm" data-act="copy-list">複製名單</button><span class="muted small" id="fcount"></span></div>
         <div class="mlist mt" id="mlist"></div></div>
     </div></div>`;
-  drawReview(); drawMemberList(); drawOnline();
+  drawReview(); drawMemberList(); drawOnline(); drawSecurity();
   ['fq','fteam','ftoday','freach','fpay','fup'].forEach(id=> $('#'+id) && $('#'+id).addEventListener(id==='fq'?'input':'change', e=>{
     const key = {fq:'q',fteam:'team',ftoday:'today',freach:'reach',fpay:'pay',fup:'up'}[id]; S.admin[key]=e.target.value; drawMemberList(); }));
 }
@@ -5669,13 +5696,30 @@ document.addEventListener('click', async e=>{
     case 'roster-csv': rosterCSV(); break;
     case 'roster-del-mode': S.rosterDel = !S.rosterDel; renderAdminRoster($('#main')); break;
     case 'roster-del': case 'member-del': { const id = el.dataset.id, r = (ROSTER && ROSTER.rows.find(x=>x.id===id)) || { name: el.dataset.name || '', upName: el.dataset.up || '' };
-      if (!await confirmBox(`確定要刪除「${r.name}」嗎？\n\n・他會從名單、總表、樹狀圖、動態牆消失，不能再登入\n・他的下線會改接到${r.upName?'「'+r.upName+'」':'沒有上線'}\n・打卡、繳費紀錄會留在試算表備查\n\n刪掉之後如果要回來，要請他重新申請。`, '刪除', true)) break;
+      const how = await choiceBox(`要刪除「${r.name}」嗎？\n\n・他會從名單、總表、樹狀圖、動態牆消失，不能再登入\n・他的下線會改接到${r.upName?'「'+r.upName+'」':'沒有上線'}\n・打卡、繳費紀錄會留在試算表備查\n\n不認識的人、亂進來的人，請選「刪除並封鎖」，他用同一個 LINE／Email 就進不來了。`,
+        [{v:'del', label:'刪除（之後可以重新申請）', cls:'btn-danger'}, {v:'block', label:'🚫 刪除並封鎖', cls:'btn-danger'}]);
+      if (!how) break;
       el.disabled = true;
-      try { const x = await api.adminDeleteMember(id); toast(`已刪除 ${r.name}${x.moved?`，${x.moved} 位下線改接到${x.movedTo||'沒有上線'}`:''}`,'ok');
+      try { const x = await api.adminDeleteMember(id, how==='block'); toast(`已${how==='block'?'刪除並封鎖':'刪除'} ${r.name}${x.moved?`，${x.moved} 位下線改接到${x.movedTo||'沒有上線'}`:''}`,'ok');
         QuickCache.dropPrefix('roster'); QuickCache.dropPrefix('adm'); QuickCache.dropPrefix('home'); if (S.badges) delete S.badges[id];
         if (act==='member-del') go('account',{sub:'adminRoster'}); else renderAdminRoster($('#main')); }
       catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     /* 後台 */
+    case 'sec-auto': { const v = el.dataset.v;
+      if (v==='N' && !await confirmBox('暫停新人加入？\n\n之後新來的人填完資料會在「待審核」等你按核准，已經加入的夥伴不受影響。', '暫停', true)) break;
+      el.disabled = true;
+      try { await api.adminSettingSet('autoApprove', v); toast(v==='N' ? '已暫停：新來的人要你審核' : '已恢復：填好就直接加入', 'ok'); drawSecurity(); }
+      catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
+    case 'sec-logout': {
+      if (!await confirmBox('讓所有人重新登入？\n\n全部夥伴（包括工作人員）要重新按一次 LINE 登入才能繼續用；你自己不會被登出。\n\n懷疑有人用別人的帳號時再按。', '全部重新登入', true)) break;
+      el.disabled = true;
+      try { await api.adminLogoutEveryone(); toast('已讓所有人重新登入', 'ok'); drawSecurity(); }
+      catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
+    case 'sec-unblock': {
+      if (!await confirmBox(`解除「${el.dataset.name||'這個人'}」的封鎖？\n\n解除後他可以用同一個 LINE／Email 重新申請加入。`, '解除封鎖')) break;
+      el.disabled = true;
+      try { await api.adminUnblock(el.dataset.key); toast('已解除封鎖', 'ok'); drawSecurity(); }
+      catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     case 'online-refresh': { const b=$('#adm-online .on-n'); if (b) b.textContent='…'; drawOnline(); break; }
     case 'admin-member': S.admin.memberId=el.dataset.id; S.admin.calMonth=null; S.admin.calSel=null; go('account',{sub:'adminMember'}); break;
     case 'acal-prev': S.admin.calMonth=monthShift(S.admin.calMonth,-1); renderAdminMember($('#main')); break;
