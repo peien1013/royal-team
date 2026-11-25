@@ -169,6 +169,15 @@ img.avatar{object-fit:cover;display:block}
 /* 表單 */
 label.lbl{display:block;font-weight:700;margin:16px 0 8px;font-size:19px}
 label.lbl .req{color:var(--bad);font-size:15px;margin-left:4px}
+label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.lbl-side{font-weight:400;font-size:15px;color:var(--muted);white-space:nowrap}
+/* 發布行動日誌：一個畫面看得完（2026-11-25 09:56 使用者） */
+.compose h2{margin-bottom:2px}
+.compose label.lbl{margin:12px 0 6px}
+.compose .seg button{min-height:52px}
+.compose textarea.inp{min-height:112px}
+.compose .photo-btns .btn{min-height:52px}
+.compose .sticky-submit{margin-top:14px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .seg button{min-height:58px;border-radius:14px;border:2px solid var(--line);background:#fff;font-size:18px;font-weight:700}
 .seg button.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark)}
@@ -218,26 +227,28 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .stat.late{background:var(--late-soft)} .stat.late .v{color:var(--late)}
 
 /* 學院 */
-.course .c-head{display:grid;grid-template-columns:74px 1fr;gap:14px;align-items:start;margin-top:14px}
-.c-date{border-radius:16px;background:linear-gradient(180deg,var(--brand),var(--brand-dark));color:#fff;text-align:center;padding:7px 2px 8px;box-shadow:0 4px 12px rgba(11,114,196,.22)}
+.course .c-head{display:grid;grid-template-columns:66px 1fr;gap:12px;align-items:start}   /* 09:55 使用者：「儘量一個畫面看到」→ 標籤併到課名上面、說明框變緊湊 */
+.c-date{border-radius:16px;background:linear-gradient(180deg,var(--brand),var(--brand-dark));color:#fff;text-align:center;padding:6px 2px 7px;box-shadow:0 4px 12px rgba(11,114,196,.22)}
 .c-date.past{background:linear-gradient(180deg,#9AA6B2,#7D8995);box-shadow:none}
-.c-date .m,.c-date .w{display:block;font-size:14px;font-weight:700;line-height:1.3;opacity:.92}
-.c-date b{display:block;font-size:34px;line-height:1.1;font-weight:800}
-.course .c-title{margin:0 0 8px;font-size:21px;line-height:1.4;word-break:keep-all;overflow-wrap:anywhere}   /* 「發展」不拆兩行；沒有空格的長標題才硬換行 */
-.c-meta{display:flex;gap:10px;align-items:baseline;font-size:17px;line-height:1.5;margin-top:3px}
-.c-meta .k{flex:none;font-size:14px;font-weight:700;color:var(--brand-dark);background:var(--brand-soft);border-radius:8px;padding:1px 8px}
+.c-date .m,.c-date .w{display:block;font-size:13px;font-weight:700;line-height:1.3;opacity:.92}
+.c-date b{display:block;font-size:30px;line-height:1.1;font-weight:800}
+.c-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.c-tags .pill{font-size:13px;padding:1px 9px;box-shadow:none}
+.course .c-title{margin:0 0 4px;font-size:20px;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}   /* 「發展」不拆兩行；沒有空格的長標題才硬換行 */
+.c-meta{display:flex;gap:8px;align-items:baseline;font-size:16px;line-height:1.45;margin-top:2px}
+.c-meta .k{flex:none;font-size:13px;font-weight:700;color:var(--brand-dark);background:var(--brand-soft);border-radius:7px;padding:0 7px}
 .c-meta b{color:var(--text)}
-.course .c-intro{margin-top:16px;background:#F5F8FC;border:1px solid var(--line);border-radius:16px;padding:12px 16px;font-size:17px}
-.c-intro .c-line{line-height:1.65;color:var(--text)}
-.c-intro .c-gap{height:10px}
-.c-intro .c-kvs{margin:10px 0 2px;background:#fff;border-radius:12px;padding:2px 14px}
-.c-intro .c-line+.c-kvs{margin-top:12px}
+.course .c-intro{margin-top:12px;background:#F5F8FC;border:1px solid var(--line);border-radius:14px;padding:9px 14px 10px;font-size:16px}
+.c-intro .c-line{line-height:1.5;color:var(--text)}
+.c-intro .c-gap{height:6px}
+.c-intro .c-kvs{display:flex;flex-wrap:wrap;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin:8px 0 0}
 .c-intro .c-kvs:first-child{margin-top:0}
-.c-intro .c-kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:10px 0;line-height:1.4}
-.c-intro .c-kv+.c-kv{border-top:1px dashed var(--line)}
-.c-intro .c-kv .k{flex:none;color:var(--muted);font-size:16px}
-.c-intro .c-kv .v{text-align:right;font-size:19px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
-.course .btns{display:grid;gap:8px;margin-top:12px}
+.c-intro .c-kv{flex:1 1 auto;background:#fff;padding:6px 12px 7px;display:flex;flex-direction:column;line-height:1.3;min-width:0}
+.c-intro .c-kv.wide{flex-basis:100%}
+.c-intro .c-kv .k{color:var(--muted);font-size:13px}
+.c-intro .c-kv .v{font-size:18px;letter-spacing:.02em;font-variant-numeric:tabular-nums;white-space:nowrap}   /* 會議 ID 不拆兩行 */
+.c-intro .c-kv.wide .v{white-space:normal;overflow-wrap:anywhere}
+.course .btns{display:grid;gap:8px;margin-top:10px}
 .course .announce{background:#FFF8E6;border-radius:10px;padding:8px 12px;font-size:16px;margin-top:8px}
 
 /* 帳號 */
@@ -2945,7 +2956,7 @@ function introBlocks(t){
   const flush = () => { if (kv.length) { html += `<div class="c-kvs">${kv.join('')}</div>`; kv = []; } };
   for (const ln of lines) {
     const x = ln.trim(), m = x.match(/^([^：:]{1,8}?)\s*[：:]\s*(.+)$/);
-    if (m && !/^https?$/i.test(m[1]) && !/^\/\//.test(m[2])) { kv.push(`<div class="c-kv"><span class="k">${esc(m[1])}</span><b class="v">${introHTML(m[2])}</b></div>`); continue; }
+    if (m && !/^https?$/i.test(m[1]) && !/^\/\//.test(m[2])) { kv.push(`<div class="c-kv${m[2].length>16?' wide':''}"><span class="k">${esc(m[1])}</span><b class="v">${introHTML(m[2])}</b></div>`); continue; }
     flush();
     html += x ? `<div class="c-line">${introHTML(x)}</div>` : '<div class="c-gap"></div>';
   }
@@ -3192,32 +3203,29 @@ function renderCompose(main){
   const d = S.draft, T = todayStr(), Y = addDays(T,-1);
   const late = diffDays(d.actionDate, T);
   const editing = !!S.editing;
-  main.innerHTML = `<div class="card">
+  main.innerHTML = `<div class="card compose">
     <h2>${d.courseId?(editing?'編輯課後心得':'寫課後心得'):(editing?'編輯行動日誌':'發布行動日誌')}</h2>
     ${d.courseId?`<div class="course-tag">📚 課後心得：${esc(d.courseTitle)}${editing?'':'<button data-act="course-clear" aria-label="改成一般行動日誌">✕</button>'}</div>
       <div class="notice info small">課後心得記在今天，<b>不算每日打卡</b>；上課後 ${S.act&&S.act.noteDays!=null?S.act.noteDays:7} 天內交，才算進達標。</div>`:''}
     <div class="${d.courseId?'hidden':''}">
-    <label class="lbl">行動日期</label>
+    <label class="lbl lbl-row">行動日期<span class="lbl-side">${fullZh(d.actionDate).replace(/^\d+ 年 /,'')}</span></label>
     <div class="seg" role="group" aria-label="行動日期">
       <button data-act="date-mode" data-m="today" class="${d.dateMode==='today'?'on':''}">今天</button>
       <button data-act="date-mode" data-m="yday" class="${d.dateMode==='yday'?'on':''}">昨天</button>
       <button data-act="date-mode" data-m="other" class="${d.dateMode==='other'?'on':''}">其他日期</button>
     </div>
     <input class="inp mt ${d.dateMode==='other'?'':'hidden'}" type="date" id="c-date" max="${T}" value="${d.actionDate}" aria-label="選擇行動日期">
-    <div class="hint">${fullZh(d.actionDate)}</div>
     </div>
     ${late>0&&!d.courseId?`<div class="notice late">這是<b>補打卡</b>：行動日期是 ${mdZh(d.actionDate)}，發布時間會記錄為現在。是否計入有效打卡，依活動規則決定。</div>`:''}
 
-    <label class="lbl" for="c-text">${d.courseId?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></label>
+    <label class="lbl lbl-row" for="c-text"><span>${d.courseId?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></span><span class="lbl-side" id="c-count">${d.text.length} 字</span></label>
     <textarea class="inp" id="c-text" maxlength="2000" placeholder="${d.courseId?'例如：今天學到…，我打算這樣用在自己身上…':'例如：今天打電話關心了三位夥伴，也約好下週見面…'}">${esc(d.text)}</textarea>
-    <div class="hint" id="c-count">${d.text.length} 字</div>
 
-    <label class="lbl">照片<span class="muted small" style="font-weight:400">（可以不放）</span></label>
+    <label class="lbl lbl-row"><span>照片<span class="muted small" style="font-weight:400">（可以不放）</span></span><span class="lbl-side">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</span></label>
     ${d.photos.length?`<div class="photo-list">${d.photos.map((u,i)=>`<div class="photo-prev"><img src="${u}" alt="準備上傳的照片 ${i+1}"><button class="rm" data-act="photo-rm" data-i="${i}" aria-label="移除第 ${i+1} 張">✕</button></div>`).join('')}</div>`:''}
     ${d.photos.length < CONFIG.MAX_PHOTOS
       ? `<div class="photo-btns"><button class="btn btn-ghost" data-act="photo-cam">📷 拍照</button><button class="btn btn-ghost" data-act="photo-lib">🖼️ 從相簿選</button></div>`
       : ''}
-    <div class="hint">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</div>
     <input type="file" id="f-cam" accept="image/*" capture="environment" class="hidden">
     <input type="file" id="f-lib" accept="image/*" multiple class="hidden">
     <div id="c-photo-busy" class="hint hidden">照片處理中…</div>
@@ -3227,6 +3235,9 @@ function renderCompose(main){
     ${editing?'<button class="btn btn-outline mt" data-act="cancel-edit">取消編輯</button><div class="hint">修改日期或內容後，系統會重新計算打卡天數，並保留修改紀錄。</div>':''}
   </div>`;
   const ta = $('#c-text');
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 112), 300) + 'px'; };   // 打越多字框越高，空的時候小一點，整頁一個畫面看得完
+  if (d.text) requestAnimationFrame(grow);
+  ta.addEventListener('input', grow);
   ta.addEventListener('input', ()=>{ d.text = ta.value; $('#c-count').textContent = ta.value.length+' 字'; $('#c-err').classList.add('hidden'); store('royal_draft', {text:d.text}); });
   $('#c-date').addEventListener('change', e=>{
     const v = e.target.value;
@@ -3489,8 +3500,8 @@ async function drawAcademy(main, cs){
   const card = c => { const isUp = c.date >= T, tk = c.myTicket, full = c.capacity && c.taken>=c.capacity;
     const showOnsite = view==='onsite' && isOnsite(c), showOnline = view==='online';
     return `<div class="card course">
-      <div class="row" style="justify-content:space-between;align-items:center">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
       <div class="c-head">${dateTile(c.date, !isUp)}<div class="c-main">
+        <div class="c-tags">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
         <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
         ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
         ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div></div>
