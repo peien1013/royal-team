@@ -1504,6 +1504,7 @@ function mockHonorBoard(){
 /** 示範：有沒有參加衝刺班（名單是空的＝全部都算） */
 function mockJoined(m){
   if (m.id===MockDB.ME.id && Demo.notJoined) return false;
+  if (m.title) return false;   // 公司專員、皇家CEO 不用打卡
   if (MockDB.activity.joinMode==='all') return true;
   const r = MockDB.reg; return r.ids.has(m.id) || (m.tw && r.tws.has(m.tw));
 }
@@ -4950,7 +4951,7 @@ async function renderAdminMember(main){
         <span class="muted small">工作人員只能用「掃描入場」，看不到後台其他資料。</span></div>
       <div class="lbl" style="margin:14px 0 6px">身分</div>
       <div class="seg title-seg" role="group" aria-label="身分">${[['','一般夥伴'],['company','公司專員'],['ceo','皇家CEO']].map(([k,t])=>`<button data-act="set-title" data-id="${m.id}" data-t="${k}" data-name="${esc(m.name)}" class="${(m.title||'')===k?'on':''}">${t}</button>`).join('')}</div>
-      <div class="muted small mt">公司專員、皇家CEO 不用繳月費。</div>
+      <div class="muted small mt">公司專員、皇家CEO：不用繳月費、不用打卡（不算在活動名單和打卡統計裡）、自己上現場課免費。</div>
       <div class="row mt"><button class="btn btn-sm del-btn" data-act="member-del" data-id="${m.id}" data-name="${esc(m.name)}" data-up="${esc(m.uplineName||'')}" style="width:auto">🗑 刪除這位夥伴</button></div>`}
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
@@ -5562,7 +5563,7 @@ document.addEventListener('click', async e=>{
     case 'set-title': {
       if (el.classList.contains('on')) break;
       const t = el.dataset.t, nm = el.dataset.name;
-      if (!await confirmBox(t ? `把 ${nm} 設成「${MEMBER_TITLES[t]}」？\n${MEMBER_TITLES[t]}不用繳月費。` : `把 ${nm} 改回一般夥伴？\n之後要照常繳月費。`, t ? '設成' + MEMBER_TITLES[t] : '改回一般夥伴')) break;
+      if (!await confirmBox(t ? `把 ${nm} 設成「${MEMBER_TITLES[t]}」？\n不用繳月費、不用打卡、自己上課免費。` : `把 ${nm} 改回一般夥伴？\n之後要照常繳月費、打卡。`, t ? '設成' + MEMBER_TITLES[t] : '改回一般夥伴')) break;
       try { await api.adminSetTitle(el.dataset.id, t); QuickCache.clear(); toast(t ? '已設成' + MEMBER_TITLES[t] : '已改回一般夥伴', 'ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
       break; }
     case 'tk-tab': S.tkTab = el.dataset.t; renderMyTickets($('#main')); break;
