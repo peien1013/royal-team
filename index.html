@@ -94,6 +94,7 @@ h2{font-size:22px} h3{font-size:19px}
 .btn-ghost{background:var(--brand-soft);color:var(--brand-dark)}
 .btn-white{background:#fff;color:var(--brand-dark)}
 .btn-line{background:var(--line-green);color:#fff}
+.ha-ic{display:flex;flex-direction:column;align-items:center;gap:4px;margin:4px 0 10px}.ha-ic img{width:72px;height:72px;border-radius:18px;box-shadow:0 4px 12px rgba(0,0,0,.15)}.ha-ic small{font-weight:700}
 .btn-line .line-ic{width:30px;height:30px;border-radius:8px;margin-right:10px;vertical-align:middle;box-shadow:0 0 0 2px rgba(255,255,255,.9);flex:none}
 .nu-ic{display:inline-block;width:20px;height:20px;vertical-align:-4px;margin-right:6px}
 .btn-line .line-ic{display:inline-block}
@@ -354,7 +355,8 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .app-tile:active .ai{transform:scale(.92)}
 .app-tile .al{font-size:16px;font-weight:700;line-height:1.2}
 .app-tile.off .ai,.app-tile.off .al{opacity:.42}
-.app-tile .ao{font-size:12px;color:var(--muted);margin-top:-5px}
+.app-tile{position:relative}
+.app-tile .ao{position:absolute;top:-6px;left:calc(50% + 12px);font-size:11px;line-height:1;font-weight:700;color:#fff;background:#8A8F98;border-radius:999px;padding:3px 6px;white-space:nowrap;pointer-events:none}   /* 2026-11-25 20:17 使用者：分段沒分好 → 「未開放」改成圖示右上角的小標籤，不再多佔一行（每排一樣高） */
 .trip-list{display:grid;gap:10px}
 .hsr-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .hsr-big{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:150px;border-radius:20px;background:#FFF4EC;border:2px solid #F2B68C;color:#7A3A0E;text-decoration:none;text-align:center;padding:12px}
@@ -2430,6 +2432,11 @@ async function handleLineReturn(params){
     store('royal_line_pending', null); return renderLogin('start', {msg:errText(e)}); }
   const pend = store('royal_line_pending');
   if (pend && pend.state === st) return pollLine(pend);   // 同一個視窗：直接領結果
+  const mine = store(SESSION_KEY);
+  if (inLineApp() && mine && mine.expiresAt > Date.now()) {   // LINE 裡本來就登入了：直接進去，提醒他回主畫面（主畫面的皇家會自己領到結果）
+    await enterWithSession(mine);
+    return toast('LINE 確認完成 ✅ 回到手機主畫面的「皇家」，就會自動登入', 'ok');
+  }
   if (inLineApp() && !sessionStorage.getItem('royal_line_auto2')) {   // 回到 LINE 裡面了：不要卡在這裡，直接在 LINE 裡再自動登入一次（原本的 APP 也一樣會登入）
     sessionStorage.setItem('royal_line_auto2', '1'); sessionStorage.setItem('royal_line_auto', '1');
     return startLineLogin();
@@ -2515,8 +2522,27 @@ async function enterWithSession(r){
   document.body.style.background='';
   try { await loadHome(); } catch(e) { if (!S.session) return; return renderLogin('start', {msg:errText(e)}); }
   renderShell(); goStart(); prefetchPages();
-  if (CONFIG.MODE==='live' && inLineApp()) { if (!store('royal_line_tip')) { store('royal_line_tip', Date.now()); setTimeout(()=>toast('以後在 LINE 群組點皇家的連結，就會直接登入使用 👍','ok'), 1200); } }
+  if (CONFIG.MODE==='live' && inLineApp()) {
+    if (HOME_ASK_ON) { const t = +store('royal_home_ask') || 0; if (Date.now() - t > 3*86400000 && !(S.sub==='admin')) setTimeout(showHomeAsk, 1200); }
+    else if (!store('royal_line_tip')) { store('royal_line_tip', Date.now()); setTimeout(()=>toast('以後在 LINE 群組點皇家的連結，就會直接登入使用 👍','ok'), 1200); }
+  }
   else if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip') && !(S.sub==='admin')) setTimeout(showInstallTip, 1500);
+}
+/** 先關著：主畫面登入的修正要使用者在真的 iPhone 上試過，才打開「引導放桌面」（2026-11-25 20:51 有夥伴進不去） */
+const HOME_ASK_ON = false;
+/** 在 LINE 裡用的人：請他把 APP 放到自己的手機桌面（2026-11-25 17:28 使用者：「我希望他們能放到桌面」「放到他們自己的桌面上」）
+ *  按一下就用 Safari／Chrome 打開，那邊會直接出現放桌面的步驟（不用先登入）。按「下次再說」，3 天後再提醒。 */
+function showHomeAsk(){
+  if ($('#home-ask')) return;
+  store('royal_home_ask', Date.now());
+  const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'home-ask';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>📲 把「皇家」放到你的手機桌面</h3><button data-x>關閉</button></div>
+    <div class="sheet-b"><div class="ha-ic"><img src="${LOGO}" alt=""><small>皇家</small></div>
+      <div class="muted center mb">放好之後，從桌面的金色「皇家」圖示<br>一按就打開，不用再找 LINE 裡的連結。</div>
+      <button class="btn btn-primary" data-act="open-external">🧭 用 ${isIOS()?'Safari':'Chrome'} 打開，教我放</button>
+      <button class="btn btn-outline mt" data-x>下次再說</button></div></div>`;
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  document.body.appendChild(bg);
 }
 /** 第一次進 APP、還沒放到桌面：跳一次說明（關掉就不再跳，「我的帳號」裡也找得到） */
 function showInstallTip(){
@@ -4844,10 +4870,10 @@ function installStepsHTML(){
   const list = a => a.map((x,i)=>step(i+1,x)).join('');
   const copy = '<button class="btn btn-outline mt" data-act="copy-app-link">📋 複製 APP 網址</button>';
   if (env==='installed') return '<div class="notice ok">已經放到手機桌面了 👍 之後從桌面的「皇家」圖示打開就好。</div>';
-  if (env==='line' && / LIFF/i.test(navigator.userAgent) && CONFIG.MODE==='live') return `<div class="notice ok mb"><b>不放桌面也可以</b>：以後在 LINE 群組點皇家的連結，就會自動登入使用，最簡單。</div>
-    <div class="notice info mb">一定要放到手機桌面的話（放好後從桌面打開，要再用 LINE 登入一次）：</div>${list([
+  if (env==='line' && CONFIG.MODE==='live') return `<div class="notice info mb">放到手機桌面要用 ${isIOS()?'<b>Safari</b>':'<b>Chrome</b>'}，按下面的按鈕就會幫你打開（放好後從桌面打開，再用 LINE 登入一次就好）：</div>${list([
     { t:`按下面的按鈕，用 ${isIOS()?'<b>Safari</b>':'<b>Chrome</b>'} 打開皇家 APP` },
-    { t:'打開之後，再按一次「📲 教我放到手機桌面」，照新的步驟做' }])}<button class="btn btn-primary mt" data-act="open-external">🧭 用 ${isIOS()?'Safari':'Chrome'} 打開</button>${copy}`;
+    { t:'打開之後，畫面會直接出現放桌面的步驟，照著做' }])}<button class="btn btn-primary mt" data-act="open-external">🧭 用 ${isIOS()?'Safari':'Chrome'} 打開，教我放</button>
+    <div class="hint">打不開的話：按右上角「⋯」→「用預設瀏覽器開啟」，或按下面複製網址，到 ${isIOS()?'Safari':'Chrome'} 貼上。</div>${copy}`;
   if (env==='line') return `<div class="notice ok mb"><b>不放桌面也可以</b>：以後在 LINE 群組點皇家的連結，就會自動登入使用，最簡單。</div>
     <div class="notice info mb">一定要放到手機桌面的話，要先換到手機的瀏覽器（放好後從桌面打開，要再用 LINE 登入一次）：</div>${list([
     { t:'按右上角的「<b>⋯</b>」', mk:MK.lineBar },
@@ -5562,9 +5588,13 @@ document.addEventListener('click', async e=>{
     case 'open-admin': go('account',{sub:'admin'}); break;
     case 'install': if (installEvt) { installEvt.prompt(); installEvt = null; } else toast('請按 Chrome 右上角「⋮」→「加到主畫面」'); break;
     case 'install-guide': openInstallGuide(false); break;
-    case 'open-external': {   // LIFF 裡：直接用手機的瀏覽器（Safari／Chrome）打開 APP，才能放到桌面
-      try { await loadLiffSdk(); if (!window.__liffReady) { await liff.init({ liffId: CONFIG.LIFF_ID }); window.__liffReady = 1; } liff.openWindow({ url: CONFIG.APP_URL, external: true }); }
-      catch(_) { toast('打不開，請按「複製 APP 網址」，再到瀏覽器貼上', 'err'); }
+    case 'open-external': {   // LINE 裡：用手機的瀏覽器（Safari／Chrome）打開 APP，那邊直接出現放桌面的步驟（?install=1）
+      const u = CONFIG.APP_URL + '?install=1';
+      if (/ LIFF/i.test(navigator.userAgent) && /^\d+-\w+$/.test(CONFIG.LIFF_ID)) {
+        try { await loadLiffSdk(); if (!window.__liffReady) { await liff.init({ liffId: CONFIG.LIFF_ID }); window.__liffReady = 1; } liff.openWindow({ url: u, external: true }); break; }
+        catch(_) {}
+      }
+      location.href = u + '&openExternalBrowser=1';   // 一般 LINE 視窗：LINE 會改用預設瀏覽器打開
       break; }
     case 'copy-app-link': { const u = location.origin + location.pathname; try { await navigator.clipboard.writeText(u); toast('已複製網址','ok'); } catch(_){ await promptBox('長按下面的網址複製', u, '好'); } break; }
     case 'admin-tree': adminTreeSheet(); break;
@@ -5691,9 +5721,27 @@ document.addEventListener('click', async e=>{
 document.addEventListener('keydown', e=>{ if (e.key==='Enter' && e.target.matches('[role="button"][data-act]')) e.target.click(); });
 
 /* ---------- 啟動 ---------- */
+/** LINE 確認完帶回來的 code／state。LINE 把網址開在 LIFF 視窗時，原本的 ?code=…&state=… 會被包進 liff.state
+ *  （2026-11-25 18:25 使用者：加了 LIFF 之後，主畫面的皇家按 LINE 登入一直「等候 LINE 確認」，LINE 轉到 LINE 裡的皇家畫面）。 */
+function lineReturnParams(){
+  const top = new URLSearchParams(location.search);
+  const ok = q => (q.get('code') || q.get('error')) && q.get('state') && !q.has('liffClientId');
+  if (ok(top)) return top;
+  const ls = top.get('liff.state');
+  if (ls) { const i = ls.indexOf('?'), inner = new URLSearchParams(i >= 0 ? ls.slice(i + 1) : ls); if (ok(inner)) return inner; }
+  const h = location.hash.replace(/^#/, '');
+  if (/(^|&)code=/.test(h) && /(^|&)state=/.test(h)) { const hq = new URLSearchParams(h); if (ok(hq)) return hq; }
+  return null;
+}
 (async function start(){
   const params = new URLSearchParams(location.search);
-  if (CONFIG.MODE==='live' && (params.get('code') || params.get('error')) && params.get('state') && !params.has('liffClientId')) return handleLineReturn(params);
+  if (params.get('install') === '1') {   // 從 LINE 按「用 Safari 打開，教我放」過來：網址先清乾淨（放到桌面才不會帶參數），再直接出現放桌面的步驟
+    params.delete('install'); params.delete('openExternalBrowser');
+    history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
+    if (CONFIG.MODE==='live' && !isStandalone() && !inLineApp()) setTimeout(() => { store('royal_install_tip', Date.now()); openInstallGuide(true); }, 600);
+  }
+  const lr = CONFIG.MODE==='live' ? lineReturnParams() : null;
+  if (lr) return handleLineReturn(lr);
   const pend = store('royal_line_pending');
   if (CONFIG.MODE==='live' && pend && Date.now() - pend.at < 15*60000) return pollLine(pend);
   const sess = store(SESSION_KEY);
