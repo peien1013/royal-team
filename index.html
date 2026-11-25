@@ -176,6 +176,13 @@ label.lbl{display:block;font-weight:700;margin:16px 0 8px;font-size:19px}
 label.lbl .req{color:var(--bad);font-size:15px;margin-left:4px}
 label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .lbl-side{font-weight:400;font-size:15px;color:var(--muted);white-space:nowrap}
+/* 後台：誰在線上 */
+.online-card h3 .on-n{color:var(--ok)}
+.online-faces{display:flex;flex-wrap:wrap;gap:10px 6px;margin-top:10px}
+.online-faces .of{border:0;background:none;width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;font-size:13px;color:var(--text)}
+.online-faces .of .avatar{position:relative;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--ok)}
+.online-faces .of span{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.title-seg button{min-height:52px;font-size:17px}
 /* 發布行動日誌：一個畫面看得完（2026-11-25 09:56 使用者） */
 .compose h2{margin-bottom:2px}
 .compose label.lbl{margin:12px 0 6px}
@@ -1910,11 +1917,22 @@ const MockApi = {
     if (m.role==='admin') throw new Error('FORBIDDEN');
     m.role = role==='staff' ? 'staff' : 'member'; return { ok:true, role:m.role };
   },
+  async adminSetTitle(memberId, title){
+    await this._wait();
+    const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND'); if (m.role==='admin') throw new Error('FORBIDDEN');
+    m.title = MEMBER_TITLES[title] ? title : ''; return { ok:true, title:m.title };
+  },
+  async adminOnline(){
+    await this._wait();
+    const ms = MockDB.members.filter(m=>m.status!=='deleted'), pick = (a,b,min) => ms.slice(a,b).map((m,i)=>({ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, min:min+i*3 }));
+    return { online:[{ id:this._me().id, name:this._me().name, avatarUrl:this._me().avatarUrl||'', color:this._me().color, min:0 }, ...pick(1,4,1)], recent:pick(4,7,12) };
+  },
+  async mePing(){ return { ok:true }; },
   async adminMember(id){
     await this._wait();
     const m = MockDB.byId[id], act = MockDB.activity;
     const posts = MockDB.posts.filter(p=>p.authorId===id && p.status!=='deleted').sort((a,b)=>b.postedAt-a.postedAt).map(p=>publicPost(p, this._me().id));
-    return { m:{ ...m, uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length }, activity:act, progress:computeDays(id, act), posts };
+    return { m:{ ...m, title:m.title||'', feeNow:(m.role==='admin'||m.title)?'exempt':'none', uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length }, activity:act, progress:computeDays(id, act), posts };
   },
   async adminReview(postId, decision){
     await this._wait();
@@ -2016,6 +2034,9 @@ const GasApi = {
   getMyTickets(){ return this.call('ticket.mine'); },
   staffCourses(){ return this.call('staff.courses'); },
   adminSetRole(memberId, role){ return this.call('admin.setRole', {memberId, role}); },
+  adminSetTitle(memberId, title){ return this.call('admin.setTitle', {memberId, title}); },
+  adminOnline(){ return this.call('admin.online', {}, {retry:0}); },
+  mePing(){ return this.call('me.ping', {}, {retry:0}); },
   adminTicketRefund(ticketId, amount, method){ return this.call('admin.ticket.refund', {ticketId, amount, method}, {retry:0}); },
   adminTicketKeep(ticketId){ return this.call('admin.ticket.keep', {ticketId}); },
   adminTicketMove(ticketId, toCourseId){ return this.call('admin.ticket.move', {ticketId, toCourseId}, {retry:0}); },
@@ -2392,6 +2413,14 @@ async function pollLine(pend){
     store('royal_line_pending', null); renderLogin('start', {msg:errText(e)}); }
   finally { polling = false; }
 }
+/** 誰在線上：APP 開著每 3 分鐘跟後端報到一次（看不到畫面時不報到）；只有管理員看得到名單 */
+let lastPing = 0;
+function pingOnline(){
+  if (CONFIG.MODE !== 'live' || !S.session || document.visibilityState === 'hidden' || Date.now() - lastPing < 150000) return;
+  lastPing = Date.now(); api.mePing().catch(()=>{});
+}
+setInterval(pingOnline, 180000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(pingOnline, 3000); });
 /** 另一個分頁（或剛剛那一次）其實已經登入好了：直接用，不要顯示「登入等太久了」 */
 async function recoverLogin(st){
   if (S.session) return true;
@@ -3787,7 +3816,7 @@ function renderAccount(main){
     <button class="card acct-head" data-act="acct-settings">${avatarHTML(me,'lg')}<span class="ah-t">
       <span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>
       <span class="ah-tw">${me.tw ? '如新帳號&ensp;'+esc(me.tw) : '如新帳號　還沒填'}</span>
-      ${admin?'<span class="pill ok">👑 管理員</span>':''}</span><span class="ah-go" aria-hidden="true">›</span></button>
+      ${admin?'<span class="pill ok">👑 管理員</span>':''}${me.title&&MEMBER_TITLES[me.title]?`<span class="pill gold-pill">${MEMBER_TITLES[me.title]}</span>`:''}</span><span class="ah-go" aria-hidden="true">›</span></button>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <div class="card app-card"><div class="app-grid" id="app-grid">${appTilesHTML()}</div>
       <button class="link-btn tiles-edit-link" data-act="tiles-edit">↕ 排列圖示</button>
@@ -3829,6 +3858,9 @@ function tripTile(kind){
 /** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示；09:35 會員卡＝金色皇冠卡）。 */
 const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:'tiles/travel.jpg', hsr:'tiles/hsr.jpg', meal:'tiles/meal.jpg',
   team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg' };
+/** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
+const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
+const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
 const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
@@ -4766,6 +4798,19 @@ function installCardHTML(){
    管理後台（原型）
    ===================================================================== */
 let ADM = null;
+/** 後台：誰在線上（只有管理員看得到；5 分鐘內有用 APP＝正在線上，1 小時內＝剛剛來過） */
+async function drawOnline(){
+  const box = $('#adm-online'); if (!box) return;
+  let r; try { r = await api.adminOnline(); } catch(e) { box.innerHTML = '<h3>🟢 正在線上</h3><div class="muted">暫時讀不到，等一下再按更新。</div>'; return; }
+  if (!$('#adm-online')) return;
+  const ago = x => x.min <= 1 ? '剛剛' : x.min + ' 分鐘前';
+  const row = x => `<button class="mrow" data-act="admin-member" data-id="${x.id}">${avatarHTML(x)}<div class="info"><b>${esc(x.name)}</b></div><span class="muted small">${ago(x)}</span></button>`;
+  S.onlineAll = false;
+  box.innerHTML = `<div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">🟢 正在線上 <b class="on-n">${r.online.length}</b> 人</h3><button class="link-btn" data-act="online-refresh">更新</button></div>
+    ${r.online.length ? `<div class="online-faces">${r.online.slice(0,12).map(x=>`<button class="of" data-act="admin-member" data-id="${x.id}" title="${esc(x.name)}">${avatarHTML(x)}<span>${esc(x.name)}</span></button>`).join('')}</div>` : '<div class="muted mt">現在沒有人在用 APP。</div>'}
+    ${r.online.length > 12 || r.recent.length ? `<details class="fold mt"><summary>全部名單${r.recent.length ? `・1 小時內來過 ${r.recent.length} 人` : ''}</summary><div class="mlist">${r.online.map(row).join('')}${r.recent.length ? '<div class="muted small mt">1 小時內來過</div>' + r.recent.map(row).join('') : ''}</div></details>` : ''}
+    <div class="hint">只有你看得到。開著 APP 的人每 3 分鐘會報到一次，所以大約 5 分鐘內的都算在線上。</div>`;
+}
 async function renderAdmin(main){
   const ak = 'adm:' + (S.admin.actId || ''); skelIfNew(main, ak);
   let cs = [];
@@ -4779,6 +4824,7 @@ async function renderAdmin(main){
       ${CONFIG.MODE==='live'&&s.emailQuota!=null?`<div class="hint">今天還能寄 ${s.emailQuota} 封驗證信</div>`:''}
       ${s.driveLimitGB?`<div class="notice ${s.driveUsedGB/s.driveLimitGB>0.8?'err':'info'} small mt">雲端硬碟：已用 ${s.driveUsedGB} GB／共 ${s.driveLimitGB} GB（${Math.round(s.driveUsedGB/s.driveLimitGB*100)}%）${s.driveUsedGB/s.driveLimitGB>0.8?'，快滿了，建議升級 Google One 容量':''}</div>`:''}
       <div class="notice info small mt">已讀人數：每 15 分鐘更新一次。<br>打卡天數：發文、修改、審核時馬上更新。</div></div>
+    <div class="card online-card" id="adm-online"><h3>🟢 正在線上</h3><div class="muted">讀取中…</div></div>
     ${actChips(ADM.acts, act, 'adm-act')}
     <div class="admin-grid mb">
       <button class="stat" data-act="stat-list" data-k="reg"><div class="v">${s.registered}</div><div class="k">${act&&act.joinMode==='admin'?'參加人數':'報名人數'}</div></button>
@@ -4831,7 +4877,7 @@ async function renderAdmin(main){
         <div class="row mt" style="flex-wrap:wrap">${window.self!==window.top?'':'<button class="btn btn-ghost btn-sm" data-act="export-csv">下載 CSV</button>'}<button class="btn btn-ghost btn-sm" data-act="copy-list">複製名單</button><span class="muted small" id="fcount"></span></div>
         <div class="mlist mt" id="mlist"></div></div>
     </div></div>`;
-  drawReview(); drawMemberList();
+  drawReview(); drawMemberList(); drawOnline();
   ['fq','fteam','ftoday','freach','fpay'].forEach(id=> $('#'+id) && $('#'+id).addEventListener(id==='fq'?'input':'change', e=>{
     const key = {fq:'q',fteam:'team',ftoday:'today',freach:'reach',fpay:'pay'}[id]; S.admin[key]=e.target.value; drawMemberList(); }));
 }
@@ -4894,7 +4940,7 @@ async function renderAdminMember(main){
   const m = d.m, act = d.activity, pr = d.progress || {valid:0,need:0,late:0,missing:0,days:{}};
   if (!S.admin.calMonth) S.admin.calMonth = todayStr().slice(0,7);
   main.innerHTML = `<div class="card"><div class="row">${avatarHTML(m,'lg')}
-      <div style="flex:1"><h2 style="margin:0">${esc(m.name)}${badgeHTML(m.id)} ${m.role==='staff'?'<span class="pill brand">工作人員</span>':m.role==='admin'?'<span class="pill ok">管理員</span>':''}</h2><div class="muted">${esc(m.royalNo||m.tw)}・${CONFIG.SHOW_TEAM?esc(m.team)+'・':''}${m.paid?'已繳費':'未繳費'}</div></div></div>
+      <div style="flex:1"><h2 style="margin:0">${esc(m.name)}${badgeHTML(m.id)} ${m.role==='staff'?'<span class="pill brand">工作人員</span>':m.role==='admin'?'<span class="pill ok">管理員</span>':''}${m.title?` <span class="pill gold-pill">${MEMBER_TITLES[m.title]}</span>`:''}</h2><div class="muted">${esc(m.royalNo||m.tw)}・${CONFIG.SHOW_TEAM?esc(m.team)+'・':''}${FEE_NOW_ZH[m.feeNow]||'未繳費'}</div></div></div>
       <div class="muted mt">上線：<b>${m.uplineName?esc(m.uplineName):'（沒有設定）'}</b>${!m.uplineName&&m.uplineText?`<span class="small">（申請時寫：${esc(m.uplineText)}）</span>`:''}${m.teamCount?`・整條線 ${m.teamCount} 人`:''}</div>
       <div class="row mt" style="flex-wrap:wrap"><button class="btn btn-ghost btn-sm" data-act="rename" data-id="${m.id}" data-name="${esc(m.name)}">✏️ 改姓名</button>
         <button class="btn btn-ghost btn-sm" data-act="set-upline" data-id="${m.id}">👥 設定上線</button>
@@ -4902,6 +4948,9 @@ async function renderAdminMember(main){
         <button class="btn btn-ghost btn-sm" data-act="set-coe" data-id="${m.id}">⭐ 創業名人${(S.badges&&S.badges[m.id]&&S.badges[m.id].c)?'：'+COE[S.badges[m.id].c].n:''}</button></div>
       ${m.role==='admin'?'':`<div class="row mt" style="flex-wrap:wrap;align-items:center"><button class="btn ${m.role==='staff'?'btn-outline':'btn-primary'} btn-sm" data-act="set-staff" data-id="${m.id}" data-on="${m.role==='staff'?'0':'1'}">${m.role==='staff'?'取消工作人員':'🧑‍💼 設成工作人員'}</button>
         <span class="muted small">工作人員只能用「掃描入場」，看不到後台其他資料。</span></div>
+      <div class="lbl" style="margin:14px 0 6px">身分</div>
+      <div class="seg title-seg" role="group" aria-label="身分">${[['','一般夥伴'],['company','公司專員'],['ceo','皇家CEO']].map(([k,t])=>`<button data-act="set-title" data-id="${m.id}" data-t="${k}" data-name="${esc(m.name)}" class="${(m.title||'')===k?'on':''}">${t}</button>`).join('')}</div>
+      <div class="muted small mt">公司專員、皇家CEO 不用繳月費。</div>
       <div class="row mt"><button class="btn btn-sm del-btn" data-act="member-del" data-id="${m.id}" data-name="${esc(m.name)}" data-up="${esc(m.uplineName||'')}" style="width:auto">🗑 刪除這位夥伴</button></div>`}
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
@@ -5487,6 +5536,7 @@ document.addEventListener('click', async e=>{
         if (act==='member-del') go('account',{sub:'adminRoster'}); else renderAdminRoster($('#main')); }
       catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
     /* 後台 */
+    case 'online-refresh': { const b=$('#adm-online .on-n'); if (b) b.textContent='…'; drawOnline(); break; }
     case 'admin-member': S.admin.memberId=el.dataset.id; S.admin.calMonth=null; S.admin.calSel=null; go('account',{sub:'adminMember'}); break;
     case 'acal-prev': S.admin.calMonth=monthShift(S.admin.calMonth,-1); renderAdminMember($('#main')); break;
     case 'acal-next': S.admin.calMonth=monthShift(S.admin.calMonth,1); renderAdminMember($('#main')); break;
@@ -5508,6 +5558,12 @@ document.addEventListener('click', async e=>{
     case 'set-staff': { const on = el.dataset.on==='1';
       if (!await confirmBox(on?'設成工作人員？\n他可以在「我的帳號」用掃描入場，看不到後台其他資料。':'取消他的工作人員身分？', on?'設成工作人員':'取消工作人員', !on)) break;
       try { await api.adminSetRole(el.dataset.id, on?'staff':'member'); toast(on?'已設成工作人員':'已取消工作人員','ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
+      break; }
+    case 'set-title': {
+      if (el.classList.contains('on')) break;
+      const t = el.dataset.t, nm = el.dataset.name;
+      if (!await confirmBox(t ? `把 ${nm} 設成「${MEMBER_TITLES[t]}」？\n${MEMBER_TITLES[t]}不用繳月費。` : `把 ${nm} 改回一般夥伴？\n之後要照常繳月費。`, t ? '設成' + MEMBER_TITLES[t] : '改回一般夥伴')) break;
+      try { await api.adminSetTitle(el.dataset.id, t); QuickCache.clear(); toast(t ? '已設成' + MEMBER_TITLES[t] : '已改回一般夥伴', 'ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
       break; }
     case 'tk-tab': S.tkTab = el.dataset.t; renderMyTickets($('#main')); break;
     case 'my-posts-more': if (!S.myPostsAll){ S.myPostsAll = true; loadMyPosts(); } break;

@@ -2,7 +2,7 @@
  * 只保存 APP 畫面本身，讓手機加到主畫面後打開更快、沒網路時也能顯示提示。
  * 後端資料與照片一律直接連網，不經過這裡。
  * 畫面採「先連網、失敗才用舊版」，所以更新後夥伴不用手動清除快取。 */
-const CACHE = 'royal-20261125102429';
+const CACHE = 'royal-20261125105853';
 const SHELL = ['./', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
