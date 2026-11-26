@@ -348,6 +348,15 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .acct-head .ah-name{font-size:22px;font-weight:800;line-height:1.3}
 .acct-head .ah-tw{font-size:15px;color:var(--muted)}
 .acct-head .ah-go{font-size:30px;color:var(--muted);line-height:1}
+/* 2026-11-26 08:17 使用者：上面個人資料這一區縮小一點（看到就知道是自己，主要用下面的功能）→ 小一號、兩行就好 */
+.card.acct-head{padding:10px 14px;gap:12px;border-radius:20px}
+.acct-head .avatar{width:52px;height:52px;font-size:22px}
+.acct-head .ah-t{gap:2px}
+.acct-head .ah-l1{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:100%}
+.acct-head .ah-name{font-size:19px;line-height:1.25}
+.acct-head .ah-l1 .pill{font-size:12px;padding:2px 8px;line-height:1.4}
+.acct-head .ah-tw{font-size:14px}
+.acct-head .ah-go{font-size:24px}
 .app-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px 4px;padding:16px 0 12px}
 .app-tile{display:flex;flex-direction:column;align-items:center;gap:7px;background:none;border:0;padding:0;color:var(--text);text-decoration:none;cursor:pointer;font:inherit;min-width:0;-webkit-tap-highlight-color:transparent}
 .app-tile .ai.img{padding:0;overflow:hidden;background:#fff}.app-tile .ai.img img{width:100%;height:100%;object-fit:cover;transform:scale(1.05);pointer-events:none}
@@ -3929,9 +3938,8 @@ function renderAccount(main){
   const me = S.me, admin = me.role==='admin';
   main.innerHTML = `
     <button class="card acct-head" data-act="acct-settings">${avatarHTML(me,'lg')}<span class="ah-t">
-      <span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>
-      <span class="ah-tw">${NU_IC}${me.tw ? '如新帳號&ensp;'+esc(me.tw) : '如新帳號　還沒填'}</span>
-      ${admin?'<span class="pill ok">👑 管理員</span>':''}${me.title&&MEMBER_TITLES[me.title]?`<span class="pill gold-pill">${MEMBER_TITLES[me.title]}</span>`:''}</span><span class="ah-go" aria-hidden="true">›</span></button>
+      <span class="ah-l1"><span class="ah-name">${esc(me.name)}${badgeHTML(me.id)}</span>${admin?'<span class="pill ok">👑 管理員</span>':''}${me.title&&MEMBER_TITLES[me.title]?`<span class="pill gold-pill">${MEMBER_TITLES[me.title]}</span>`:''}</span>
+      <span class="ah-tw">${NU_IC}${me.tw ? '如新帳號&ensp;'+esc(me.tw) : '如新帳號　還沒填'}</span></span><span class="ah-go" aria-hidden="true">›</span></button>
     ${S.fee && !['exempt','trial','off'].includes(S.fee.state) ? `<button class="card entry-card" data-act="fee-open"><span>💳 皇家主任月費</span><span class="muted">${monthZh(S.fee.month)} ${feePill(S.fee.state)} ›</span></button>` : ''}
     <div class="card app-card"><div class="app-grid" id="app-grid">${appTilesHTML()}</div>
       <button class="link-btn tiles-edit-link" data-act="tiles-edit">↕ 排列圖示</button>
