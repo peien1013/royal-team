@@ -880,6 +880,7 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .pick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
 .pick-grid button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:16px;font-weight:700;min-height:96px}
 .pick-grid button:active{background:var(--gold-soft)}
+.pair-no{font-size:64px;font-weight:900;letter-spacing:.1em;color:var(--brand);line-height:1.1;margin:4px 0 8px}   /* 手機桌面的皇家：核對號碼 */
 </style>
 </head>
 <body>
@@ -1665,6 +1666,7 @@ const MockApi = {
       const m = MockDB.members.find(x=>x.tw===tw); if (MockDB.reg.tws.has(tw) || (m && MockDB.reg.ids.has(m.id))) skipped++; else { MockDB.reg.tws.add(tw); if (m) MockDB.reg.pending.delete(m.id); added++; } });
     return { ok:true, added, skipped }; },
   async getHonors(){ await this._wait(); return mockHonorBoard(); },
+  async pairFinish(pair){ await this._wait(); if (!/^[\w-]{16,80}$/.test(String(pair||''))) throw new Error('BAD_REQUEST'); window.__pairDone = pair; return { ok:true }; },
   async honorQuote(quote, memberId){ await this._wait(); const m = MockDB.byId[memberId || this._me().id]; if (!m) throw new Error('NOT_FOUND');
     if (m.id!==this._me().id && S.role!=='admin') throw new Error('FORBIDDEN'); quote = String(quote||'').replace(/\s+/g,' ').trim(); if (quote.length>60) throw new Error('TEXT_TOO_LONG'); m.quote = quote; return { ok:true, quote }; },
   async adminHonorAdd(memberId, title){ await this._wait(); title = String(title||'').replace(/\s+/g,' ').trim(); if (!title) throw new Error('TITLE_REQUIRED');
@@ -2038,6 +2040,7 @@ const GasApi = {
   lineLogin(p){ return this.call('auth.line', p, {retry:0}); },
   linePoll(p){ return this.call('auth.linePoll', p, {retry:1}); },
   liffLogin(idToken){ return this.call('auth.liff', { idToken }, {retry:1}); },
+  pairFinish(pair){ return this.call('auth.pairFinish', { pair }, {retry:0}); },
   emailSend(email){ return this.call('auth.emailSend', {email}, {retry:0}); },
   emailVerify(email, code){ return this.call('auth.emailVerify', {email, code}, {retry:0}); },
   apply(p){ return this.call('member.apply', p, {retry:0}); },
@@ -2298,6 +2301,13 @@ function renderLogin(step='start', extra={}){
   } else if (step==='busy') {
     app.innerHTML = `<div class="login">${head}<div class="center" style="padding:20px"><span class="spinner" style="border-color:#cfe0f0;border-top-color:var(--brand);width:36px;height:36px"></span>
       <p>${esc(extra.text||'登入中，請稍候…')}</p></div>${extra.cancel?'<button class="btn btn-outline" data-act="login-back">取消，回登入頁</button>':''}</div>`;
+  } else if (step==='pair-wait') {   // 手機桌面的皇家：等 LINE 裡的皇家按確定
+    app.innerHTML = `<div class="login">${head}<div class="card center" style="box-shadow:none;border:2px solid var(--line)">
+      <div class="muted">LINE 會打開皇家，請核對號碼</div><div class="pair-no">${esc(extra.no||'')}</div>
+      <p style="margin:0 0 12px">在 LINE 裡按<br>「<b>是 ${esc(extra.no||'')}，幫我登入</b>」<br>再回到這個畫面，就會自動進去。</p>
+      <span class="spinner" style="border-color:#cfe0f0;border-top-color:var(--brand);width:30px;height:30px"></span></div>
+      <button class="btn btn-outline" data-act="login-back">取消，回登入頁</button>
+      <button class="btn btn-ghost btn-sm" data-act="login-oauth">LINE 沒有打開？改用另一種方式登入</button></div>`;
   } else if (step==='line-other') {
     app.innerHTML = `<div class="login">${head}<div class="card center" style="box-shadow:none;border:2px solid var(--line)"><div style="font-size:44px">✅</div>
       <h2>LINE 確認完成</h2><p class="muted" style="margin:0">請回到手機主畫面上的「皇家」APP，<br>它會自動幫你登入。</p></div>
@@ -2401,10 +2411,15 @@ function lineAuthUrl(st, nonce){
   try { if (sessionStorage.getItem('royal_line_noauto')) o.disable_auto_login = 'true'; } catch(_){}
   return 'https://access.line.me/oauth2/v2.1/authorize?' + new URLSearchParams(o).toString();
 }
+/** 手機（還沒在 LINE 裡）：「用 LINE 登入」改成打開 LINE 裡的皇家（LIFF，會自動登入），在那邊按確定幫這裡登入，
+ *  不用等 LINE 確認完再跳回瀏覽器（2026-11-26 夥伴 iPhone、安卓都卡在「等待 LINE 確認」）。電腦、LINE 裡照舊。 */
+const usePair = () => CONFIG.MODE==='live' && /^\d+-\w+$/.test(CONFIG.LIFF_ID||'') && !inLineApp() && (isIOS() || /Android/i.test(navigator.userAgent));
+const pairUrl = st => 'https://liff.line.me/' + CONFIG.LIFF_ID + '?pair=' + st;
+const pairNo = st => String(parseInt(String(st).slice(0, 6), 16) % 90 + 10);
 function prepLineLogin(force){
   if (!force && LINE_PREP && Date.now() - LINE_PREP.at < 10*60000) return LINE_PREP;
   const st = randStr(16), nonce = randStr(16), secret = randStr(24);
-  const p = { state:st, nonce, secret, at:Date.now(), ok:false, url:lineAuthUrl(st, nonce) };
+  const pair = usePair(), p = { state:st, nonce, secret, at:Date.now(), ok:false, pair, url: pair ? pairUrl(st) : lineAuthUrl(st, nonce) };
   p.ready = sha256Hex(secret).then(h => api.lineStart({ state:st, nonce, secretHash:h })).then(() => { p.ok = true; p.done = true; }, () => { p.ok = false; p.done = true; });
   return LINE_PREP = p;
 }
@@ -2412,7 +2427,7 @@ function prepLineLogin(force){
 function lineLinkTapped(e){
   const p = LINE_PREP;
   if (p && p.ok && Date.now() - p.at < 13*60000) {
-    const pend = { state:p.state, secret:p.secret, at:Date.now() };
+    const pend = { state:p.state, secret:p.secret, at:Date.now(), pair:!!p.pair };
     store('royal_line_pending', pend);
     LINE_PREP = null;
     // 連結打開 LINE APP 之後，這個畫面還留著（主畫面 APP 不一定會收到「切回來」的通知）：
@@ -2463,7 +2478,8 @@ async function handleLineReturn(params){
 let polling = false;
 async function pollLine(pend){
   if (polling) return; polling = true;
-  renderLogin('busy', {text:'等待 LINE 確認…（確認完請回到這個畫面）', cancel:true});
+  if (pend.pair) renderLogin('pair-wait', {no:pairNo(pend.state)});
+  else renderLogin('busy', {text:'等待 LINE 確認…（確認完請回到這個畫面）', cancel:true});
   try {
     // 只有「看得到的那個畫面」去領結果：同一支手機開了兩個分頁時，不會兩邊搶（2026-11-25 夥伴看到「登入等太久了」）
     for (let i = 0, t0 = Date.now(); i < 90 && Date.now() - t0 < 15*60000; ) {
@@ -2878,7 +2894,25 @@ async function pickCoe(cur){
 }
 const isAdminMe = () => CONFIG.MODE==='live' ? !!(S.me && S.me.role==='admin') : S.role==='admin';
 /** 打開 APP 時先到哪一頁：管理員用電腦（螢幕寬）或網址加 #admin → 直接到後台；其他 → 首頁 */
+/** LINE 裡的皇家是被手機桌面的皇家叫起來的（?pair=…）：登入後問他要不要幫桌面的皇家登入（要核對號碼，免得被人騙去按） */
+async function maybePair(){
+  let d = null; try { d = JSON.parse(sessionStorage.getItem('royal_pair') || 'null'); } catch(_){}
+  if (!d || !S.session) return;
+  if ($('.dialog-bg')) return setTimeout(maybePair, 1500);   // 有別的視窗開著：等一下再問
+  sessionStorage.removeItem('royal_pair');
+  if (Date.now() - d.at > 15*60000) return;
+  const no = pairNo(d.p);
+  if (!await confirmBox(`要幫手機桌面上的「皇家」登入你的帳號嗎？請看桌面的皇家，號碼是 ${no} 才按。不是你自己剛剛按的，請按取消。`, `是 ${no}，幫我登入`)) return;
+  try { await api.pairFinish(d.p); }
+  catch(e) { return toast(e && e.message==='LOGIN_TIMEOUT' ? '等太久了，請回到桌面的皇家，再按一次「用 LINE 登入」' : errText(e), 'err'); }
+  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-b center"><div style="font-size:48px">✅</div><h3>好了！</h3>
+    <p>請回到<b>手機桌面</b>，打開金色的「皇家」，<br>它會自己登入。</p><div class="muted mb">在 LINE 裡也可以繼續用。</div><button class="btn btn-primary" data-x>知道了</button></div></div>`;
+  bg.addEventListener('click', e => { if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  document.body.appendChild(bg);
+}
 function goStart(){
+  setTimeout(maybePair, 900);
   const wantAdmin = isAdminMe() && (location.hash==='#admin' || (!isStandalone() && window.matchMedia && matchMedia('(min-width: 900px) and (pointer: fine)').matches));
   if (location.hash==='#admin') history.replaceState(null, '', location.pathname + location.search);
   go(wantAdmin ? 'account' : 'home', wantAdmin ? {sub:'admin'} : {});
@@ -5434,6 +5468,7 @@ document.addEventListener('click', async e=>{
   switch(act){
     /* 登入 */
     case 'login-line': if (CONFIG.MODE==='live') lineLinkTapped(e); else renderLogin('who',{method:'LINE'}); break;
+    case 'login-oauth': store('royal_line_pending', null); startLineLogin(); break;   // 號碼登入不成：改回原本的 LINE 登入
     case 'login-email': renderLogin('email'); break;
     case 'login-back': store('royal_line_pending', null); renderLogin('start'); break;
     case 'email-send': {
@@ -5787,6 +5822,11 @@ function lineReturnParams(){
 }
 (async function start(){
   const params = new URLSearchParams(location.search);
+  try {   // 被手機桌面的皇家叫起來（?pair=…，LIFF 會包在 liff.state 裡）：記下來，登入後問他要不要幫桌面的皇家登入
+    let pv = params.get('pair'); const ls = params.get('liff.state');
+    if (!pv && ls) { const i = ls.indexOf('?'); pv = new URLSearchParams(i >= 0 ? ls.slice(i + 1) : ls).get('pair'); }
+    if (pv && /^[\w-]{16,80}$/.test(pv) && inLineApp()) sessionStorage.setItem('royal_pair', JSON.stringify({ p:pv, at:Date.now() }));
+  } catch(_){}
   if (params.get('install') === '1') {   // 從 LINE 按「用 Safari 打開，教我放」過來：網址先清乾淨（放到桌面才不會帶參數），再直接出現放桌面的步驟
     params.delete('install'); params.delete('openExternalBrowser');
     history.replaceState(null, '', location.pathname + (params.toString() ? '?' + params : ''));
