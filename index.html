@@ -370,6 +370,29 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .cat-box{position:relative;height:70vh;min-height:360px;border-radius:14px;overflow:hidden;background:#F4F6FA}
 .cat-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
 .cat-wait{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:17px}
+/* 產品手冊（2026-11-27）：分類、清單、只能閱讀的翻頁 */
+.man-list{padding:8px 10px}
+.man-h{display:flex;align-items:baseline;gap:8px;margin:6px 6px 8px;font-size:21px}.man-h small{font-size:15px;color:var(--muted);font-weight:500}
+.man-sec{margin:12px 8px 4px;font-size:15px;font-weight:700;color:var(--muted)}
+.man-row{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:10px 8px;border:0;border-bottom:1px solid var(--line);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.man-row:last-child{border-bottom:0}.man-row:active{background:#F2F6FB}
+.man-row .mr-ic{flex:none;width:46px;height:46px;border-radius:14px;background:#EEF4FB;display:flex;align-items:center;justify-content:center;font-size:24px}
+.man-row .mr-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.man-row .mr-t b{font-size:18px;line-height:1.35;font-weight:700}
+.man-row .mr-t small{font-size:14px;color:var(--muted)}
+.man-row .mr-go{flex:none;font-size:26px;color:#9AA7B5}
+.man-cat .mr-ic{width:54px;height:54px;font-size:28px}.man-cat .mr-t b{font-size:20px}
+.man-view .cat-h{padding-bottom:8px}
+.man-vt{flex:1;min-width:0;font-size:17px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.man-tools{flex:none;display:flex;align-items:center;gap:6px}.man-tools small{font-size:13px;color:var(--muted);white-space:nowrap;margin-right:2px}
+.man-zb{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:22px;font-weight:700;color:var(--brand);line-height:1}
+.man-box{background:#E9EDF2}
+.man-pages{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.man-pg{position:relative;width:calc(var(--z,1) * 100%);margin:0 0 10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);border-radius:4px;overflow:hidden}
+.man-pg canvas{position:relative;z-index:1;display:block;width:100%;height:100%;pointer-events:none}
+.man-pn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#B8C2CE;font-size:28px;font-weight:700}
+.man-load{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;font-size:18px;background:#F4F6FA}
+.man-bar{width:72%;height:12px;border-radius:6px;background:#DCE3EC;overflow:hidden}.man-bar i{display:block;height:100%;width:6%;background:var(--brand);border-radius:6px;transition:width .3s ease}
+.man-load small{font-size:15px;color:var(--muted)}
 .card .play-p{text-align:left;text-wrap:wrap}   /* 2026-11-27 17:27 使用者：「敘述就是都在同一行，不要斷行、不要分開」→ 不手動換行、不照標點分段（PHRASE_SKIP）、不平均行長，整段靠左排滿每一行 */
 /* 遊樂園背景（2026-11-27 16:39 使用者請 GPT 做的：摩天輪、旋轉木馬、熱氣球）：只有健康遊樂場的頁面才載入、才顯示；字都放在白色卡片裡 */
 .play-bg{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .35s ease;background:#4AA2EC center bottom/cover no-repeat}
@@ -1464,6 +1487,13 @@ const ICON = {
 /* =====================================================================
    模擬資料庫（只在示範模式使用；正式資料在 Google 試算表）
    ===================================================================== */
+/** 示範模式的產品手冊（正式版從雲端硬碟「Nu Skin 產品培育資料」讀；這裡每一本都是同一份 3 頁的示範 PDF，分 3 段送） */
+const MOCK_MANUAL = (()=>{ const pdf = 'JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFs0IDAgUiA2IDAgUiA4IDAgUl0gL0NvdW50IDMgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL0ZvbnQgL1N1YnR5cGUgL1R5cGUxIC9CYXNlRm9udCAvSGVsdmV0aWNhLUJvbGQgPj4KZW5kb2JqCjQgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA0MjAgNTk1XSAvUmVzb3VyY2VzIDw8IC9Gb250IDw8IC9GMSAzIDAgUiA+PiA+PiAvQ29udGVudHMgNSAwIFIgPj4KZW5kb2JqCjUgMCBvYmoKPDwgL0xlbmd0aCAxNzMgPj4Kc3RyZWFtCjAuMDQgMC40NSAwLjc3IHJnIDAgMCA0MjAgNTk1IHJlIGYgMSAxIDEgcmcgMzAgNjAgMzYwIDQ3NSByZSBmIDAuMDQgMC40NSAwLjc3IHJnIEJUIC9GMSA0MCBUZiA5MCAzMzAgVGQgKERFTU8gUEFHRSAxKSBUaiBFVCBCVCAvRjEgMTggVGYgMTIwIDI4MCBUZCAoUm95YWwgVGVhbSBNYW51YWwpIFRqIEVUCmVuZHN0cmVhbQplbmRvYmoKNiAwIG9iago8PCAvVHlwZSAvUGFnZSAvUGFyZW50IDIgMCBSIC9NZWRpYUJveCBbMCAwIDQyMCA1OTVdIC9SZXNvdXJjZXMgPDwgL0ZvbnQgPDwgL0YxIDMgMCBSID4+ID4+IC9Db250ZW50cyA3IDAgUiA+PgplbmRvYmoKNyAwIG9iago8PCAvTGVuZ3RoIDE3MyA+PgpzdHJlYW0KMC43OSAwLjYwIDAuMTggcmcgMCAwIDQyMCA1OTUgcmUgZiAxIDEgMSByZyAzMCA2MCAzNjAgNDc1IHJlIGYgMC43OSAwLjYwIDAuMTggcmcgQlQgL0YxIDQwIFRmIDkwIDMzMCBUZCAoREVNTyBQQUdFIDIpIFRqIEVUIEJUIC9GMSAxOCBUZiAxMjAgMjgwIFRkIChSb3lhbCBUZWFtIE1hbnVhbCkgVGogRVQKZW5kc3RyZWFtCmVuZG9iago4IDAgb2JqCjw8IC9UeXBlIC9QYWdlIC9QYXJlbnQgMiAwIFIgL01lZGlhQm94IFswIDAgNDIwIDU5NV0gL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgMyAwIFIgPj4gPj4gL0NvbnRlbnRzIDkgMCBSID4+CmVuZG9iago5IDAgb2JqCjw8IC9MZW5ndGggMTczID4+CnN0cmVhbQowLjEzIDAuNTUgMC4zMyByZyAwIDAgNDIwIDU5NSByZSBmIDEgMSAxIHJnIDMwIDYwIDM2MCA0NzUgcmUgZiAwLjEzIDAuNTUgMC4zMyByZyBCVCAvRjEgNDAgVGYgOTAgMzMwIFRkIChERU1PIFBBR0UgMykgVGogRVQgQlQgL0YxIDE4IFRmIDEyMCAyODAgVGQgKFJveWFsIFRlYW0gTWFudWFsKSBUaiBFVAplbmRzdHJlYW0KZW5kb2JqCnhyZWYKMCAxMAowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMDkgMDAwMDAgbiAKMDAwMDAwMDA1OCAwMDAwMCBuIAowMDAwMDAwMTI3IDAwMDAwIG4gCjAwMDAwMDAyMDIgMDAwMDAgbiAKMDAwMDAwMDMyOCAwMDAwMCBuIAowMDAwMDAwNTUyIDAwMDAwIG4gCjAwMDAwMDA2NzggMDAwMDAgbiAKMDAwMDAwMDkwMiAwMDAwMCBuIAowMDAwMDAxMDI4IDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgMTAgL1Jvb3QgMSAwIFIgPj4Kc3RhcnR4cmVmCjEyNTIKJSVFT0YK', size = atob(pdf).length, partBytes = 600, parts = Math.ceil(size/partBytes);
+  const it = (id, title, live) => ({ id, title, live: live||0, size, parts });
+  return { pdf, partBytes, cats: [
+    { name:'營養字典', items:[ it('mnA0000001','基礎營養'), it('mnA0000002','魚油'), it('mnA0000003','紅麴'), it('mnA0000004','如何使用、一夜好眠數據解析',3), it('mnA0000005','粒線體關鍵營養組',12) ] },
+    { name:'保養字典', items:[ it('mnB0000001','皮膚抗老科技'), it('mnB0000002','淋巴循環新科技') ] },
+    { name:'品牌故事', items:[ it('mnC0000001','超越40年不止是傳奇，探索NU SKIN創新與研發力量') ] } ] }; })();
 const MockDB = (() => {
   let seed = 20261122;
   const rnd = () => { seed|=0; seed=seed+0x6D2B79F5|0; let t=Math.imul(seed^seed>>>15,1|seed); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; };
@@ -2200,6 +2230,11 @@ const MockApi = {
   async walkSave(days){ await this._wait(); const W = MockDB.walk || (MockDB.walk = {}), id = this._me().id, mine = W[id] || (W[id] = {}), T = todayStr();   // 跟後端一樣的規則
     const saved = (days||[]).slice(0,8).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date <= T && d.date >= addDays(T,-7) && +d.steps >= 0 && +d.steps <= 100000)
       .map(d=>{ const n = Math.floor(+d.steps); mine[d.date] = d.reset ? n : Math.max(mine[d.date]||0, n); return { date:d.date, steps:mine[d.date] }; }); return { ok:true, saved }; },
+  async manualList(){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); return { on: MockDB.manualOn==='Y', cats: MOCK_MANUAL.cats, at: tvNow() }; },
+  async manualPart(id, i){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN');
+    const it = MOCK_MANUAL.cats.flatMap(c=>c.items).find(x=>x.id===id); if (!it) throw new Error('NOT_FOUND'); if (!(i>=0 && i<it.parts && Math.floor(i)===i)) throw new Error('BAD_REQUEST');
+    MockDB.manualReads = (MockDB.manualReads||0) + 1;
+    const all = atob(MOCK_MANUAL.pdf), part = all.slice(i*MOCK_MANUAL.partBytes, (i+1)*MOCK_MANUAL.partBytes); return { id, i, parts: it.parts, size: all.length, data: btoa(part) }; },
   async walkMine(){ await this._wait(); return { today: todayStr(), days: { ...((MockDB.walk||{})[this._me().id] || {}) } }; },
   async adminWalkList(){ await this._wait(); const T = todayStr(), from = addDays(T,-6), W = MockDB.walk || {};
     const rows = Object.keys(W).map(id=>{ const m = MockDB.byId[id], d = W[id]; if (!m) return null; let week = 0; Object.keys(d).forEach(k=>{ if (k>=from && k<=T) week += d[k]; });
@@ -2427,6 +2462,8 @@ const GasApi = {
   meTilesSet(order){ return this.call('me.tiles.set', {order}); },
   walkSave(days){ return this.call('walk.save', {days}, {retry:1}); },   // 一起走走（2026-11-27）
   walkMine(){ return this.call('walk.mine', {}, {retry:1}); },
+  manualList(fresh){ return this.call('manual.list', fresh ? { fresh:true } : {}, {retry:1}); },
+  manualPart(id, i){ return this.call('manual.part', { id, i }, {retry:2}); },
   adminWalkList(){ return this.call('admin.walk.list', {}, {retry:1}); },
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
@@ -2546,7 +2583,7 @@ const validName = n => /^[\u3400-\u9fffA-Za-z][\u3400-\u9fffA-Za-z\u00b7\u30fb\u
 function errText(e){
   const k = e && e.message;
   return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。',
-    FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', MEAL_UNAVAILABLE:'便當系統暫時讀不到，等一下再試。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
+    FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', MEAL_UNAVAILABLE:'便當系統暫時讀不到，等一下再試。', MANUAL_UNAVAILABLE:'手冊暫時讀不到，等一下再試。', PDFJS:'閱讀工具沒有載入成功，請檢查網路再試一次。', PDF_BAD:'這本手冊打不開，請跟管理員說。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
     PHOTO_BIG:'照片太大了，請換一張。', TOO_MANY_PHOTOS:'每篇最多 3 張照片。', TEXT_TOO_LONG:'字數太多了，請精簡一點。',
     BUSY:'現在使用的人很多，請等幾秒再按一次。', TOO_MANY_POSTS:'今天已經發很多篇了，明天再分享吧。',
     LOGIN_REQUIRED:'請重新登入。', LOGIN_EXPIRED:'登入已過期，請重新登入。', NOT_APPROVED:'你的帳號還沒有通過審核或已停用，請洽管理員。',
@@ -2876,21 +2913,6 @@ async function enterWithSession(r){
     else if (!store('royal_line_tip')) { store('royal_line_tip', Date.now()); setTimeout(()=>toast('以後在 LINE 群組點皇家的連結，就會直接登入使用 👍','ok'), 1200); }
   }
   else if (CONFIG.MODE==='live' && !isStandalone() && !store('royal_install_tip') && !(S.sub==='admin')) setTimeout(showInstallTip, 1500);
-}
-/** 手冊專區（2026-11-26 12:55 使用者：「你先放上去，到時候我再給你資料」）：先放圖示，點開說準備中。
- *  之後：使用者把如新產品手冊（PDF）放進雲端硬碟「皇家手冊」的分類資料夾 → APP 自動列出、全螢幕翻頁。 */
-function showManualSoon(){
-  if ($('#manual-soon')) return;
-  const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'manual-soon';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>📘 產品手冊</h3><button data-x>關閉</button></div>
-    <div class="sheet-b"><div class="ha-ic"><img src="${TILE_IMG.manual}" alt=""></div>
-      <div class="center mb"><b>手冊整理中，很快就會上架 ✨</b></div>
-      <div class="muted center mb">如新全產品的手冊會放在這裡，<br>點開就能看，手指滑一滑就能翻頁。</div>
-      ${isAdminMe() ? (S.me && S.me.manualOn ? `<div class="notice ok mb">✅ 已開放：大家的桌面都看得到手冊。</div><button class="btn btn-ghost mb" data-act="manual-toggle" data-on="0">關掉（夥伴看不到）</button>`
-        : `<div class="notice mb">🔒 還沒開放：跟高鐵一樣，現在只有你（管理員）看得到。</div><button class="btn btn-primary mb" data-act="manual-toggle" data-on="1">打開給大家看</button>`) : ''}
-      <button class="btn btn-outline" data-x>好</button></div></div>`;
-  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
-  document.body.appendChild(bg);
 }
 /** 先關著：主畫面登入的修正要使用者在真的 iPhone 上試過，才打開「引導放桌面」（2026-11-25 20:51 有夥伴進不去） */
 const HOME_ASK_ON = false;
@@ -3440,7 +3462,7 @@ function watchNavVisible(){
 }
 
 function go(tab, opts={}){
-  stopReadTracking(); if (WALK.on && opts.sub !== 'walk') walkStop(true);
+  stopReadTracking(); if (WALK.on && opts.sub !== 'walk') walkStop(true); manClose();
   { const m = $('#main'); if (m) m.onclick = null; }
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
@@ -3461,6 +3483,9 @@ function go(tab, opts={}){
   if (S.sub==='walkAdmin') return renderWalkAdmin(main);
   if (S.sub==='play') return renderPlay(main);
   if (S.sub==='catalog') return renderCatalog(main);
+  if (S.sub==='manual') return renderManual(main);
+  if (S.sub==='manualCat') return renderManualCat(main);
+  if (S.sub==='manualView') return renderManualView(main);
   if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
@@ -4499,7 +4524,168 @@ function catFit(){
   const navH = nr && nr.top > window.innerHeight / 2 ? window.innerHeight - top + 8 : 0;   // 電腦版導覽列在左邊，不用扣
   b.style.height = Math.max(360, Math.round(window.innerHeight - b.getBoundingClientRect().top - window.scrollY - navH - 90)) + 'px';
 }
-window.addEventListener('resize', ()=>{ if (S.sub==='catalog') catFit(); });
+window.addEventListener('resize', ()=>{ if (S.sub==='catalog' || S.sub==='manualView') catFit(); });
+
+/* ---------- 📘 產品手冊（2026-11-27 使用者：「各個產品的手冊歸類到手冊裡面」「我不希望他們下載和把連結傳給別人」「我提供閱讀而已」）
+   手冊 → 一類（營養字典／保養字典／品牌故事）→ 一本 → 在 APP 裡一頁一頁看。
+   檔案在使用者的雲端硬碟（私人、不開分享）：後端分段送給登入的夥伴（manual.part），APP 用 PDF.js 畫成圖：
+   沒有下載鈕、沒有連結、不能選字複製；截圖擋不住（使用者知道）。
+   PDF.js 從 jsDelivr 載入（只有打開手冊時才載），用 SRI 核對碼確認檔案沒被改過。 ---------- */
+const PDFJS = { base:'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/',
+  main:'sha384-OemFRmhjDZwhIKuUld0HJozkF2YErsgDaCL41trxGQZt4/WgnopJQqQl2DvDZ07Z', worker:'sha384-sS8B4COeBqzQV9DaPpp5cbpF+xz2jPcFbN3L8FL3/dx0RMC6WLUwTUOFm0iFb1lw' };
+let pdfjsReady = null;
+function loadPdfjs(){
+  if (pdfjsReady) return pdfjsReady;
+  pdfjsReady = (async ()=>{
+    if (!window.pdfjsLib) await new Promise((res, rej)=>{ const el = document.createElement('script'); el.src = PDFJS.base + 'pdf.min.js'; el.integrity = PDFJS.main; el.crossOrigin = 'anonymous';
+      el.onload = ()=>res(); el.onerror = ()=>{ el.remove(); rej(new Error('PDFJS')); }; document.head.appendChild(el); });
+    if (!window.pdfjsLib) throw new Error('PDFJS');
+    const r = await fetch(PDFJS.base + 'pdf.worker.min.js', { integrity: PDFJS.worker, mode:'cors', credentials:'omit' }).catch(()=>null);
+    if (!r || !r.ok) throw new Error('PDFJS');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(new Blob([await r.text()], { type:'text/javascript' }));
+    return window.pdfjsLib;
+  })().catch(e=>{ pdfjsReady = null; throw new Error('PDFJS'); });
+  return pdfjsReady;
+}
+const MAN_IC = { '營養字典':'💊', '保養字典':'🧴', '品牌故事':'🌟', '其他':'📁' };
+function renderManual(main){
+  const admin = isAdminMe(), on = !!(S.me && S.me.manualOn);
+  main.innerHTML = `<div class="card center play-hero"><img class="play-ic" src="${TILE_IMG.manual}" alt=""><h2 style="margin:8px 0 0">📘 產品手冊</h2>
+      <div class="muted mt play-p">如新產品的培育資料，點一本就能在 APP 裡翻頁閱讀；這裡只能閱讀，要下載整份請到新享購。</div></div>
+    ${admin ? `<div class="card man-admin">${on ? '<div class="notice ok mb">✅ 已開放：大家的功能選單都看得到手冊。</div><button class="btn btn-ghost mb" data-act="manual-toggle" data-on="0">關掉（夥伴看不到）</button>'
+        : '<div class="notice mb">🔒 還沒開放：現在只有你（管理員）看得到。</div><button class="btn btn-primary mb" data-act="manual-toggle" data-on="1">打開給大家看</button>'}
+      <button class="btn btn-outline" data-act="man-refresh">🔄 重新整理（雲端放了新的手冊）</button>
+      <div class="muted small mt play-p">手冊放在你的雲端硬碟「Nu Skin 產品培育資料」：裡面一個資料夾就是一類，PDF 放進去這裡就會出現；檔案維持私人，不用開分享。</div></div>` : ''}
+    <div id="man-cats"><div class="card center muted">手冊清單載入中…</div></div>
+    ${PLAY_BACK('回到功能選單')}`;
+  manLoad(false);
+}
+async function manLoad(fresh){
+  const seq = S.navSeq; let r;
+  try { r = await api.manualList(fresh); }
+  catch(e){ if (S.navSeq !== seq) return; const b = $('#man-cats'); if (b) b.innerHTML = `<div class="card center">${esc(errText(e))}<div class="mt"><button class="btn btn-outline" data-act="man-refresh">再試一次</button></div></div>`; return; }
+  if (S.navSeq !== seq) return;
+  S.man = r;
+  const box = $('#man-cats'); if (!box) return;
+  if (r.error === 'NO_FOLDER') { box.innerHTML = '<div class="card center">找不到雲端硬碟的手冊資料夾（可能被改名搬走或刪除），請跟 Claude 說。</div>'; return; }
+  if (!r.cats.length) { box.innerHTML = '<div class="card center muted">還沒有手冊</div>'; return; }
+  box.innerHTML = `<div class="card man-list">${r.cats.map((c,i)=>`<button class="man-row man-cat" data-act="man-cat" data-i="${i}"><span class="mr-ic">${MAN_IC[c.name] || '📁'}</span><span class="mr-t"><b>${esc(c.name)}</b><small>${c.items.length} 本</small></span><span class="mr-go">›</span></button>`).join('')}</div>`;
+}
+function renderManualCat(main){
+  const c = S.man && S.man.cats[S.manCat]; if (!c) return go('account', {sub:'manual'});
+  const topic = c.items.filter(x=>!x.live), live = c.items.filter(x=>x.live);
+  const row = x => `<button class="man-row man-item" data-act="man-open" data-id="${esc(x.id)}"><span class="mr-ic">📖</span><span class="mr-t"><b>${esc(x.title)}</b>${x.live ? `<small>${x.live} 月直播</small>` : ''}</span><span class="mr-go">›</span></button>`;
+  main.innerHTML = `<div class="card man-list"><h2 class="man-h">${MAN_IC[c.name] || '📁'} ${esc(c.name)}<small>${c.items.length} 本</small></h2>
+      ${topic.length && live.length ? '<div class="man-sec">主題</div>' : ''}${topic.map(row).join('')}
+      ${live.length ? `<div class="man-sec">每月直播</div>${live.map(row).join('')}` : ''}</div>
+    ${PLAY_BACK('回到手冊')}`;
+}
+/* 閱讀：MAN.seq 換了＝離開或換一本（還在下載的就不要了）；MAN.keep 留最近看的一本，回上一頁再點開不用重抓 */
+const MAN = { seq:0, doc:null, obs:null, zoom:1, keep:null };
+const MAN_ZOOMS = [1, 1.5, 2, 3];
+function manClose(){
+  MAN.seq++;
+  if (MAN.obs) { MAN.obs.disconnect(); MAN.obs = null; }
+  if (MAN.doc) { try { MAN.doc.destroy(); } catch(_) {} MAN.doc = null; }
+}
+function renderManualView(main){
+  const d = S.manDoc; if (!d) return go('account', {sub:'manual'});
+  const c = S.man && S.man.cats[S.manCat];
+  MAN.zoom = 1;
+  main.innerHTML = `<div class="card cat-card man-view"><div class="cat-h"><b class="man-vt">${esc(d.title)}</b>
+      <span class="man-tools"><small id="man-pg"></small><button class="man-zb" data-act="man-zoom" data-z="-1" aria-label="縮小">－</button><button class="man-zb" data-act="man-zoom" data-z="1" aria-label="放大">＋</button></span></div>
+      <div class="cat-box man-box" id="cat-box"><div class="man-load" id="man-load"><div>手冊載入中…</div><div class="man-bar"><i id="man-bar"></i></div><small id="man-pct">第一次打開比較久，請稍等</small></div>
+        <div class="man-pages" id="man-pages"></div></div></div>
+    ${PLAY_BACK('回到' + (c ? c.name : '手冊'))}`;
+  catFit();
+  const pg = $('#man-pages');
+  pg.addEventListener('contextmenu', e=>e.preventDefault());   // 長按不跳「儲存圖片」
+  pg.addEventListener('scroll', manPageNo, { passive:true });
+  manOpen(d);
+}
+function manProgress(done, all){
+  const bar = $('#man-bar'), t = $('#man-pct'); if (!bar) return;
+  const pct = Math.round(done / all * 100); bar.style.width = Math.max(6, pct) + '%';
+  if (t && done) t.textContent = `已載入 ${pct}%`;
+}
+function b64Bytes(b64){ const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+async function manBytes(d, seq){
+  if (MAN.keep && MAN.keep.id === d.id) return MAN.keep.bytes;
+  const parts = new Array(d.parts); let next = 0, done = 0;
+  manProgress(0, d.parts);
+  const one = async ()=>{ while (next < d.parts) { const i = next++; const r = await api.manualPart(d.id, i); if (seq !== MAN.seq) throw new Error('CANCEL');
+    parts[i] = b64Bytes(r.data); manProgress(++done, d.parts); } };
+  await Promise.all(Array.from({ length: Math.min(2, d.parts) }, one));   // 一次抓兩段
+  const total = parts.reduce((n, p)=>n + p.length, 0), out = new Uint8Array(total); let o = 0;
+  parts.forEach(p=>{ out.set(p, o); o += p.length; });
+  MAN.keep = { id: d.id, bytes: out };
+  return out;
+}
+async function manOpen(d){
+  const seq = ++MAN.seq;
+  try {
+    const [lib, bytes] = await Promise.all([loadPdfjs(), manBytes(d, seq)]);
+    if (seq !== MAN.seq) return;
+    let doc;
+    try { doc = await lib.getDocument({ data: bytes.slice(), isEvalSupported:false, disableAutoFetch:true, disableStream:true }).promise; }   // slice：PDF.js 會把資料交給背景，留一份下次用
+    catch(_) { MAN.keep = null; throw new Error('PDF_BAD'); }
+    if (seq !== MAN.seq) { doc.destroy(); return; }
+    MAN.doc = doc;
+    const p1 = await doc.getPage(1), v = p1.getViewport({ scale:1 }), pg = $('#man-pages');
+    if (seq !== MAN.seq || !pg) return;
+    pg.innerHTML = Array.from({ length: doc.numPages }, (_, i)=>`<div class="man-pg" data-n="${i+1}" style="aspect-ratio:${v.width}/${v.height}"><span class="man-pn">${i+1}</span></div>`).join('');
+    $('#man-load') && $('#man-load').remove();
+    manObserve(); manPageNo();
+  } catch(e) {
+    if (seq !== MAN.seq || e.message === 'CANCEL') return;
+    const l = $('#man-load'); if (l) l.innerHTML = `<div>${esc(errText(e))}</div><button class="btn btn-outline mt" data-act="man-retry">再試一次</button>`;
+  }
+}
+/* 只畫看得到的附近幾頁，滑走的就清掉（一本 60 頁全部畫出來手機會當掉） */
+function manObserve(){
+  const pg = $('#man-pages'); if (!pg) return;
+  if (MAN.obs) MAN.obs.disconnect();
+  pg.style.setProperty('--z', MAN.zoom);
+  MAN.obs = new IntersectionObserver(es=>es.forEach(e=>{ if (e.isIntersecting) manRender(e.target); else manFree(e.target); }), { root: pg, rootMargin: '900px 300px' });
+  pg.querySelectorAll('.man-pg').forEach(x=>MAN.obs.observe(x));
+}
+async function manRender(el){
+  const doc = MAN.doc, key = String(MAN.zoom); if (!doc || el.dataset.r === key) return;
+  const tok = (el._tok || 0) + 1; el._tok = tok;
+  try {
+    const page = await doc.getPage(+el.dataset.n);
+    if (el._tok !== tok || MAN.doc !== doc) return;
+    const v1 = page.getViewport({ scale:1 });
+    el.style.aspectRatio = v1.width + '/' + v1.height;
+    const px = Math.min(el.clientWidth * Math.min(window.devicePixelRatio || 1, 2), 2400);   // 太大的圖 iPhone 畫不出來
+    const vp = page.getViewport({ scale: px / v1.width }), cv = document.createElement('canvas');
+    cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
+    await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    if (el._tok !== tok || MAN.doc !== doc) { cv.width = cv.height = 0; return; }
+    const old = el.querySelector('canvas'); if (old) { old.width = old.height = 0; old.remove(); }
+    el.appendChild(cv); el.dataset.r = key;
+  } catch(_) {}
+}
+function manFree(el){
+  el._tok = (el._tok || 0) + 1; delete el.dataset.r;
+  const cv = el.querySelector('canvas'); if (cv) { cv.width = cv.height = 0; cv.remove(); }
+}
+function manZoom(dir){
+  const pg = $('#man-pages'); if (!pg || !MAN.doc) return;
+  const i = MAN_ZOOMS.indexOf(MAN.zoom), z = MAN_ZOOMS[Math.max(0, Math.min(MAN_ZOOMS.length - 1, i + dir))];
+  if (z === MAN.zoom) return toast(dir > 0 ? '已經放到最大' : '已經是原本大小');
+  const ry = pg.scrollTop / Math.max(1, pg.scrollHeight), rx = (pg.scrollLeft + pg.clientWidth / 2) / Math.max(1, pg.scrollWidth);
+  MAN.zoom = z; pg.style.setProperty('--z', z);
+  pg.scrollTop = ry * pg.scrollHeight; pg.scrollLeft = Math.max(0, rx * pg.scrollWidth - pg.clientWidth / 2);
+  manObserve();
+}
+function manPageNo(){
+  const pg = $('#man-pages'), t = $('#man-pg'); if (!pg || !t) return;
+  const all = pg.querySelectorAll('.man-pg'); if (!all.length) return;
+  const mid = pg.scrollTop + pg.clientHeight / 2; let n = 1;
+  for (const x of all) { if (x.offsetTop <= mid) n = +x.dataset.n; else break; }
+  t.textContent = `${n} / ${all.length} 頁`;
+}
 /** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）
  *  17:21 使用者：「開放啊，我覺得很好玩」→ 大家都看得到。要再改回只有管理員：加回 isAdminMe() 和 trial:true（遊樂場會自動顯示「試用」）。 */
 function walkTile(){ return { act:'walk-open', ic:'🚶', t:'一起走走', c:'#E3F4EA' }; }
@@ -6610,6 +6796,8 @@ document.addEventListener('click', async e=>{
     case 'back': { if (S.sub==='tmember' && S.tmBack==='team'){ go(S.tab,{sub:'team'}); break; }
       if (S.sub==='walk') { go('account',{sub:'play'}); break; }   // 走路 → 回遊樂場
       if (S.sub==='walkAdmin') { go('account',{sub:'walk'}); break; }
+      if (S.sub==='manualView') { go('account',{sub:'manualCat'}); break; }   // 手冊：閱讀 → 這一類 → 手冊 → 功能選單
+      if (S.sub==='manualCat') { go('account',{sub:'manual'}); break; }
       if (S.sub==='person' && (S.personBack==='honors' || S.personBack==='dreams')){ go(S.tab,{sub:S.personBack}); break; } if (S.sub==='dreamEdit' && S.dreamBack){ go(S.tab,{sub:S.dreamBack==='person'?'honors':S.dreamBack}); break; }
       if (S.sub==='adminMember' && S.memBack==='roster') { S.memBack = null; go('account',{sub:'adminRoster'}); break; }
       if (S.sub==='adminCourseEdit') { go('account',{sub:'adminCourses'}); break; }
@@ -6668,7 +6856,7 @@ document.addEventListener('click', async e=>{
     case 'manual-toggle': { const on = el.dataset.on==='1';
       if (!await confirmBox(on ? '打開「手冊」？所有夥伴的桌面都會出現手冊圖示。' : '關掉「手冊」？夥伴就看不到了（跟高鐵沒開放時一樣，只有你看得到）。', on ? '打開' : '關掉')) break;
       try { await api.adminSettingSet('manualOn', on ? 'Y' : 'N'); if (S.me) S.me.manualOn = on; $('#manual-soon') && $('#manual-soon').remove();
-        toast(on ? '已打開，大家都看得到手冊' : '已關掉', 'ok'); rerenderAcct(); }
+        toast(on ? '已打開，大家都看得到手冊' : '已關掉', 'ok'); if (S.sub==='manual') renderManual($('#main')); else rerenderAcct(); }
       catch(err){ toast(errText(err),'err'); } break; }
     case 'cs-attend': S.attCourse = el.dataset.id; S.attView = 'in'; ATT.msg = ''; go('account', {sub:'adminClass'}); break;
     case 'att-view': S.attView = el.dataset.v; drawAdminClass($('#main')); break;
@@ -6789,7 +6977,12 @@ document.addEventListener('click', async e=>{
     case 'admin-travel': go('account', {sub:'adminTravel'}); break;
     case 'acct-settings': go('account', {sub:'settings'}); break;
     case 'member-card': go('account', {sub:'memberCard'}); break;
-    case 'manual-open': showManualSoon(); break;
+    case 'manual-open': go('account', {sub:'manual'}); break;
+    case 'man-cat': S.manCat = +el.dataset.i; go('account', {sub:'manualCat'}); break;
+    case 'man-open': { const c = S.man && S.man.cats[S.manCat], d = c && c.items.find(x=>x.id===el.dataset.id); if (d) { S.manDoc = d; go('account', {sub:'manualView'}); } break; }
+    case 'man-zoom': manZoom(+el.dataset.z); break;
+    case 'man-retry': if (S.manDoc) renderManualView($('#main')); break;
+    case 'man-refresh': { const b = $('#man-cats'); if (b) b.innerHTML = '<div class="card center muted">重新整理中…</div>'; manLoad(isAdminMe()); break; }
     case 'play-open': go('account', {sub:'play'}); break;
     case 'catalog-open': go('account', {sub:'catalog'}); break;
     case 'walk-open': go('account', {sub:'walk'}); break;
