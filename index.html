@@ -363,6 +363,7 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .play-card{padding:6px 8px 10px}.play-card .app-grid{padding-top:14px}
 .play-hero .play-ic.walk-ic,.walk-ic{width:84px;height:84px;border-radius:24px;display:block;margin:2px auto 0;box-shadow:0 6px 18px rgba(20,60,140,.18)}
 .btn.play-back{width:100%;margin:4px 0 12px}
+.card .play-p{text-align:left;text-wrap:wrap}   /* 2026-11-27 17:27 使用者：「敘述就是都在同一行，不要斷行、不要分開」→ 不手動換行、不照標點分段（PHRASE_SKIP）、不平均行長，整段靠左排滿每一行 */
 /* 遊樂園背景（2026-11-27 16:39 使用者請 GPT 做的：摩天輪、旋轉木馬、熱氣球）：只有健康遊樂場的頁面才載入、才顯示；字都放在白色卡片裡 */
 .play-bg{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .35s ease;background:#4AA2EC center bottom/cover no-repeat}
 body.play-on .play-bg{opacity:1;background-image:url('tiles/play-bg.webp')}
@@ -3367,7 +3368,7 @@ if (window.matchMedia) { const mq = matchMedia('(min-width:1024px)'); const f = 
   mq.addEventListener ? mq.addEventListener('change', f) : mq.addListener(f); }
 /* 括號、引號黏住旁邊的字：不會出現「（」在行尾、「）」在行首這種斷法（使用者寫的內容不動） */
 const GLUE_SKIP = '.uc,.post-text,.cmt,.tb-marq,textarea,input,script,style,svg';
-const PHRASE_SKIP = GLUE_SKIP + ',.ph,.app-tile,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
+const PHRASE_SKIP = GLUE_SKIP + ',.ph,.play-p,.app-tile,button,.btn,.pill,.nw,.chips,.nav,select,option,th,td,label,.lbl,.k,.v,.c-intro,.toast,.name,.hp-name';
 const PH_RE = /[^，。、；：！？]+[，。、；：！？]*[」』）》〉】\u2060]*|[，。、；：！？]+/g;
 /** 說明文字依標點切成一小段一小段，換行只發生在段落之間。
  *  2026-11-25 變快：一次收集、先讀完所有樣式再一起改（以前一個一個改，手機要重排好多次） */
@@ -4470,8 +4471,9 @@ function manualTile(){
   if (!on && !isAdminMe()) return null;
   return { act:'manual-open', ic:'📘', t:'手冊', c:'#E6F0FB', off: !on };
 }
-/** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）：試用中，只有管理員看得到 */
-function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'一起走走', c:'#E3F4EA', trial:true } : null; }   // trial：試用中（不變灰，標題旁寫「試用中」）
+/** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）
+ *  17:21 使用者：「開放啊，我覺得很好玩」→ 大家都看得到。要再改回只有管理員：加回 isAdminMe() 和 trial:true（遊樂場會自動顯示「試用」）。 */
+function walkTile(){ return { act:'walk-open', ic:'🚶', t:'一起走走', c:'#E3F4EA' }; }
 /** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
 function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
 function appTilesHTML(){
@@ -4491,7 +4493,7 @@ function playTile(){ const L = playTiles(); return L.length ? { act:'play-open',
 function renderPlay(main){
   const L = playTiles();
   main.innerHTML = `<div class="card center play-hero"><img class="play-ic" src="${TILE_IMG.play}" alt=""><h2 style="margin:8px 0 0">💪 健康遊樂場</h2>
-      <div class="muted mt">邊玩邊動，越玩越健康。<br>更多小遊戲陸續加入！</div></div>
+      <div class="muted mt play-p">邊玩邊動，越玩越健康，更多小遊戲陸續加入！</div></div>
     <div class="card play-card">${L.length ? `<div class="app-grid" id="play-grid">${L.map(appTile).join('')}</div>` : '<div class="muted center" style="padding:16px">還沒有開放的遊戲</div>'}</div>
     ${L.length && L.every(x=>x.trial) ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「遊樂場」。要開給大家再跟 Claude 說。</div>' : ''}
     ${PLAY_BACK('回到功能選單')}`;
@@ -4562,7 +4564,7 @@ function initTileGrid(){
 /* ---------- 走路計步（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步」「記錄步數、換算消耗的熱量」「我想要開著 APP 才會計算」「不填體重」）
    用手機的動作感應器（DeviceMotion）算步數：APP 開著、螢幕亮著才算；鎖螢幕或切到別的 APP 就停（網頁讀不到手機「健康」的步數）。
    熱量用一般人平均：每 1000 步約 40 大卡；距離：一步約 0.65 公尺。步數先存在這支手機（之後做團隊排行榜再上傳）。
-   試用中：只有管理員看得到「一起走走」圖示。
+   2026-11-27 17:21 開放給大家（原本試用中只有管理員看得到）。
    2026-11-27 15:32 使用者把「走路」取名「一起走走」（先做純走路；路線地圖、團隊排行榜之後再說）。 ---------- */
 const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065, WALK_SYNC_MS = 120000;
 const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0, amp:0, peak:0, iv:0, bad:0, syncT:null, syncing:false };
@@ -4688,14 +4690,14 @@ function drawWalkDays(){ const el = $('#wk-days'); if (el) el.innerHTML = walkDa
 function renderWalk(main){
   const w = walkLoad(), n = w.steps;
   main.innerHTML = `<div class="card center"><img class="play-ic walk-ic" src="${TILE_IMG.walk}" alt=""><h2 style="margin:8px 0 0">一起走走</h2>
-      <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。<br>連續走幾步、節奏穩了才開始算，手晃不會算。</div>
+      <div class="muted mt play-p">開著皇家走路就會自動算步數，手機拿在手上或放口袋都可以，螢幕要亮著；連續走幾步、節奏穩了才開始算，手晃不會算。</div>
       <div class="walk-big"><b id="wk-steps">${n.toLocaleString('en-US')}</b><small>步</small></div>
       <div class="walk-sub"><span>🔥 約 <b id="wk-kcal">${Math.round(n * KCAL_PER_STEP)}</b> 大卡</span><span>📏 約 <b id="wk-dist">${walkDist(n)}</b></span></div>
       ${WALK.on ? '<div class="walk-on"><i></i>正在算步數…</div><button class="btn btn-outline" data-act="walk-stop">⏸ 停下來</button>'
         : `<button class="btn btn-primary" data-act="walk-start">▶ ${n ? '繼續走路' : '開始走路'}</button>`}
-      <div class="hint mt">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考。<br>鎖螢幕、切到別的 APP 或離開這一頁就不會算。</div></div>
+      <div class="hint mt play-p">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考；鎖螢幕、切到別的 APP 或離開這一頁就不會算。</div></div>
     <div class="card" id="wk-days">${walkDaysHTML(w)}</div>
-    ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button><div class="notice info small">🔒 試用中：只有你（管理員）看得到「一起走走」。要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}
+    ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button>' : ''}
     ${PLAY_BACK('回到遊樂場')}`;
   walkSync(); walkPull();
 }
