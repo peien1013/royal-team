@@ -2274,7 +2274,7 @@ const MockApi = {
   async adminLinkHide(id, hidden){ await this._wait(); const x = MockDB.links.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND'); x.hidden = hidden!==false; delete x.sched; delete x.until; delete x.manualHidden; return { ok:true, hidden:x.hidden }; },
   async adminLinkMode(id, mode, until){ await this._wait(); const x = MockDB.links.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND');
     delete x.sched; delete x.until; x.hidden = mode==='hidden';
-    if (mode==='mon') { x.until = until || '18:00'; x.sched = 'mon@' + x.until; x.hidden = !(new Date().getDay()===1 && new Date().toTimeString().slice(0,5) < x.until); x.openNow = !x.hidden; }
+    if (mode==='mon') { x.until = until || '19:00'; x.sched = 'mon@' + x.until; x.hidden = !(new Date().getDay()===1 && new Date().toTimeString().slice(0,5) < x.until); x.openNow = !x.hidden; }
     return { ok:true }; },
   async adminLinkMove(id, dir){ await this._wait(); const L = MockDB.links, x = L.find(y=>y.id===id); if (!x) throw new Error('NOT_FOUND');
     const same = L.filter(y=>y.kind===x.kind), o = same[same.indexOf(x) + (dir===-1?-1:1)]; if (!o) return { ok:true, moved:false };
@@ -4560,7 +4560,7 @@ function tripTile(kind){
 }
 /** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示；09:35 會員卡＝金色皇冠卡）。 */
 const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:'tiles/travel.jpg', hsr:'tiles/hsr.jpg', meal:'tiles/meal.jpg',
-  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg', manual:'tiles/manual.jpg', play:'tiles/play.jpg', walk:'tiles/walk.jpg' };   // walk：一起走走（2026-11-27 16:10 使用者請 GPT 做的鞋子＋地圖）   // manual：手冊（2026-11-26 12:51 使用者請 GPT 做的）
+  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg', manual:'tiles/manual.jpg', play:'tiles/play.jpg', walk:'tiles/walk.jpg', catalog:'tiles/catalog.jpg' };   // catalog：目錄（2026-11-28 00:35 使用者請 GPT 做的：產品型錄＋金色放大鏡書籤）   // walk：一起走走（2026-11-27 16:10 使用者請 GPT 做的鞋子＋地圖）   // manual：手冊（2026-11-26 12:51 使用者請 GPT 做的）
 /** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
 const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
 const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
@@ -5752,8 +5752,8 @@ async function renderAdminLinks(main){
   const row = (l, i, n) => `<div class="mrow cs-row${l.hidden?' is-hidden':''}">
       <div class="info"><b>${esc(l.title)}</b>${l.note?`<div class="muted small">${esc(l.note)}</div>`:''}
         <div class="chips">${l.sched ? (l.openNow ? '<span class="pill ok">📅 今天星期一・開放中</span>' : '<span class="pill brand">📅 每週一自動打開</span>') : l.hidden?'<span class="pill gray">還沒開放・夥伴看不到</span>':'<span class="pill ok">'+(l.kind==='notice'?'跑馬燈播放中':'開放中')+'</span>'}${l.url?`<a class="pill brand" href="${esc(l.url)}" target="_blank" rel="noopener">打開看看 ›</a>`:''}</div>
-        ${l.kind==='meal' ? (l.sched ? `<div class="ln-sched">每個星期一 00:00 打開，幾點關：<span class="seg-mini">${['12:00','15:00','17:00','18:00','21:00'].map(t=>`<button data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="${t}" class="${l.until===t?'on':''}">${t}</button>`).join('')}</span></div>`
-          : `<div class="ln-sched"><button class="btn btn-ghost btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="18:00">📅 改成每週一自動打開</button></div>`) : ''}</div>
+        ${l.kind==='meal' ? (l.sched ? `<div class="ln-sched">每個星期一 00:00 打開，幾點關：<span class="seg-mini">${['12:00','15:00','17:00','18:00','19:00','21:00'].map(t=>`<button data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="${t}" class="${l.until===t?'on':''}">${t}</button>`).join('')}</span></div>`
+          : `<div class="ln-sched"><button class="btn btn-ghost btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="mon" data-u="19:00">📅 改成每週一自動打開</button></div>`) : ''}</div>
       <div class="cs-btns">${l.sched ? `<button class="btn btn-outline btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="open">改成一直開放</button><button class="btn btn-outline btn-sm" data-act="ln-mode" data-id="${l.id}" data-m="hidden">隱藏</button>` : `<button class="btn ${l.hidden?'btn-primary':'btn-outline'} btn-sm" data-act="ln-hide" data-id="${l.id}" data-on="${l.hidden?'0':'1'}">${l.hidden?'開放':'隱藏'}</button>`}
         <button class="btn btn-ghost btn-sm" data-act="ln-edit" data-id="${l.id}">修改</button>
         ${n>1?`<div class="ln-move">${i>0?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="-1" aria-label="往上移">▲</button>`:''}${i<n-1?`<button class="btn btn-ghost btn-sm" data-act="ln-move" data-id="${l.id}" data-dir="1" aria-label="往下移">▼</button>`:''}</div>`:''}</div></div>`;
