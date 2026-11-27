@@ -2244,6 +2244,7 @@ const MockApi = {
     const it = MOCK_MANUAL.cats.flatMap(c=>c.items).find(x=>x.id===id); if (!it) throw new Error('NOT_FOUND'); if (!(i>=0 && i<it.parts && Math.floor(i)===i)) throw new Error('BAD_REQUEST');
     MockDB.manualReads = (MockDB.manualReads||0) + 1;
     const all = atob(MOCK_MANUAL.pdf), part = all.slice(i*MOCK_MANUAL.partBytes, (i+1)*MOCK_MANUAL.partBytes); return { id, i, parts: it.parts, size: all.length, data: btoa(part) }; },
+  async adminWalkProbe(s, steps, algo){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); MockDB.walkProbe = { s, steps, algo }; return { ok:true, name:'walkprobe_demo.txt' }; },
   async walkMine(){ await this._wait(); return { today: todayStr(), days: { ...((MockDB.walk||{})[this._me().id] || {}) } }; },
   async adminWalkList(){ await this._wait(); const T = todayStr(), from = addDays(T,-6), W = MockDB.walk || {};
     const rows = Object.keys(W).map(id=>{ const m = MockDB.byId[id], d = W[id]; if (!m) return null; let week = 0; Object.keys(d).forEach(k=>{ if (k>=from && k<=T) week += d[k]; });
@@ -2477,6 +2478,7 @@ const GasApi = {
   adminManualFastPut(id, k, data){ return this.call('admin.manual.fastPut', { id, k, data }, {retry:2}); },
   adminManualFastDone(id, r, files, c){ return this.call('admin.manual.fastDone', { id, r, files, c }, {retry:1}); },
   adminWalkList(){ return this.call('admin.walk.list', {}, {retry:1}); },
+  adminWalkProbe(s, steps, algo, ua){ return this.call('admin.walk.probe', { s, steps, algo, ua }, {retry:1}); },
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
   adminLinkHide(id, hidden){ return this.call('admin.link.hide', {id, hidden}, {retry:0}); },
@@ -2507,7 +2509,7 @@ const QC_DROP = {
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
 };
-const QC_ADMIN_READS = ['admin.manual.fastPut','admin.manual.fastDone','admin.walk.list','admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
+const QC_ADMIN_READS = ['admin.walk.probe','admin.manual.fastPut','admin.manual.fastDone','admin.walk.list','admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
   mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
@@ -4971,44 +4973,22 @@ async function walkPull(){
     if (changed && S.sub === 'walk') { drawWalkNums(w.steps); drawWalkDays(); }
   } catch(_) {}
 }
-/** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過門檻算一步。
- *  2026-11-27 16:58 使用者：「有點敏感」（沒在走也會跳、走路也算太多）→ 改嚴格（電腦模擬：手上亂晃 10 秒從 16 步降到 0～1 步，走路、跑步、口袋裡一樣準）：
- *  1. 門檻跟著自己的步伐力道調（最近幾步最高點的 50%，至少 WALK_THR），比較小的回彈、晃動不算。
- *  2. 兩步至少隔 0.3 秒，而且不能比平常的一步快太多（同一步的第二下、手抖不算）。
- *  3. 節奏要穩：連續 7 步、每步間隔差不多（－22%～＋30%）才開始算（7 步一起加上去）；
- *     走的時候節奏亂掉 2 次就重新確認；停 2 秒以上也重新確認；剛好隔兩步的時間＝中間那步太輕：補 1 步。回傳這次加了幾步。
- *  18:56 使用者：「太不敏感」→ 門檻 1.1 改 0.45（模擬：手拿著看螢幕走 力道 1.3 從 0 步→15／19、力道 1.0 從 0→12／18；亂晃、搭車、滑手機還是 0）。 */
-const WALK_WARM = 7, WALK_THR = 0.45;   // 18:56 使用者：「也太不敏感了」→ 門檻 1.1 降到 0.45（手拿著看螢幕走，晃動比較小），漏掉的一步照節奏補回來；亂晃還是靠「節奏穩了才算」擋掉
-function walkSensorReset(){ Object.assign(WALK, { slow:null, fast:null, armed:true, last:0, streak:0, amp:0, peak:0, iv:0, bad:0 }); }
+/** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過 1.1 算一步；兩步至少隔 0.3 秒；連續 5 步（每步間隔 2 秒內）才開始算。
+ *  2026-11-27 19:41 使用者（iPhone）：16:58 改嚴格（節奏要穩）後算很少、19:12 再改（門檻 0.45）後「完全不動」→ 電腦模擬跟真的手機不一樣，
+ *  先**回到 14:02 最早那版**（使用者說「記步數的讚讚，有點敏感」，在她的 iPhone 上算得到），只把「連續 4 步」改成 5 步、間隔 0.28 改 0.3 秒，少一點亂晃誤算。
+ *  之後用「🔧 錄 20 秒走路資料」拿到真的感應器資料再調（不要再只靠模擬）。回傳這次加了幾步。 */
+const WALK_WARM = 5, WALK_THR = 1.1;
+function walkSensorReset(){ Object.assign(WALK, { slow:null, fast:null, armed:true, last:0, streak:0 }); }
 function stepFeed(mag, t){
   if (WALK.slow == null) { WALK.slow = WALK.fast = mag; return 0; }
   WALK.slow += (mag - WALK.slow) * 0.02; WALK.fast += (mag - WALK.fast) * 0.35;
-  const sig = WALK.fast - WALK.slow, thr = Math.max(WALK_THR, WALK.amp * 0.5);
-  if (!WALK.armed) {   // 這一下還沒過：記最高點，掉下來才準備算下一步
-    WALK.peak = Math.max(WALK.peak, sig);
-    if (sig < thr * 0.2) { WALK.armed = true; WALK.amp = WALK.amp ? WALK.amp * 0.7 + WALK.peak * 0.3 : WALK.peak; }
-    return 0;
-  }
-  if (sig < thr) return 0;
-  WALK.armed = false; WALK.peak = sig;
-  const d = t - WALK.last;
-  if (WALK.last && d < Math.max(300, WALK.iv * 0.55)) return 0;   // 太快的第二下（同一步的回彈）：不算
-  WALK.last = t;
-  if (!WALK.streak || d > 2000) { WALK.streak = 1; WALK.iv = 0; WALK.bad = 0; return 0; }   // 第一步（或停了 2 秒以上）：重新確認
-  const warm = WALK.streak < WALK_WARM; let n = 1;
-  if (WALK.iv) {
-    const r = d / WALK.iv;
-    if (!warm && r > 1.7 && r < 2.4) n = 2;   // 中間有一步太輕沒過門檻：照節奏補回來（2026-11-27 18:56「太不敏感」）
-    else if (r < (warm ? 0.78 : 0.6) || r > (warm ? 1.3 : 1.7)) {   // 節奏不對
-      if (warm || ++WALK.bad >= 2) { WALK.streak = 1; WALK.iv = d; WALK.bad = 0; }
-      return 0;
-    }
-  }
-  WALK.bad = Math.max(0, WALK.bad - 1);
-  WALK.iv = WALK.iv ? WALK.iv * 0.7 + (d / n) * 0.3 : d;
-  const before = WALK.streak; WALK.streak += n;
-  if (WALK.streak < WALK_WARM) return 0;
-  return before < WALK_WARM ? WALK.streak : n;   // 節奏穩了：前面確認的幾步一起加
+  const sig = WALK.fast - WALK.slow;
+  if (sig < 0.2) { WALK.armed = true; return 0; }
+  if (!WALK.armed || sig < WALK_THR || t - WALK.last < 300) return 0;
+  WALK.armed = false;
+  if (t - WALK.last > 2000) WALK.streak = 0;
+  WALK.last = t; WALK.streak++;
+  return WALK.streak === WALK_WARM ? WALK_WARM : WALK.streak > WALK_WARM ? 1 : 0;
 }
 function onWalkMotion(e){
   const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
@@ -5036,6 +5016,47 @@ async function walkStart(){
   setTimeout(() => { if (WALK.on && !WALK.got) toast('沒有收到感應器的資料：請用手機打開皇家（電腦不能算步數）', 'err'); }, 3000);
   if (S.sub==='walk') renderWalk($('#main'));
 }
+/* 🔧 錄走路資料（2026-11-27 19:34 使用者：「怎麼你調整後現在都不會算了」）：只有管理員看得到。
+   拿著手機照平常那樣走 20 秒、自己數步數 → 把感應器原始資料（時間、x、y、z）送後台存到雲端「走路感應器紀錄」，Claude 看真的資料調。 */
+const PROBE = { on:false, rows:[], t0:0, ts0:null, sec:20, timer:null };
+function probeMotion(e){
+  const a = e.accelerationIncludingGravity; if (!PROBE.on || !a || a.x == null) return;
+  if (PROBE.ts0 == null) PROBE.ts0 = e.timeStamp || 0;
+  PROBE.rows.push([Math.round(performance.now() - PROBE.t0), Math.round((e.timeStamp || 0) - PROBE.ts0), +a.x.toFixed(2), +a.y.toFixed(2), +(a.z || 0).toFixed(2)]);
+}
+async function walkProbe(){
+  if (PROBE.on || $('#probe')) return;
+  if (typeof DeviceMotionEvent === 'undefined') return toast('這台裝置沒有動作感應器，請用手機打開皇家', 'err');
+  if (typeof DeviceMotionEvent.requestPermission === 'function') { let r = 'denied'; try { r = await DeviceMotionEvent.requestPermission(); } catch(_){} if (r !== 'granted') return toast('要先允許「動作與方向」', 'err'); }
+  if (WALK.on) walkStop(true);
+  const bg = document.createElement('div'); bg.className = 'sheet-bg'; bg.id = 'probe';
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>🔧 錄走路資料</h3></div><div class="sheet-b center">
+    <div class="play-p mb">拿著手機照平常那樣走，<b>心裡數自己走了幾步</b>，時間到會叫你停。</div>
+    <div id="pb-n" style="font-size:64px;font-weight:800;color:var(--brand);line-height:1.1">${PROBE.sec}</div><div class="muted mb">秒</div>
+    <div id="pb-end" class="hidden"><label class="mb" style="display:block;font-size:18px">剛剛走了幾步？<input id="pb-steps" type="number" inputmode="numeric" min="0" max="999" style="width:110px;height:52px;font-size:22px;text-align:center;margin-left:8px;border-radius:12px;border:1px solid var(--line)"></label>
+      <button class="btn btn-primary mb" data-pb="send">送給 Claude</button></div>
+    <button class="btn btn-ghost" data-pb="x">取消</button></div></div>`;
+  document.body.appendChild(bg);
+  const stop = () => { PROBE.on = false; clearInterval(PROBE.timer); window.removeEventListener('devicemotion', probeMotion); try { WALK.wake && WALK.wake.release(); } catch(_){} WALK.wake = null; };
+  bg.addEventListener('click', async e=>{
+    const b = e.target.closest('[data-pb]'); if (!b) return;
+    if (b.dataset.pb === 'x') { stop(); bg.remove(); return; }
+    if (b.dataset.pb === 'send') {
+      const rows = PROBE.rows; b.disabled = true; b.textContent = '送出中…';
+      walkSensorReset(); let algo = 0; rows.forEach(r=>{ algo += stepFeed(Math.hypot(r[2], r[3], r[4]), r[0]); }); walkSensorReset();   // 現在的算法在這段資料算到幾步
+      try { await api.adminWalkProbe(rows.map(r=>r.join(',')).join(';'), +$('#pb-steps').value || 0, algo, navigator.userAgent);
+        $('.sheet-b', bg).innerHTML = `<div class="play-p mb">收到 ${rows.length} 筆資料（約每秒 ${Math.round(rows.length / PROBE.sec)} 筆）。你走了 <b>${+$('#pb-steps').value || '?'}</b> 步，APP 算到 <b>${algo}</b> 步。</div><div class="muted mb">資料已存到雲端，Claude 會拿來調整。謝謝！</div><button class="btn btn-primary" data-pb="x">好</button>`; }
+      catch(err){ b.disabled = false; b.textContent = '再送一次'; toast(errText(err), 'err'); }
+    }
+  });
+  Object.assign(PROBE, { on:true, rows:[], t0: performance.now(), ts0: null });
+  window.addEventListener('devicemotion', probeMotion);
+  walkWake();
+  let left = PROBE.sec;
+  PROBE.timer = setInterval(()=>{ left--; const n = $('#pb-n'); if (n) n.textContent = Math.max(0, left);
+    if (left <= 0) { stop(); try { navigator.vibrate && navigator.vibrate(200); } catch(_){} if (n) n.textContent = '停'; const en = $('#pb-end'); if (en) en.classList.remove('hidden');
+      if (!PROBE.rows.length) { const en2 = $('#pb-end'); if (en2) en2.innerHTML = '<div class="notice mb">沒有收到感應器的資料：請用手機打開皇家，或檢查「動作與方向」的權限。</div>'; } } }, 1000);
+}
 function walkStop(silent){
   window.removeEventListener('devicemotion', onWalkMotion);
   WALK.on = false; try { WALK.wake && WALK.wake.release(); } catch(_){} WALK.wake = null;
@@ -5061,7 +5082,7 @@ function renderWalk(main){
         : `<button class="btn btn-primary" data-act="walk-start">▶ ${n ? '繼續走路' : '開始走路'}</button>`}
       <div class="hint mt play-p">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考；鎖螢幕、切到別的 APP 或離開這一頁就不會算。</div></div>
     <div class="card" id="wk-days">${walkDaysHTML(w)}</div>
-    ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button>' : ''}
+    ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button><button class="btn btn-outline mb" data-act="walk-probe">🔧 錄 20 秒走路資料（給 Claude 調整）</button>' : ''}
     ${PLAY_BACK('回到遊樂場')}`;
   walkSync(); walkPull();
 }
@@ -7141,6 +7162,7 @@ document.addEventListener('click', async e=>{
     case 'walk-stop': walkStop(); break;
     case 'walk-reset': if (await confirmBox('今天的步數歸零？', '歸零', true)) { const w = walkLoad(); w.steps = 0; w.reset = w.date; walkSave(w); renderWalk($('#main')); } break;   // 後台也跟著歸零（renderWalk 會送）
     case 'walk-admin': go('account', {sub:'walkAdmin'}); break;
+    case 'walk-probe': walkProbe(); break;
     case 'tiles-edit': tileEdit(true); break;
     case 'notice-open': noticeSheet(); break;
     case 'mq-mode': case 'mq-times': {   // 跑馬燈跑法、次數（後台）
