@@ -4609,16 +4609,35 @@ function manProgress(done, all){
   if (t && done) t.textContent = `已載入 ${pct}%`;
 }
 function b64Bytes(b64){ const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+/* 看過的手冊存在這支手機的 APP 暫存裡（不是下載：夥伴看不到檔案），下次打開不用再等；最多留 250MB，舊的先丟。
+   鑰匙帶檔案大小：雲端換了新版（大小不同）就會重抓。 */
+const MAN_CACHE = 'royal-manual-v1', MAN_CACHE_MAX = 250 * 1024 * 1024;
+const manKey = d => location.origin + '/__manual/' + encodeURIComponent(d.id) + '?s=' + d.size;
+async function manCacheGet(d){
+  try { if (!window.caches) return null; const r = await (await caches.open(MAN_CACHE)).match(manKey(d)); return r ? new Uint8Array(await r.arrayBuffer()) : null; } catch(_) { return null; }
+}
+async function manCachePut(d, bytes){
+  try {
+    if (!window.caches) return; const c = await caches.open(MAN_CACHE);
+    await c.put(manKey(d), new Response(bytes, { headers: { 'Content-Type':'application/octet-stream' } }));
+    const keys = await c.keys(); let total = keys.reduce((n, k)=>n + (+new URL(k.url).searchParams.get('s') || 0), 0);
+    for (const k of keys) { if (total <= MAN_CACHE_MAX || k.url === manKey(d)) continue; total -= +new URL(k.url).searchParams.get('s') || 0; await c.delete(k); }   // 先放的先丟
+  } catch(_) {}
+}
 async function manBytes(d, seq){
   if (MAN.keep && MAN.keep.id === d.id) return MAN.keep.bytes;
+  const hit = await manCacheGet(d);
+  if (hit && hit.length === d.size) { MAN.keep = { id: d.id, bytes: hit }; return hit; }
   const parts = new Array(d.parts); let next = 0, done = 0;
   manProgress(0, d.parts);
+  const t = $('#man-pct'); if (t) t.textContent = d.parts >= 3 ? '這本比較大，第一次要等半分鐘左右；看過一次之後就很快' : '第一次打開要等幾秒；看過一次之後就很快';
   const one = async ()=>{ while (next < d.parts) { const i = next++; const r = await api.manualPart(d.id, i); if (seq !== MAN.seq) throw new Error('CANCEL');
     parts[i] = b64Bytes(r.data); manProgress(++done, d.parts); } };
-  await Promise.all(Array.from({ length: Math.min(2, d.parts) }, one));   // 一次抓兩段
+  await Promise.all(Array.from({ length: Math.min(3, d.parts) }, one));   // 一次抓三段
   const total = parts.reduce((n, p)=>n + p.length, 0), out = new Uint8Array(total); let o = 0;
   parts.forEach(p=>{ out.set(p, o); o += p.length; });
   MAN.keep = { id: d.id, bytes: out };
+  manCachePut(d, out);
   return out;
 }
 async function manOpen(d){
