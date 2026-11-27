@@ -4842,7 +4842,7 @@ async function manFastBuild(opt = {}){
           const vp = page.getViewport({ scale: W / v1.width });
           const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
           const c2 = cv.getContext('2d'); c2.fillStyle = '#fff'; c2.fillRect(0, 0, cv.width, cv.height);
-          await page.render({ canvasContext: c2, viewport: vp }).promise; page.cleanup();
+          await page.render({ canvasContext: c2, viewport: vp, intent:'print' }).promise; page.cleanup();   // print：不用 requestAnimationFrame（皇家放在背景、視窗藏起來時那個不會動，之前一本卡好幾分鐘）；畫出來跟平常一模一樣（逐點比對過）
           r.push(Math.round(v1.height / v1.width * 1000) / 1000);
           if (i === 1) { const sm = document.createElement('canvas'); sm.width = 280; sm.height = Math.round(280 * cv.height / cv.width); sm.getContext('2d').drawImage(cv, 0, 0, sm.width, sm.height); cover = canvasB64(sm, 0.65); if (cover.length > 75000) cover = canvasB64(sm, 0.4); sm.width = sm.height = 0; }   // 封面小圖
           let b = canvasB64(cv, MAN_HD.q); if (b.length > 3.4e6) b = canvasB64(cv, 0.72);   // 整頁大照片太大：壓多一點
