@@ -3749,10 +3749,11 @@ function renderCompose(main){
 var VOICE = null;
 function voiceStop(){ if (VOICE) { try { VOICE.stop(); } catch(_){} } }
 function voiceTip(){
-  const bg = document.createElement('div'); bg.className = 'sheet-bg';
+  const bg = document.createElement('div'), ios = isIOS(); bg.className = 'sheet-bg';
   bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>🎤 用講的</h3><button data-x>關閉</button></div><div class="sheet-b">
-    <p>${inLineApp() ? '在 LINE 裡沒辦法直接按這裡講。' : '這支手機沒辦法直接按這裡講。'}<br>改用手機鍵盤上的麥克風，一樣可以：</p>
-    <ol class="steps"><li>點一下「今天做了什麼？」的文字框</li><li>鍵盤跳出來後，按鍵盤上的 <b>🎤 麥克風</b></li><li>直接說話，說完按「完成」</li></ol>
+    <p>${inLineApp() ? '在 LINE 裡沒辦法直接按這裡講。' : ios ? 'iPhone 請用鍵盤上的麥克風講，最準：' : '這支手機沒辦法直接按這裡講。'}${ios && !inLineApp() ? '' : '<br>改用手機鍵盤上的麥克風，一樣可以：'}</p>
+    <ol class="steps"><li>點一下「今天做了什麼？」的文字框</li><li>鍵盤跳出來後，按鍵盤上的 <b>🎤 麥克風</b>${ios ? '（在鍵盤右下角）' : ''}</li><li>直接說話，說完按「完成」</li></ol>
+    ${ios ? '<div class="hint mb">鍵盤上沒有 🎤：到 iPhone「設定」→「一般」→「鍵盤」，打開「啟用聽寫」。</div>' : ''}
     <button class="btn btn-primary" data-x data-focus>好，我去按</button></div></div>`;
   bg.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (e.target!==bg && !x) return; bg.remove(); if (x && x.hasAttribute('data-focus')) { const ta = $('#c-text'); if (ta) ta.focus(); } });
   document.body.appendChild(bg);
@@ -3760,8 +3761,9 @@ function voiceTip(){
 function voiceInput(){
   if (VOICE) return voiceStop();   // 正在聽：再按一下＝停
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR || inLineApp() || !$('#c-text')) return voiceTip();
-  const r = new SR(); VOICE = r;
+  // 11:28 使用者 iPhone 桌面的皇家實測：按了變紅色、講了半天沒有字 → iPhone 桌面版直接教鍵盤上的 🎤
+  if (!SR || inLineApp() || (isIOS() && isStandalone()) || !$('#c-text')) return voiceTip();
+  const r = new SR(); VOICE = r; let pend = '', heard = false;
   r.lang = 'zh-TW'; r.continuous = !isIOS(); r.interimResults = true;   // iPhone 的連續聽有問題：講一句停了就結束，要再講再按一次
   const set = on => { const b = $('#c-mic'), h = $('#c-heard');
     if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹ 說完了，按這裡停' : '🎤 用講的'; }
@@ -3769,8 +3771,9 @@ function voiceInput(){
   r.onresult = e => {
     let fin = '', mid = '';
     for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) fin += t; else mid += t; }
-    const ta = $('#c-text'); if (!ta) return voiceStop();
-    if (fin.trim()) { const v = ta.value, glue = v && !/[\s，。！？、,.!?]$/.test(v) ? '，' : ''; ta.value = (v + glue + fin.trim()).slice(0, 2000); ta.dispatchEvent(new Event('input', { bubbles:true })); }
+    heard = true; if (!$('#c-text')) return voiceStop();
+    if (fin.trim()) addText(fin);
+    pend = mid;   // iPhone 有時候不給「確定」的字就結束 → 結束時把最後聽到的補進去
     const h = $('#c-heard'); if (h) h.textContent = mid ? '聽到：' + mid : '正在聽，請直接說…';
   };
   r.onerror = e => {
@@ -3778,8 +3781,11 @@ function voiceInput(){
     else if (e.error==='no-speech') toast('沒聽到聲音，請再按一次，靠近手機說話', 'err');
     else if (e.error!=='aborted') voiceTip();
   };
-  r.onend = () => { if (VOICE===r) VOICE = null; set(false); };
-  try { r.start(); set(true); } catch(_) { VOICE = null; voiceTip(); }
+  const dog = setTimeout(() => { if (VOICE===r && !heard) { r._dog = true; try { r.abort(); } catch(_){ try { r.stop(); } catch(__){} } } }, 8000);   // 8 秒都沒有字：這支手機這裡聽不到
+  r.onend = () => { clearTimeout(dog); if (pend.trim()) addText(pend); pend = ''; if (VOICE===r) VOICE = null; set(false); if (r._dog) voiceTip(); };
+  try { r.start(); set(true); } catch(_) { clearTimeout(dog); VOICE = null; voiceTip(); }
+  function addText(t){ const ta = $('#c-text'); if (!ta || !t.trim()) return; const v = ta.value, glue = v && !/[\s，。！？、,.!?]$/.test(v) ? '，' : '';
+    ta.value = (v + glue + t.trim()).slice(0, 2000); ta.dispatchEvent(new Event('input', { bubbles:true })); }
 }
 function showErr(msg){ const el=$('#c-err'); if(!el) return toast(msg,'err'); el.textContent=msg; el.classList.remove('hidden'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
 
