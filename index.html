@@ -3455,6 +3455,10 @@ function dateTile(ds, past){
   return `<div class="c-date${past?' past':''}" aria-label="${fullZh(ds)}"><span class="m">${y}${d.getMonth()+1} 月</span><b>${d.getDate()}</b><span class="w">週${WD[d.getDay()]}</span></div>`;
 }
 /** 課程說明分塊：一般文字一行一行；「會議 ID：…」「密碼：…」這種變成左邊小標、右邊粗體的一列，看得清楚 */
+/** 現場頁的課程說明：不放線上資訊（2026-11-27 12:57 使用者：「這是現場的區塊，不顯示線上資訊」）
+ *  提到 Zoom、會議 ID、密碼、線上、進教室、連結的行拿掉；全部都是線上的就整個不顯示。 */
+const ONLINE_LINE = /zoom|會議\s*(id|號碼|號)|密碼|線上|進教室|藍色按鈕|連結|https?:\/\//i;
+function onsiteIntro(t){ return String(t||'').replace(/\r/g,'').split('\n').filter(x => !ONLINE_LINE.test(x)).join('\n').trim(); }
 function introBlocks(t){
   const lines = String(t||'').replace(/\r/g,'').trim().split('\n');
   let html = '', kv = [], sc = [];
@@ -4057,7 +4061,7 @@ async function drawAcademy(main, cs){
         <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
         ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
         ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div>${tp}</div>
-      ${c.intro&&showOnsite?`<div class="c-intro">${introBlocks(c.intro)}</div>`:''}
+      ${showOnsite&&onsiteIntro(c.intro)?`<div class="c-intro">${introBlocks(onsiteIntro(c.intro))}</div>`:''}
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
       ${c.announce?`<div class="announce">📢 ${esc(c.announce)}</div>`:''}
