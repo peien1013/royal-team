@@ -4565,7 +4565,7 @@ function initTileGrid(){
    試用中：只有管理員看得到「一起走走」圖示。
    2026-11-27 15:32 使用者把「走路」取名「一起走走」（先做純走路；路線地圖、團隊排行榜之後再說）。 ---------- */
 const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065, WALK_SYNC_MS = 120000;
-const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0, syncT:null, syncing:false };
+const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0, amp:0, peak:0, iv:0, bad:0, syncT:null, syncing:false };
 /** 手機裡存：今天的步數（steps）、最近 30 天（hist）、已經送到後台的步數（sent）、按了「歸零」還沒送的日期（reset） */
 function walkLoad(){
   const d = store(WALK_KEY) || {}, T = todayStr(), hist = { ...(d.hist || {}) }, sent = { ...(d.sent || {}) }, reset = d.reset || '';
@@ -4611,18 +4611,38 @@ async function walkPull(){
     if (changed && S.sub === 'walk') { drawWalkNums(w.steps); drawWalkDays(); }
   } catch(_) {}
 }
-/** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過 1.1 算一步；兩步至少隔 0.28 秒。
- *  連續 4 步（每步間隔 2 秒內）才開始算，手晃一兩下不會算。回傳這次加了幾步。 */
+/** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過門檻算一步。
+ *  2026-11-27 16:58 使用者：「有點敏感」（沒在走也會跳、走路也算太多）→ 改嚴格（電腦模擬：手上亂晃 10 秒從 16 步降到 0～1 步，走路、跑步、口袋裡一樣準）：
+ *  1. 門檻跟著自己的步伐力道調（最近幾步最高點的 45%，至少 1.1），比較小的回彈、晃動不算。
+ *  2. 兩步至少隔 0.33 秒，而且不能比平常的一步快太多（同一步的第二下、手抖不算）。
+ *  3. 節奏要穩：連續 7 步、每步間隔差不多（±25～35%）才開始算（7 步一起加上去）；
+ *     走的時候節奏亂掉 2 次就重新確認；停 2 秒以上也重新確認。回傳這次加了幾步。 */
+const WALK_WARM = 7;
+function walkSensorReset(){ Object.assign(WALK, { slow:null, fast:null, armed:true, last:0, streak:0, amp:0, peak:0, iv:0, bad:0 }); }
 function stepFeed(mag, t){
   if (WALK.slow == null) { WALK.slow = WALK.fast = mag; return 0; }
   WALK.slow += (mag - WALK.slow) * 0.02; WALK.fast += (mag - WALK.fast) * 0.35;
-  const sig = WALK.fast - WALK.slow;
-  if (sig < 0.2) { WALK.armed = true; return 0; }
-  if (!WALK.armed || sig < 1.1 || t - WALK.last < 280) return 0;
-  WALK.armed = false;
-  if (t - WALK.last > 2000) WALK.streak = 0;
-  WALK.last = t; WALK.streak++;
-  return WALK.streak === 4 ? 4 : WALK.streak > 4 ? 1 : 0;
+  const sig = WALK.fast - WALK.slow, thr = Math.max(1.1, WALK.amp * 0.45);
+  if (!WALK.armed) {   // 這一下還沒過：記最高點，掉下來才準備算下一步
+    WALK.peak = Math.max(WALK.peak, sig);
+    if (sig < thr * 0.2) { WALK.armed = true; WALK.amp = WALK.amp ? WALK.amp * 0.7 + WALK.peak * 0.3 : WALK.peak; }
+    return 0;
+  }
+  if (sig < thr) return 0;
+  WALK.armed = false; WALK.peak = sig;
+  const d = t - WALK.last;
+  if (WALK.last && d < Math.max(330, WALK.iv * 0.6)) return 0;   // 太快的第二下：不算
+  WALK.last = t;
+  if (!WALK.streak || d > 2000) { WALK.streak = 1; WALK.iv = 0; WALK.bad = 0; return 0; }   // 第一步（或停了 2 秒以上）：重新確認
+  const warm = WALK.streak < WALK_WARM;
+  if (WALK.iv && (d < WALK.iv * (warm ? 0.75 : 0.6) || d > WALK.iv * (warm ? 1.35 : 1.7))) {   // 節奏不對
+    if (warm || ++WALK.bad >= 2) { WALK.streak = 1; WALK.iv = d; WALK.bad = 0; }
+    return 0;
+  }
+  WALK.bad = Math.max(0, WALK.bad - 1);
+  WALK.iv = WALK.iv ? WALK.iv * 0.7 + d * 0.3 : d;
+  WALK.streak++;
+  return WALK.streak === WALK_WARM ? WALK_WARM : WALK.streak > WALK_WARM ? 1 : 0;
 }
 function onWalkMotion(e){
   const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
@@ -4644,7 +4664,7 @@ async function walkStart(){
     let r = 'denied'; try { r = await DeviceMotionEvent.requestPermission(); } catch(_){}
     if (r !== 'granted') return toast('要先允許「動作與方向」才能算步數：關掉皇家重開，再按一次「開始走路」，跳出來時按「允許」', 'err');
   }
-  Object.assign(WALK, { on:true, got:false, slow:null, fast:null, armed:true, last:0, streak:0 });
+  walkSensorReset(); Object.assign(WALK, { on:true, got:false });
   window.addEventListener('devicemotion', onWalkMotion);
   walkWake();
   setTimeout(() => { if (WALK.on && !WALK.got) toast('沒有收到感應器的資料：請用手機打開皇家（電腦不能算步數）', 'err'); }, 3000);
@@ -4668,7 +4688,7 @@ function drawWalkDays(){ const el = $('#wk-days'); if (el) el.innerHTML = walkDa
 function renderWalk(main){
   const w = walkLoad(), n = w.steps;
   main.innerHTML = `<div class="card center"><img class="play-ic walk-ic" src="${TILE_IMG.walk}" alt=""><h2 style="margin:8px 0 0">一起走走</h2>
-      <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。</div>
+      <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。<br>連續走幾步、節奏穩了才開始算，手晃不會算。</div>
       <div class="walk-big"><b id="wk-steps">${n.toLocaleString('en-US')}</b><small>步</small></div>
       <div class="walk-sub"><span>🔥 約 <b id="wk-kcal">${Math.round(n * KCAL_PER_STEP)}</b> 大卡</span><span>📏 約 <b id="wk-dist">${walkDist(n)}</b></span></div>
       ${WALK.on ? '<div class="walk-on"><i></i>正在算步數…</div><button class="btn btn-outline" data-act="walk-stop">⏸ 停下來</button>'
