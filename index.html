@@ -234,6 +234,13 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 .walk-days .bar{height:12px;border-radius:6px;background:var(--brand-soft, #E3EEF9);overflow:hidden}
 .walk-days .bar span{display:block;height:100%;border-radius:6px;background:var(--brand)}
 .walk-days .n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.wk-list{display:flex;flex-direction:column;gap:10px}   /* 管理員：大家的步數 */
+.wk-row{display:flex;align-items:center;gap:10px}
+.wk-row .rk{width:26px;text-align:center;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums}
+.wk-row .avatar{width:40px;height:40px;font-size:17px}
+.wk-row .nm{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wk-row .t{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.wk-row .t b{font-size:19px}
+.wk-row .t small{display:block;font-size:13px;color:var(--muted)}
 .compose .photo-btns .btn{min-height:52px}
 .compose .sticky-submit{margin-top:14px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -2175,6 +2182,14 @@ const MockApi = {
   async adminSettingSet(key, value){ await this._wait(); const ok = { marqueeMode:['v','h'], marqueeTimes:['loop','3'], autoApprove:['Y','N'], travelRecvOn:['Y','N'], manualOn:['Y','N'] }[key];
     if (!ok || !ok.includes(value)) throw new Error('BAD_REQUEST'); MockDB[key] = value; return { ok:true, key, value }; },
   async meTilesSet(order){ await this._wait(); const m = this._me(); m.tiles = order.slice(); return { ok:true, tiles:m.tiles }; },
+  async walkSave(days){ await this._wait(); const W = MockDB.walk || (MockDB.walk = {}), id = this._me().id, mine = W[id] || (W[id] = {}), T = todayStr();   // 跟後端一樣的規則
+    const saved = (days||[]).slice(0,8).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date <= T && d.date >= addDays(T,-7) && +d.steps >= 0 && +d.steps <= 100000)
+      .map(d=>{ const n = Math.floor(+d.steps); mine[d.date] = d.reset ? n : Math.max(mine[d.date]||0, n); return { date:d.date, steps:mine[d.date] }; }); return { ok:true, saved }; },
+  async walkMine(){ await this._wait(); return { today: todayStr(), days: { ...((MockDB.walk||{})[this._me().id] || {}) } }; },
+  async adminWalkList(){ await this._wait(); const T = todayStr(), from = addDays(T,-6), W = MockDB.walk || {};
+    const rows = Object.keys(W).map(id=>{ const m = MockDB.byId[id], d = W[id]; if (!m) return null; let week = 0; Object.keys(d).forEach(k=>{ if (k>=from && k<=T) week += d[k]; });
+      return { id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, today:d[T]||0, week }; }).filter(Boolean).sort((a,b)=>(b.today-a.today)||(b.week-a.week));
+    return { today:T, from, rows }; },
   async adminLinkSave(p){ await this._wait();
     const t = String(p.title||'').trim(), u = String(p.url||'').trim(); if (!t) throw new Error('LINK_TITLE_REQUIRED'); if (!u && p.kind!=='notice') throw new Error('LINK_URL_REQUIRED'); if (u && !/^https:\/\/\S+$/i.test(u)) throw new Error('LINK_BAD_URL');
     const kind = ['hsr','meal','notice'].includes(p.kind) ? p.kind : 'travel';
@@ -2395,6 +2410,9 @@ const GasApi = {
   adminTravelMatch(tripId, no, memberId, all){ return this.call('admin.travel.match', all ? {tripId, all:true} : {tripId, no, memberId}, {retry:0}); },
   adminTravelTrip(tripId, hidden){ return this.call('admin.travel.trip', {tripId, hidden}, {retry:0}); },
   meTilesSet(order){ return this.call('me.tiles.set', {order}); },
+  walkSave(days){ return this.call('walk.save', {days}, {retry:1}); },   // 一起走走（2026-11-27）
+  walkMine(){ return this.call('walk.mine', {}, {retry:1}); },
+  adminWalkList(){ return this.call('admin.walk.list', {}, {retry:1}); },
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
   adminLinkHide(id, hidden){ return this.call('admin.link.hide', {id, hidden}, {retry:0}); },
@@ -2425,7 +2443,7 @@ const QC_DROP = {
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
 };
-const QC_ADMIN_READS = ['admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
+const QC_ADMIN_READS = ['admin.walk.list','admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
   mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
@@ -2784,6 +2802,7 @@ let lastPing = 0;
 function pingOnline(){
   if (CONFIG.MODE !== 'live' || !S.session || document.visibilityState === 'hidden' || Date.now() - lastPing < 150000) return;
   lastPing = Date.now(); api.mePing().catch(()=>{});
+  walkSync();   // 一起走走：上次沒送出去的步數補送（沒有就什麼都不做）
 }
 setInterval(pingOnline, 180000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(pingOnline, 3000); });
@@ -3423,6 +3442,7 @@ function go(tab, opts={}){
   if (S.sub==='adminClass') return renderAdminClass(main);
   if (S.sub==='settings') return renderSettings(main);
   if (S.sub==='walk') return renderWalk(main);
+  if (S.sub==='walkAdmin') return renderWalkAdmin(main);
   if (S.sub==='play') return renderPlay(main);
   if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
@@ -4533,15 +4553,53 @@ function initTileGrid(){
    熱量用一般人平均：每 1000 步約 40 大卡；距離：一步約 0.65 公尺。步數先存在這支手機（之後做團隊排行榜再上傳）。
    試用中：只有管理員看得到「一起走走」圖示。
    2026-11-27 15:32 使用者把「走路」取名「一起走走」（先做純走路；路線地圖、團隊排行榜之後再說）。 ---------- */
-const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065;
-const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0 };
+const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065, WALK_SYNC_MS = 120000;
+const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0, syncT:null, syncing:false };
+/** 手機裡存：今天的步數（steps）、最近 30 天（hist）、已經送到後台的步數（sent）、按了「歸零」還沒送的日期（reset） */
 function walkLoad(){
-  const d = store(WALK_KEY) || {}, T = todayStr(), hist = { ...(d.hist || {}) };
-  if (d.date === T) return { date:T, steps:+d.steps || 0, hist };
+  const d = store(WALK_KEY) || {}, T = todayStr(), hist = { ...(d.hist || {}) }, sent = { ...(d.sent || {}) }, reset = d.reset || '';
+  if (d.date === T) return { date:T, steps:+d.steps || 0, hist, sent, reset };
   if (d.date && d.steps) hist[d.date] = d.steps;   // 換天：昨天的收進紀錄
-  return { date:T, steps:0, hist };
+  return { date:T, steps:0, hist, sent, reset };
 }
-function walkSave(w){ const hist = {}; Object.keys(w.hist || {}).sort().slice(-30).forEach(k => { hist[k] = w.hist[k]; }); store(WALK_KEY, { date:w.date, steps:w.steps, hist }); }
+function walkSave(w){
+  const keep = o => { const r = {}; Object.keys(o || {}).sort().slice(-30).forEach(k => { r[k] = o[k]; }); return r; };
+  store(WALK_KEY, { date:w.date, steps:w.steps, hist:keep(w.hist), sent:keep(w.sent), reset:w.reset || '' });
+}
+/** 步數存到後台（2026-11-27 15:41 使用者：「讓使用者可以自行留存紀錄」「我後台也是可以留存，到時候就可以來做排行」）
+ *  走路時每 2 分鐘送一次；按停下來、離開這一頁、切到別的 APP、APP 開著每 3 分鐘報到時也會送。沒網路就下次再送（最多補到 7 天前）。
+ *  後台同一天只留比較多的步數（兩支手機各算各的）；按「歸零」才會改小。 */
+function walkQueue(){ if (!WALK.syncT) WALK.syncT = setTimeout(() => { WALK.syncT = null; walkSync(); }, WALK_SYNC_MS); }
+async function walkSync(){
+  if (!S.session || WALK.syncing) return;
+  const w = walkLoad(), all = { ...w.hist, [w.date]: w.steps }, oldest = addDays(w.date, -7);
+  const days = Object.keys(all).filter(d => d >= oldest && (d === w.reset || (+all[d] || 0) > (+w.sent[d] || 0))).sort().reverse().slice(0, 8)
+    .map(d => d === w.reset ? { date:d, steps:+all[d] || 0, reset:true } : { date:d, steps:+all[d] || 0 });
+  if (!days.length) return;
+  clearTimeout(WALK.syncT); WALK.syncT = null; WALK.syncing = true;
+  try {
+    await api.walkSave(days);
+    const w2 = walkLoad();
+    days.forEach(x => { w2.sent[x.date] = x.steps; if (x.reset && w2.reset === x.date) w2.reset = ''; });
+    walkSave(w2);
+  } catch(_) {}   // 沒網路：下次再送
+  finally { WALK.syncing = false; }
+}
+/** 打開這一頁：從後台拿回自己最近 30 天（換手機、重裝也找得回來）；後台比較多就用後台的 */
+async function walkPull(){
+  if (!S.session) return;
+  try {
+    const r = await api.walkMine(), w = walkLoad(); let changed = false;
+    Object.entries((r && r.days) || {}).forEach(([d, n]) => {
+      n = +n || 0;
+      if (d === w.date) { if (n > w.steps && w.reset !== d) { w.steps = n; changed = true; } }
+      else if (d < w.date && n > (+w.hist[d] || 0)) { w.hist[d] = n; changed = true; }
+      if (n > (+w.sent[d] || 0)) w.sent[d] = n;   // 後台已經有了，不用再送
+    });
+    walkSave(w);
+    if (changed && S.sub === 'walk') { drawWalkNums(w.steps); drawWalkDays(); }
+  } catch(_) {}
+}
 /** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過 1.1 算一步；兩步至少隔 0.28 秒。
  *  連續 4 步（每步間隔 2 秒內）才開始算，手晃一兩下不會算。回傳這次加了幾步。 */
 function stepFeed(mag, t){
@@ -4559,7 +4617,7 @@ function onWalkMotion(e){
   const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
   WALK.got = true;
   const add = stepFeed(Math.hypot(a.x, a.y, a.z || 0), e.timeStamp || performance.now());
-  if (add) { const w = walkLoad(); w.steps += add; walkSave(w); drawWalkNums(w.steps); }
+  if (add) { const w = walkLoad(); w.steps += add; walkSave(w); drawWalkNums(w.steps); walkQueue(); }
 }
 /** 距離：不到 1 公里用公尺（取到 10 公尺），1 公里以上用公里（小數一位） */
 const walkDist = n => { const km = n * KM_PER_STEP; return km < 1 ? Math.round(km * 100) * 10 + ' 公尺' : km.toFixed(1) + ' 公里'; };
@@ -4568,7 +4626,7 @@ function drawWalkNums(n){
   a.textContent = n.toLocaleString('en-US'); b.textContent = Math.round(n * KCAL_PER_STEP); c.textContent = walkDist(n);
 }
 async function walkWake(){ try { if (WALK.on && navigator.wakeLock && document.visibilityState==='visible') WALK.wake = await navigator.wakeLock.request('screen'); } catch(_){} }   // 走路時螢幕不要自己暗掉
-document.addEventListener('visibilitychange', () => { if (WALK.on && document.visibilityState==='visible') walkWake(); });
+document.addEventListener('visibilitychange', () => { if (WALK.on && document.visibilityState==='visible') walkWake(); if (document.visibilityState==='hidden') walkSync(); });   // 切到別的 APP：先把步數送出去
 async function walkStart(){
   if (typeof DeviceMotionEvent === 'undefined') return toast('這台裝置沒有動作感應器，請用手機打開皇家', 'err');
   if (typeof DeviceMotionEvent.requestPermission === 'function') {   // iPhone：第一次要按「允許」
@@ -4584,12 +4642,19 @@ async function walkStart(){
 function walkStop(silent){
   window.removeEventListener('devicemotion', onWalkMotion);
   WALK.on = false; try { WALK.wake && WALK.wake.release(); } catch(_){} WALK.wake = null;
+  walkSync();
   if (!silent && S.sub==='walk') renderWalk($('#main'));
 }
-function renderWalk(main){
-  const w = walkLoad(), n = w.steps, days = [];
+function walkDaysHTML(w){
+  const n = w.steps, days = [];
   for (let i = 6; i >= 0; i--) { const d = addDays(w.date, -i); days.push({ d, n: d===w.date ? n : (+w.hist[d] || 0) }); }
   const max = Math.max(1000, ...days.map(x=>x.n));
+  return `<h3 style="margin-top:0">最近 7 天</h3><div class="walk-days">${days.map(x=>`<span>${x.d===w.date?'今天':mdZh(x.d)}</span><span class="bar"><span style="width:${Math.round(x.n/max*100)}%"></span></span><span class="n">${x.n.toLocaleString('en-US')} 步</span>`).join('')}</div>
+      ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}`;
+}
+function drawWalkDays(){ const el = $('#wk-days'); if (el) el.innerHTML = walkDaysHTML(walkLoad()); }
+function renderWalk(main){
+  const w = walkLoad(), n = w.steps;
   main.innerHTML = `<div class="card center"><h2 style="margin:0">🚶 一起走走</h2>
       <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。</div>
       <div class="walk-big"><b id="wk-steps">${n.toLocaleString('en-US')}</b><small>步</small></div>
@@ -4597,9 +4662,20 @@ function renderWalk(main){
       ${WALK.on ? '<div class="walk-on"><i></i>正在算步數…</div><button class="btn btn-outline" data-act="walk-stop">⏸ 停下來</button>'
         : `<button class="btn btn-primary" data-act="walk-start">▶ ${n ? '繼續走路' : '開始走路'}</button>`}
       <div class="hint mt">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考。<br>鎖螢幕或切到別的 APP 就不會算。</div></div>
-    <div class="card"><h3 style="margin-top:0">最近 7 天</h3><div class="walk-days">${days.map(x=>`<span>${x.d===w.date?'今天':mdZh(x.d)}</span><span class="bar"><span style="width:${Math.round(x.n/max*100)}%"></span></span><span class="n">${x.n.toLocaleString('en-US')} 步</span>`).join('')}</div>
-      ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}</div>
-    ${isAdminMe() ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「一起走走」。步數先存在這支手機；要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}`;
+    <div class="card" id="wk-days">${walkDaysHTML(w)}</div>
+    <div class="hint center" style="margin:-4px 8px 12px">每天的步數會存起來，換手機也找得回來；管理員看得到大家的步數（之後做排行榜）。</div>
+    ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button><div class="notice info small">🔒 試用中：只有你（管理員）看得到「一起走走」。要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}`;
+  walkSync(); walkPull();
+}
+/** 管理員：大家今天、最近 7 天的步數（排行榜之後也用這個） */
+async function renderWalkAdmin(main){
+  main.innerHTML = '<div class="card center muted">讀取中…</div>';
+  let r; try { r = await api.adminWalkList(); } catch(e) { if (S.sub==='walkAdmin') main.innerHTML = `<div class="card center">${esc(errText(e))}</div>`; return; }
+  if (S.sub !== 'walkAdmin') return;
+  main.innerHTML = `<div class="card"><h2 style="margin:0">👀 大家的步數</h2><div class="muted mt">今天 ${mdZh(r.today)}，走比較多的排前面；右邊小字是最近 7 天合計。只有管理員看得到。</div></div>
+    <div class="card">${r.rows.length ? `<div class="wk-list">${r.rows.map((x,i)=>`<div class="wk-row"><span class="rk">${i+1}</span>${avatarHTML(x)}<span class="nm">${esc(x.name)}</span><span class="t"><b>${(+x.today||0).toLocaleString('en-US')}</b> 步<small>7 天 ${(+x.week||0).toLocaleString('en-US')}</small></span></div>`).join('')}</div>`
+      : '<div class="muted center" style="padding:12px">還沒有人送步數上來</div>'}</div>
+    <div class="hint center">完整紀錄在雲端硬碟「紀錄」試算表的 WalkDays 分頁（一人一天一列）。</div>`;
 }
 function renderSettings(main){
   const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
@@ -6469,6 +6545,7 @@ document.addEventListener('click', async e=>{
     case 'tab': if (el.dataset.tab==='compose' && !S.draft){ S.draft=newDraft(); const dr=store('royal_draft'); if(dr&&dr.text) S.draft.text=dr.text; } go(el.dataset.tab); break;
     case 'back': { if (S.sub==='tmember' && S.tmBack==='team'){ go(S.tab,{sub:'team'}); break; }
       if (S.sub==='walk') { go('account',{sub:'play'}); break; }   // 走路 → 回遊樂場
+      if (S.sub==='walkAdmin') { go('account',{sub:'walk'}); break; }
       if (S.sub==='person' && (S.personBack==='honors' || S.personBack==='dreams')){ go(S.tab,{sub:S.personBack}); break; } if (S.sub==='dreamEdit' && S.dreamBack){ go(S.tab,{sub:S.dreamBack==='person'?'honors':S.dreamBack}); break; }
       if (S.sub==='adminMember' && S.memBack==='roster') { S.memBack = null; go('account',{sub:'adminRoster'}); break; }
       if (S.sub==='adminCourseEdit') { go('account',{sub:'adminCourses'}); break; }
@@ -6653,7 +6730,8 @@ document.addEventListener('click', async e=>{
     case 'walk-open': go('account', {sub:'walk'}); break;
     case 'walk-start': walkStart(); break;
     case 'walk-stop': walkStop(); break;
-    case 'walk-reset': if (await confirmBox('今天的步數歸零？', '歸零', true)) { const w = walkLoad(); w.steps = 0; walkSave(w); renderWalk($('#main')); } break;
+    case 'walk-reset': if (await confirmBox('今天的步數歸零？', '歸零', true)) { const w = walkLoad(); w.steps = 0; w.reset = w.date; walkSave(w); renderWalk($('#main')); } break;   // 後台也跟著歸零（renderWalk 會送）
+    case 'walk-admin': go('account', {sub:'walkAdmin'}); break;
     case 'tiles-edit': tileEdit(true); break;
     case 'notice-open': noticeSheet(); break;
     case 'mq-mode': case 'mq-times': {   // 跑馬燈跑法、次數（後台）
