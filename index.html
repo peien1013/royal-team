@@ -212,6 +212,13 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 .compose h2{margin-bottom:2px}
 .compose label.lbl{margin:12px 0 6px}
 .compose .seg button{min-height:52px}
+#ptr{height:0;overflow:hidden;display:flex;align-items:center;justify-content:center;gap:8px;font-size:17px;font-weight:700;color:var(--brand);transition:height .22s ease}   /* 往下拉更新（2026-11-27） */
+#ptr.drag{transition:none}
+#ptr .ptr-ic{display:inline-block;font-size:22px;line-height:1;transition:transform .2s ease}
+#ptr.ready .ptr-ic{transform:rotate(180deg)}
+#ptr.busy .ptr-ic{animation:ptrspin .8s linear infinite}
+@keyframes ptrspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#ptr,#ptr .ptr-ic{transition:none}#ptr.busy .ptr-ic{animation:none}}
 .compose textarea.inp{min-height:150px}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
 .compose .photo-btns .btn{min-height:52px}
 .compose .sticky-submit{margin-top:14px}
@@ -228,11 +235,6 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .notice.ok{background:var(--ok-soft);color:#0E5E36}
 .notice.info{background:var(--brand-soft);color:var(--brand-dark)}
 .photo-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.mic-btn{width:100%;margin-top:8px}   /* 打卡：用講的（2026-11-27） */
-.mic-btn.on{background:#FDECEC;color:#B42318;border-color:#F3B4AE;animation:micpulse 1.2s ease-in-out infinite}
-@keyframes micpulse{50%{box-shadow:0 0 0 7px rgba(180,35,24,.12)}}
-@media (prefers-reduced-motion:reduce){.mic-btn.on{animation:none}}
-.mic-heard{font-size:15px;color:var(--muted);margin-top:4px;min-height:0}.mic-heard:empty{display:none}
 .photo-list{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
 .photo-prev{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);aspect-ratio:1/1}
 .photo-prev img{width:100%;height:100%;object-fit:cover;background:#f3f5f7}
@@ -276,6 +278,9 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .c-date b{display:block;font-size:30px;line-height:1.1;font-weight:800}
 .c-tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .c-tags .pill{font-size:13px;padding:1px 9px;box-shadow:none}
+.course .c-head.has-t{grid-template-columns:66px 1fr 64px}   /* 有講師照：右邊多一小欄（2026-11-27） */
+.course .c-head.has-t .nw{white-space:normal}
+.course .c-teacher{width:64px;height:auto;align-self:end;margin-bottom:-6px;pointer-events:none;user-select:none}
 .course .c-title{margin:0 0 4px;font-size:20px;line-height:1.35;word-break:keep-all;overflow-wrap:anywhere}   /* 「發展」不拆兩行；沒有空格的長標題才硬換行 */
 .c-meta{display:flex;gap:8px;align-items:baseline;font-size:16px;line-height:1.45;margin-top:2px}
 .c-meta .k{flex:none;font-size:13px;font-weight:700;color:var(--brand-dark);background:var(--brand-soft);border-radius:7px;padding:0 7px}
@@ -3066,6 +3071,7 @@ function renderShell(){
     <header class="topbar"><img class="logo" src="${LOGO}" alt=""><div class="tb-text"><small id="tb-sub" class="hidden">皇家團隊</small><h1 id="tb-title">皇家團隊</h1><button class="tb-marq hidden" id="tb-marq" data-act="notice-open" aria-label="看公告"><span class="mq-track" id="mq-track"></span></button></div>
       <button class="tb-btn tb-admin hidden" id="tb-admin" data-act="open-admin" aria-label="管理後台">🛠 後台<span class="tb-dot hidden" id="tb-admin-n"></span></button>
       <button class="tb-btn hidden" id="tb-back" data-act="back">‹ 返回</button></header>
+    <div id="ptr" aria-hidden="true"><span class="ptr-ic">↓</span><span class="ptr-t">往下拉更新</span></div>
     <main id="main"></main></div>
     <nav class="nav" aria-label="主選單"><div class="nav-in">
       <button data-act="tab" data-tab="home">${ICON.home}<span>首頁</span></button>
@@ -3377,7 +3383,7 @@ function watchNavVisible(){
 }
 
 function go(tab, opts={}){
-  stopReadTracking(); voiceStop();
+  stopReadTracking();
   { const m = $('#main'); if (m) m.onclick = null; }
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
@@ -3503,6 +3509,45 @@ function renderHome(main){
   if (team) drawTeamSummary();
   if (!S.feed.items.length || S.feed.scope !== (team?'team':'all')) loadFeed(true); else { drawFeed(); }
 }
+/* 往下拉更新（2026-11-27 12:01 使用者：「除了按更新可以更新之外，讓使用者可以往下拉來進行更新，就像蘋果手機…」）
+   首頁動態牆在最上面時，手指往下拉 → 出現「往下拉更新」→ 拉夠了變「放開就更新」→ 放開就跟按「↻ 更新」一樣。 */
+const PTR = { y0:null, x0:0, d:0, on:false, busy:false, ready:false }, PTR_GO = 64;
+const ptrOk = () => S.session && S.tab==='home' && !S.sub && !document.querySelector('.sheet-bg,.dialog-bg') && window.scrollY <= 0;
+function ptrDraw(){
+  const el = $('#ptr'); if (!el) return;
+  const ready = !PTR.busy && PTR.d >= PTR_GO;
+  if (ready && !PTR.ready && navigator.vibrate) { try { navigator.vibrate(8); } catch(_){} }   // 拉夠了：安卓手機輕輕震一下
+  PTR.ready = ready;
+  el.style.height = (PTR.busy ? 56 : Math.min(110, PTR.d)) + 'px';
+  el.classList.toggle('drag', PTR.on && !PTR.busy); el.classList.toggle('ready', ready); el.classList.toggle('busy', PTR.busy);
+  el.querySelector('.ptr-ic').textContent = PTR.busy ? '↻' : '↓';
+  el.querySelector('.ptr-t').textContent = PTR.busy ? '更新中…' : ready ? '放開就更新' : '往下拉更新';
+}
+async function ptrRefresh(){
+  PTR.busy = true; ptrDraw();
+  try { api._prefetch = null; await loadFeed(true); toast('已更新'); } finally { PTR.busy = false; PTR.d = 0; ptrDraw(); }
+}
+document.addEventListener('touchstart', e => {
+  PTR.y0 = null; if (PTR.busy || e.touches.length !== 1 || !ptrOk()) return;
+  PTR.y0 = e.touches[0].clientY; PTR.x0 = e.touches[0].clientX; PTR.d = 0; PTR.on = false;
+}, { passive:true });
+document.addEventListener('touchmove', e => {
+  if (PTR.y0 == null || PTR.busy) return;
+  const t = e.touches[0], dy = t.clientY - PTR.y0, dx = t.clientX - PTR.x0;
+  if (!PTR.on) {
+    if (dy < -4 || Math.abs(dx) > 10 && Math.abs(dx) > dy) { PTR.y0 = null; return; }   // 往上滑、左右滑：不是要更新
+    if (dy < 10 || window.scrollY > 0) return;
+    PTR.on = true;
+  }
+  if (e.cancelable) e.preventDefault();   // 拉的時候整頁不要跟著彈
+  PTR.d = Math.max(0, (dy - 10) * 0.5); ptrDraw();
+}, { passive:false });
+document.addEventListener('touchend', () => {
+  if (!PTR.on) { PTR.y0 = null; return; }
+  const goNow = PTR.d >= PTR_GO; PTR.on = false; PTR.y0 = null;
+  if (goNow) ptrRefresh(); else { PTR.d = 0; ptrDraw(); }
+});
+document.addEventListener('touchcancel', () => { PTR.on = false; PTR.y0 = null; if (!PTR.busy) { PTR.d = 0; ptrDraw(); } });
 async function loadFeed(reset=false){
   if (S.feed.loading) return;
   const scope = S.teamCount > 0 && S.scope==='team' ? 'team' : 'all';
@@ -3694,7 +3739,6 @@ if (CONFIG.MODE==='live' && 'serviceWorker' in navigator && window.self===window
    發布行動日誌
    ===================================================================== */
 function renderCompose(main){
-  voiceStop();
   if (!S.draft) S.draft = newDraft();
   const d = S.draft, T = todayStr(), Y = addDays(T,-1);
   const late = diffDays(d.actionDate, T);
@@ -3716,7 +3760,6 @@ function renderCompose(main){
 
     <label class="lbl lbl-row" for="c-text"><span>${d.courseId?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></span><span class="lbl-side" id="c-count">${d.text.length} 字</span></label>
     <textarea class="inp" id="c-text" maxlength="2000" placeholder="${d.courseId?'例如：今天學到…，我打算這樣用在自己身上…':'例如：今天打電話關心了三位夥伴，也約好下週見面…'}">${esc(d.text)}</textarea>
-    <button class="btn btn-ghost mic-btn" type="button" data-act="voice" id="c-mic">🎤 用講的</button><div id="c-heard" class="mic-heard" aria-live="polite"></div>
 
     <label class="lbl lbl-row"><span>照片<span class="muted small" style="font-weight:400">（可以不放）</span></span><span class="lbl-side">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</span></label>
     ${d.photos.length?`<div class="photo-list">${d.photos.map((u,i)=>`<div class="photo-prev"><img src="${u}" alt="準備上傳的照片 ${i+1}"><button class="rm" data-act="photo-rm" data-i="${i}" aria-label="移除第 ${i+1} 張">✕</button></div>`).join('')}</div>`:''}
@@ -3744,57 +3787,7 @@ function renderCompose(main){
   });
   ['f-cam','f-lib'].forEach(id=> $('#'+id).addEventListener('change', e=>{ const fs=Array.from(e.target.files); e.target.value=''; if (fs.length) handlePhotos(fs); }));
 }
-/** 打卡：用講的變成文字（2026-11-27 00:55 使用者「打卡那邊多個用講的，然後變成文字」）
- *  用手機瀏覽器內建的語音辨識（安卓 Chrome、iPhone Safari）；在 LINE 裡、或手機不支援 → 教他用鍵盤上的 🎤 麥克風（每支手機都有）。 */
-var VOICE = null;
-function voiceStop(){ if (VOICE) { try { VOICE.stop(); } catch(_){} } }
-function voiceTip(){
-  const bg = document.createElement('div'), ios = isIOS(); bg.className = 'sheet-bg';
-  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>🎤 用講的</h3><button data-x>關閉</button></div><div class="sheet-b">
-    <p>${inLineApp() ? '在 LINE 裡沒辦法直接按這裡講。' : ios ? 'iPhone 請用鍵盤上的麥克風講，最準：' : '這支手機沒辦法直接按這裡講。'}${ios && !inLineApp() ? '' : '<br>改用手機鍵盤上的麥克風，一樣可以：'}</p>
-    <ol class="steps"><li>點一下「今天做了什麼？」的文字框</li><li>鍵盤跳出來後，按鍵盤上的 <b>🎤 麥克風</b>${ios ? '（在鍵盤右下角）' : ''}</li><li>直接說話，說完按「完成」</li></ol>
-    ${ios ? '<div class="hint mb">鍵盤上沒有 🎤：到 iPhone「設定」→「一般」→「鍵盤」，打開「啟用聽寫」。</div>' : ''}
-    <button class="btn btn-primary" data-x data-focus>好，我去按</button></div></div>`;
-  bg.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (e.target!==bg && !x) return; bg.remove(); if (x && x.hasAttribute('data-focus')) { const ta = $('#c-text'); if (ta) ta.focus(); } });
-  document.body.appendChild(bg);
-}
-function voiceKeyboard(){
-  const ta = $('#c-text'), h = $('#c-heard');
-  ta.placeholder = '👇 按鍵盤上的 🎤 麥克風（在右下角），直接說話';
-  if (h) h.innerHTML = '鍵盤跳出來後，按鍵盤<b>右下角的 🎤</b> 就可以說話。<button type="button" class="link-btn" data-act="voice-help">找不到 🎤？</button>';
-  ta.focus();
-}
-function voiceInput(){
-  if (VOICE) return voiceStop();   // 正在聽：再按一下＝停
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  // 11:28 使用者 iPhone 桌面的皇家實測：按了變紅色、講了半天沒有字 → iPhone 桌面版改用鍵盤上的 🎤
-  // 11:46「我還要去改設定嗎？不能直接使用？」→ 不跳說明：直接把游標放進文字框（鍵盤跳出來），提示按鍵盤右下角的 🎤
-  if (isIOS() && isStandalone() && !inLineApp() && $('#c-text')) return voiceKeyboard();
-  if (!SR || inLineApp() || !$('#c-text')) return voiceTip();
-  const r = new SR(); VOICE = r; let pend = '', heard = false;
-  r.lang = 'zh-TW'; r.continuous = !isIOS(); r.interimResults = true;   // iPhone 的連續聽有問題：講一句停了就結束，要再講再按一次
-  const set = on => { const b = $('#c-mic'), h = $('#c-heard');
-    if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹ 說完了，按這裡停' : '🎤 用講的'; }
-    if (h) h.textContent = on ? '正在聽，請直接說…' : ''; };
-  r.onresult = e => {
-    let fin = '', mid = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) { const t = e.results[i][0].transcript; if (e.results[i].isFinal) fin += t; else mid += t; }
-    heard = true; if (!$('#c-text')) return voiceStop();
-    if (fin.trim()) addText(fin);
-    pend = mid;   // iPhone 有時候不給「確定」的字就結束 → 結束時把最後聽到的補進去
-    const h = $('#c-heard'); if (h) h.textContent = mid ? '聽到：' + mid : '正在聽，請直接說…';
-  };
-  r.onerror = e => {
-    if (e.error==='not-allowed') toast('麥克風被擋住了：請到手機設定，允許這個瀏覽器用麥克風；或改用鍵盤上的 🎤', 'err');
-    else if (e.error==='no-speech') toast('沒聽到聲音，請再按一次，靠近手機說話', 'err');
-    else if (e.error!=='aborted') voiceTip();
-  };
-  const dog = setTimeout(() => { if (VOICE===r && !heard) { r._dog = true; try { r.abort(); } catch(_){ try { r.stop(); } catch(__){} } } }, 8000);   // 8 秒都沒有字：這支手機這裡聽不到
-  r.onend = () => { clearTimeout(dog); if (pend.trim()) addText(pend); pend = ''; if (VOICE===r) VOICE = null; set(false); if (r._dog) voiceTip(); };
-  try { r.start(); set(true); } catch(_) { clearTimeout(dog); VOICE = null; voiceTip(); }
-  function addText(t){ const ta = $('#c-text'); if (!ta || !t.trim()) return; const v = ta.value, glue = v && !/[\s，。！？、,.!?]$/.test(v) ? '，' : '';
-    ta.value = (v + glue + t.trim()).slice(0, 2000); ta.dispatchEvent(new Event('input', { bubbles:true })); }
-}
+/* 打卡「🎤 用講的」按鈕：2026-11-27 12:12 使用者決定拿掉（手機鍵盤上本來就有 🎤，直接按鍵盤的就好）。程式在 GitHub 0bcfa37 那一版，要再用可以拿回來。 */
 function showErr(msg){ const el=$('#c-err'); if(!el) return toast(msg,'err'); el.textContent=msg; el.classList.remove('hidden'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
 
 async function handlePhotos(files){
@@ -4046,13 +4039,13 @@ async function drawAcademy(main, cs){
     ? `<a class="btn ${cls}" href="${esc(url)}" target="_blank" rel="noopener"${act==='zoom'?` data-cid="${esc(id)}"`:''}>${label}</a>` : `<button class="btn ${cls}" data-act="${act}" data-id="${id}">${label}</button>`;
   const modeTag = c => c.mode==='hybrid' ? '<span class="pill mode-both">線上＋現場</span>' : isOnsite(c) ? '<span class="pill mode-onsite">📍 現場</span>' : '<span class="pill mode-online">💻 線上</span>';
   const card = c => { const isUp = c.date >= T, tk = c.myTicket, full = c.capacity && c.taken>=c.capacity;
-    const showOnsite = view==='onsite' && isOnsite(c), showOnline = view==='online';
+    const showOnsite = view==='onsite' && isOnsite(c), showOnline = view==='online', tp = teacherPhoto(c.teacher);
     return `<div class="card course">
-      <div class="c-head">${dateTile(c.date, !isUp)}<div class="c-main">
+      <div class="c-head${tp?' has-t':''}">${dateTile(c.date, !isUp)}<div class="c-main">
         <div class="c-tags">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
         <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
         ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
-        ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div></div>
+        ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div>${tp}</div>
       ${c.intro&&showOnsite?`<div class="c-intro">${introBlocks(c.intro)}</div>`:''}
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
@@ -4094,6 +4087,13 @@ async function drawAcademy(main, cs){
     ${!list.length?`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`:''}`;
 }
 let ACAD = [];
+/** 講師去背照（2026-11-27 12:06 使用者：「講師的照片去背，不用太大放在課程那邊」）：課卡右上角一張小小的。
+ *  老師欄有這個名字就會出現；新增講師：去背後縮成約 168×240 的 webp 放進 assets/teachers，再加一行。 */
+const TEACHER_IMG = { '邱芙蓉':'teachers/qiu-furong.webp' };
+function teacherPhoto(t){
+  const n = String(t||'').split(/[、,，\s]+/).find(x => TEACHER_IMG[x]);
+  return n ? `<img class="c-teacher" src="${TEACHER_IMG[n]}" alt="${esc(n)}" width="168" height="240" loading="lazy" decoding="async">` : '';
+}
 /* 本月課表：讀「RoyalTeam 行事曆」的資料（課表照舊在行事曆試算表編輯） */
 async function renderSchedule(box){
   return quickRender(box, 'schedule', () => api.getSchedule(), d => drawSchedule(box, d));
@@ -6484,8 +6484,6 @@ document.addEventListener('click', async e=>{
       const d=S.draft, m=el.dataset.m; d.dateMode=m; d.text=$('#c-text').value;
       if (m==='today') d.actionDate=todayStr(); if (m==='yday') d.actionDate=addDays(todayStr(),-1);
       renderCompose($('#main')); if (m==='other') { const i=$('#c-date'); i.focus(); try{ i.showPicker && i.showPicker(); }catch(_){} } break; }
-    case 'voice': voiceInput(); break;
-    case 'voice-help': voiceTip(); break;
     case 'photo-cam': S.draft.text=$('#c-text').value; $('#f-cam').click(); break;
     case 'photo-lib': S.draft.text=$('#c-text').value; $('#f-lib').click(); break;
     case 'photo-rm': S.draft.text=$('#c-text').value; S.draft.photos.splice(Number(el.dataset.i),1); S.draft.photoInfo=''; renderCompose($('#main')); break;
