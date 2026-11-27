@@ -212,7 +212,7 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 .compose h2{margin-bottom:2px}
 .compose label.lbl{margin:12px 0 6px}
 .compose .seg button{min-height:52px}
-.compose textarea.inp{min-height:112px}
+.compose textarea.inp{min-height:150px}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
 .compose .photo-btns .btn{min-height:52px}
 .compose .sticky-submit{margin-top:14px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -3732,7 +3732,7 @@ function renderCompose(main){
     ${editing?'<button class="btn btn-outline mt" data-act="cancel-edit">取消編輯</button><div class="hint">修改日期或內容後，系統會重新計算打卡天數，並保留修改紀錄。</div>':''}
   </div>`;
   const ta = $('#c-text');
-  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 112), 300) + 'px'; };   // 打越多字框越高，空的時候小一點，整頁一個畫面看得完
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(Math.max(ta.scrollHeight + 4, 150), Math.max(300, Math.round(window.innerHeight * 0.6))) + 'px'; };   // 打越多字框越高（最多到畫面六成高；11/27 使用者：字看得到多一點），空的時候 4 行
   if (d.text) requestAnimationFrame(grow);
   ta.addEventListener('input', grow);
   ta.addEventListener('input', ()=>{ d.text = ta.value; $('#c-count').textContent = ta.value.length+' 字'; $('#c-err').classList.add('hidden'); store('royal_draft', {text:d.text}); });
@@ -3758,11 +3758,19 @@ function voiceTip(){
   bg.addEventListener('click', e => { const x = e.target.closest('[data-x]'); if (e.target!==bg && !x) return; bg.remove(); if (x && x.hasAttribute('data-focus')) { const ta = $('#c-text'); if (ta) ta.focus(); } });
   document.body.appendChild(bg);
 }
+function voiceKeyboard(){
+  const ta = $('#c-text'), h = $('#c-heard');
+  ta.placeholder = '👇 按鍵盤上的 🎤 麥克風（在右下角），直接說話';
+  if (h) h.innerHTML = '鍵盤跳出來後，按鍵盤<b>右下角的 🎤</b> 就可以說話。<button type="button" class="link-btn" data-act="voice-help">找不到 🎤？</button>';
+  ta.focus();
+}
 function voiceInput(){
   if (VOICE) return voiceStop();   // 正在聽：再按一下＝停
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  // 11:28 使用者 iPhone 桌面的皇家實測：按了變紅色、講了半天沒有字 → iPhone 桌面版直接教鍵盤上的 🎤
-  if (!SR || inLineApp() || (isIOS() && isStandalone()) || !$('#c-text')) return voiceTip();
+  // 11:28 使用者 iPhone 桌面的皇家實測：按了變紅色、講了半天沒有字 → iPhone 桌面版改用鍵盤上的 🎤
+  // 11:46「我還要去改設定嗎？不能直接使用？」→ 不跳說明：直接把游標放進文字框（鍵盤跳出來），提示按鍵盤右下角的 🎤
+  if (isIOS() && isStandalone() && !inLineApp() && $('#c-text')) return voiceKeyboard();
+  if (!SR || inLineApp() || !$('#c-text')) return voiceTip();
   const r = new SR(); VOICE = r; let pend = '', heard = false;
   r.lang = 'zh-TW'; r.continuous = !isIOS(); r.interimResults = true;   // iPhone 的連續聽有問題：講一句停了就結束，要再講再按一次
   const set = on => { const b = $('#c-mic'), h = $('#c-heard');
@@ -6477,6 +6485,7 @@ document.addEventListener('click', async e=>{
       if (m==='today') d.actionDate=todayStr(); if (m==='yday') d.actionDate=addDays(todayStr(),-1);
       renderCompose($('#main')); if (m==='other') { const i=$('#c-date'); i.focus(); try{ i.showPicker && i.showPicker(); }catch(_){} } break; }
     case 'voice': voiceInput(); break;
+    case 'voice-help': voiceTip(); break;
     case 'photo-cam': S.draft.text=$('#c-text').value; $('#f-cam').click(); break;
     case 'photo-lib': S.draft.text=$('#c-text').value; $('#f-lib').click(); break;
     case 'photo-rm': S.draft.text=$('#c-text').value; S.draft.photos.splice(Number(el.dataset.i),1); S.draft.photoInfo=''; renderCompose($('#main')); break;
