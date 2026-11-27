@@ -363,6 +363,13 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .play-card{padding:6px 8px 10px}.play-card .app-grid{padding-top:14px}
 .play-hero .play-ic.walk-ic,.walk-ic{width:84px;height:84px;border-radius:24px;display:block;margin:2px auto 0;box-shadow:0 6px 18px rgba(20,60,140,.18)}
 .btn.play-back{width:100%;margin:4px 0 12px}
+/* 產品目錄（2026-11-27）：如新電子目錄放在 APP 裡面 */
+.cat-card{padding:10px 10px 12px}
+.cat-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 10px;font-size:18px}
+.cat-ext{font-size:15px;color:var(--brand);text-decoration:none;font-weight:700;white-space:nowrap;padding:6px 2px}
+.cat-box{position:relative;height:70vh;min-height:360px;border-radius:14px;overflow:hidden;background:#F4F6FA}
+.cat-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
+.cat-wait{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:17px}
 .card .play-p{text-align:left;text-wrap:wrap}   /* 2026-11-27 17:27 使用者：「敘述就是都在同一行，不要斷行、不要分開」→ 不手動換行、不照標點分段（PHRASE_SKIP）、不平均行長，整段靠左排滿每一行 */
 /* 遊樂園背景（2026-11-27 16:39 使用者請 GPT 做的：摩天輪、旋轉木馬、熱氣球）：只有健康遊樂場的頁面才載入、才顯示；字都放在白色卡片裡 */
 .play-bg{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .35s ease;background:#4AA2EC center bottom/cover no-repeat}
@@ -3453,6 +3460,7 @@ function go(tab, opts={}){
   if (S.sub==='walk') return renderWalk(main);
   if (S.sub==='walkAdmin') return renderWalkAdmin(main);
   if (S.sub==='play') return renderPlay(main);
+  if (S.sub==='catalog') return renderCatalog(main);
   if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
@@ -4461,7 +4469,7 @@ const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:
 /** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
 const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
 const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
-const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','manual','play','team','tickets','card','settings'];
+const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','catalog','manual','play','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
 const NUSHOP_URL = () => /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=com.nuskin.shoppingcart' : 'https://apps.apple.com/tw/app/id1448081635';
@@ -4471,6 +4479,27 @@ function manualTile(){
   if (!on && !isAdminMe()) return null;
   return { act:'manual-open', ic:'📘', t:'手冊', c:'#E6F0FB', off: !on };
 }
+/** 📖 產品目錄（2026-11-27 使用者：「這個線上產品目錄可以直接上 APP 嗎？獨立一個『目錄』按鈕，然後幫我做返回鍵」）
+ *  直接在 APP 裡面打開如新官方的電子目錄（翻頁書），大家都看得到。如新每期換新目錄，網址不變，這裡不用改。
+ *  打不開的手機：上面「用瀏覽器開」。sandbox 不給 allow-top-navigation：目錄頁不能把整個 APP 換掉。 */
+const CATALOG_URL = 'https://nuskin-ebook.com.tw/';
+function catalogTile(){ return { act:'catalog-open', ic:'📖', t:'目錄', c:'#FBEFDB' }; }
+function renderCatalog(main){
+  main.innerHTML = `<div class="card cat-card"><div class="cat-h"><b>📖 如新產品目錄</b><a class="cat-ext" href="${CATALOG_URL}" target="_blank" rel="noopener">用瀏覽器開 ↗</a></div>
+      <div class="cat-box" id="cat-box"><div class="cat-wait">目錄載入中…</div><iframe id="cat-frame" src="${CATALOG_URL}" title="如新產品目錄" allow="fullscreen" allowfullscreen
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-forms" referrerpolicy="no-referrer"></iframe></div></div>
+    ${PLAY_BACK('回到功能選單')}`;
+  catFit();
+}
+/** 目錄的高度：剛好塞滿一個畫面（扣掉上面標題、下面的返回鍵和導覽列），不用上下捲 */
+function catFit(){
+  const b = $('#cat-box'); if (!b) return;
+  const nav = $('.nav'), nr = nav && nav.getBoundingClientRect(), cr = nav && $('.nav .circle') && $('.nav .circle').getBoundingClientRect();
+  const top = nr ? Math.min(nr.top, cr && cr.height ? cr.top : nr.top) : window.innerHeight;   // 中間「打卡」圓鈕會凸出導覽列
+  const navH = nr && nr.top > window.innerHeight / 2 ? window.innerHeight - top + 8 : 0;   // 電腦版導覽列在左邊，不用扣
+  b.style.height = Math.max(360, Math.round(window.innerHeight - b.getBoundingClientRect().top - window.scrollY - navH - 90)) + 'px';
+}
+window.addEventListener('resize', ()=>{ if (S.sub==='catalog') catFit(); });
 /** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）
  *  17:21 使用者：「開放啊，我覺得很好玩」→ 大家都看得到。要再改回只有管理員：加回 isAdminMe() 和 trial:true（遊樂場會自動顯示「試用」）。 */
 function walkTile(){ return { act:'walk-open', ic:'🚶', t:'一起走走', c:'#E3F4EA' }; }
@@ -4481,7 +4510,7 @@ function appTilesHTML(){
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
     team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
     card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' },
-    manual: manualTile(), play: playTile() };
+    catalog: catalogTile(), manual: manualTile(), play: playTile() };
   return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })).join('');
 }
 /** 💪 健康遊樂場（2026-11-27 14:53 使用者：「這是遊樂區還是休閒區？幫我想個名稱，我不只這個遊戲而已」→ 選「健康遊樂場」；15:04 給了 GPT 做的摩天輪圖示）
@@ -6762,6 +6791,7 @@ document.addEventListener('click', async e=>{
     case 'member-card': go('account', {sub:'memberCard'}); break;
     case 'manual-open': showManualSoon(); break;
     case 'play-open': go('account', {sub:'play'}); break;
+    case 'catalog-open': go('account', {sub:'catalog'}); break;
     case 'walk-open': go('account', {sub:'walk'}); break;
     case 'walk-start': walkStart(); break;
     case 'walk-stop': walkStop(); break;
