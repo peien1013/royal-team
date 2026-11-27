@@ -4443,7 +4443,7 @@ function manualTile(){
   return { act:'manual-open', ic:'📘', t:'手冊', c:'#E6F0FB', off: !on };
 }
 /** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）：試用中，只有管理員看得到 */
-function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'走路', c:'#E3F4EA', trial:true } : null; }   // trial：試用中（不變灰，標題旁寫「試用中」）
+function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'一起走走', c:'#E3F4EA', trial:true } : null; }   // trial：試用中（不變灰，標題旁寫「試用中」）
 /** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
 function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
 function appTilesHTML(){
@@ -4531,7 +4531,8 @@ function initTileGrid(){
 /* ---------- 走路計步（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步」「記錄步數、換算消耗的熱量」「我想要開著 APP 才會計算」「不填體重」）
    用手機的動作感應器（DeviceMotion）算步數：APP 開著、螢幕亮著才算；鎖螢幕或切到別的 APP 就停（網頁讀不到手機「健康」的步數）。
    熱量用一般人平均：每 1000 步約 40 大卡；距離：一步約 0.65 公尺。步數先存在這支手機（之後做團隊排行榜再上傳）。
-   試用中：只有管理員看得到「走路」圖示。 ---------- */
+   試用中：只有管理員看得到「一起走走」圖示。
+   2026-11-27 15:32 使用者把「走路」取名「一起走走」（先做純走路；路線地圖、團隊排行榜之後再說）。 ---------- */
 const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065;
 const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0 };
 function walkLoad(){
@@ -4589,7 +4590,7 @@ function renderWalk(main){
   const w = walkLoad(), n = w.steps, days = [];
   for (let i = 6; i >= 0; i--) { const d = addDays(w.date, -i); days.push({ d, n: d===w.date ? n : (+w.hist[d] || 0) }); }
   const max = Math.max(1000, ...days.map(x=>x.n));
-  main.innerHTML = `<div class="card center"><h2 style="margin:0">🚶 走路</h2>
+  main.innerHTML = `<div class="card center"><h2 style="margin:0">🚶 一起走走</h2>
       <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。</div>
       <div class="walk-big"><b id="wk-steps">${n.toLocaleString('en-US')}</b><small>步</small></div>
       <div class="walk-sub"><span>🔥 約 <b id="wk-kcal">${Math.round(n * KCAL_PER_STEP)}</b> 大卡</span><span>📏 約 <b id="wk-dist">${walkDist(n)}</b></span></div>
@@ -4598,7 +4599,7 @@ function renderWalk(main){
       <div class="hint mt">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考。<br>鎖螢幕或切到別的 APP 就不會算。</div></div>
     <div class="card"><h3 style="margin-top:0">最近 7 天</h3><div class="walk-days">${days.map(x=>`<span>${x.d===w.date?'今天':mdZh(x.d)}</span><span class="bar"><span style="width:${Math.round(x.n/max*100)}%"></span></span><span class="n">${x.n.toLocaleString('en-US')} 步</span>`).join('')}</div>
       ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}</div>
-    ${isAdminMe() ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「走路」。步數先存在這支手機；要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}`;
+    ${isAdminMe() ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「一起走走」。步數先存在這支手機；要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}`;
 }
 function renderSettings(main){
   const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
