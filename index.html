@@ -380,7 +380,9 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .man-row .mr-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}.man-row .mr-t b{font-size:18px;line-height:1.35;font-weight:700}
 .man-row .mr-t small{font-size:14px;color:var(--muted)}
 .man-row .mr-go{flex:none;font-size:26px;color:#9AA7B5}
-.man-cat .mr-ic{width:54px;height:54px;font-size:28px}.man-cat .mr-t b{font-size:20px}
+.man-cat .mr-ic{width:54px;height:54px;font-size:28px}
+.man-row .mr-cover{background:#EEF4FB center/cover no-repeat;box-shadow:0 1px 3px rgba(0,0,0,.18);border-radius:8px;height:56px}
+.man-pg-cover{background-size:cover;background-position:center;background-repeat:no-repeat}.man-cat .mr-t b{font-size:20px}
 .man-view .cat-h{padding-bottom:8px}
 .man-vt{flex:1;min-width:0;font-size:17px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .man-tools{flex:none;display:flex;align-items:center;gap:6px}.man-tools small{font-size:13px;color:var(--muted);white-space:nowrap;margin-right:2px}
@@ -2230,7 +2232,14 @@ const MockApi = {
   async walkSave(days){ await this._wait(); const W = MockDB.walk || (MockDB.walk = {}), id = this._me().id, mine = W[id] || (W[id] = {}), T = todayStr();   // 跟後端一樣的規則
     const saved = (days||[]).slice(0,8).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date <= T && d.date >= addDays(T,-7) && +d.steps >= 0 && +d.steps <= 100000)
       .map(d=>{ const n = Math.floor(+d.steps); mine[d.date] = d.reset ? n : Math.max(mine[d.date]||0, n); return { date:d.date, steps:mine[d.date] }; }); return { ok:true, saved }; },
-  async manualList(){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); return { on: MockDB.manualOn==='Y', cats: MOCK_MANUAL.cats, at: tvNow() }; },
+  async manualList(){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); const F = MockDB.manualFast || {};
+    return { on: MockDB.manualOn==='Y', cats: MOCK_MANUAL.cats.map(c=>({ name:c.name, items:c.items.map(x=>F[x.id] ? { ...x, fast:{ pages:F[x.id].r.length, per:3, r:F[x.id].r, c:F[x.id].c } } : { ...x }) })), at: tvNow() }; },
+  async manualFast(id, k){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); const f = (MockDB.manualFast||{})[id]; if (!f) throw new Error('STALE');
+    if (!(k>=0 && k<f.files.length)) throw new Error('BAD_REQUEST'); MockDB.manualFastReads = (MockDB.manualFastReads||0) + 1; return { id, k, raw: MockDB.manualFastFiles[f.files[k]] }; },
+  async adminManualFastPut(id, k, data){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); if (!Array.isArray(data) || !data.length || data.length > 3) throw new Error('BAD_REQUEST');
+    MockDB.manualFastFiles = MockDB.manualFastFiles || {}; const fid = uid('MF'); MockDB.manualFastFiles[fid] = data.join('|'); return { k, fileId: fid }; },
+  async adminManualFastDone(id, r, files, c){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); if (files.length !== Math.ceil(r.length/3)) throw new Error('BAD_REQUEST');
+    (MockDB.manualFast = MockDB.manualFast || {})[id] = { r: r.map(x=>Math.round(x*1000)/1000), files, c: c||'' }; return { ok:true, pages:r.length }; },
   async manualPart(id, i){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN');
     const it = MOCK_MANUAL.cats.flatMap(c=>c.items).find(x=>x.id===id); if (!it) throw new Error('NOT_FOUND'); if (!(i>=0 && i<it.parts && Math.floor(i)===i)) throw new Error('BAD_REQUEST');
     MockDB.manualReads = (MockDB.manualReads||0) + 1;
@@ -2464,6 +2473,9 @@ const GasApi = {
   walkMine(){ return this.call('walk.mine', {}, {retry:1}); },
   manualList(fresh){ return this.call('manual.list', fresh ? { fresh:true } : {}, {retry:1}); },
   manualPart(id, i){ return this.call('manual.part', { id, i }, {retry:2}); },
+  manualFast(id, k){ return this.call('manual.fast', { id, k }, {retry:2}); },
+  adminManualFastPut(id, k, data){ return this.call('admin.manual.fastPut', { id, k, data }, {retry:2}); },
+  adminManualFastDone(id, r, files, c){ return this.call('admin.manual.fastDone', { id, r, files, c }, {retry:1}); },
   adminWalkList(){ return this.call('admin.walk.list', {}, {retry:1}); },
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
   adminLinkSave(l){ return this.call('admin.link.save', l, {retry:0}); },
@@ -2495,7 +2507,7 @@ const QC_DROP = {
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
 };
-const QC_ADMIN_READS = ['admin.walk.list','admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
+const QC_ADMIN_READS = ['admin.manual.fastPut','admin.manual.fastDone','admin.walk.list','admin.security.get','admin.dashboard','admin.member','admin.course.tickets','admin.reg.list','admin.roster','admin.tree','admin.fee.list','admin.course.all','admin.link.all'];   // 只是「看」：不要清掉暫存（2026-11-24 使用者：後台會 LAG）
 const QuickCache = {
   mem: {}, busy: {}, at: {},
   key(k){ return 'qc:' + ((S.me && S.me.id) || '_') + ':' + k; },
@@ -4554,7 +4566,9 @@ function renderManual(main){
       <div class="muted mt play-p">如新產品的培育資料，點一本就能在 APP 裡翻頁閱讀；這裡只能閱讀，要下載整份請到新享購。</div></div>
     ${admin ? `<div class="card man-admin">${on ? '<div class="notice ok mb">✅ 已開放：大家的功能選單都看得到手冊。</div><button class="btn btn-ghost mb" data-act="manual-toggle" data-on="0">關掉（夥伴看不到）</button>'
         : '<div class="notice mb">🔒 還沒開放：現在只有你（管理員）看得到。</div><button class="btn btn-primary mb" data-act="manual-toggle" data-on="1">打開給大家看</button>'}
-      <button class="btn btn-outline" data-act="man-refresh">🔄 重新整理（雲端放了新的手冊）</button>
+      <button class="btn btn-outline mb" data-act="man-refresh">🔄 重新整理（雲端放了新的手冊）</button>
+      ${MANB ? `<div class="notice info mb" id="man-build">製作中…</div><button class="btn btn-ghost" data-act="man-build-stop">停止製作</button>`
+        : '<button class="btn btn-outline" data-act="man-build" id="man-build-btn">⚡ 製作快速版（打開比較快）</button>'}
       <div class="muted small mt play-p">手冊放在你的雲端硬碟「Nu Skin 產品培育資料」：裡面一個資料夾就是一類，PDF 放進去這裡就會出現；檔案維持私人，不用開分享。</div></div>` : ''}
     <div id="man-cats"><div class="card center muted">手冊清單載入中…</div></div>
     ${PLAY_BACK('回到功能選單')}`;
@@ -4569,22 +4583,26 @@ async function manLoad(fresh){
   const box = $('#man-cats'); if (!box) return;
   if (r.error === 'NO_FOLDER') { box.innerHTML = '<div class="card center">找不到雲端硬碟的手冊資料夾（可能被改名搬走或刪除），請跟 Claude 說。</div>'; return; }
   if (!r.cats.length) { box.innerHTML = '<div class="card center muted">還沒有手冊</div>'; return; }
+  const all = r.cats.flatMap(c=>c.items), nf = all.filter(x=>x.fast).length, bb = $('#man-build-btn');
+  if (bb) bb.textContent = nf >= all.length ? `⚡ 快速版：${all.length} 本都做好了` : `⚡ 製作快速版（${all.length - nf} 本還沒做，做好打開比較快）`;
   box.innerHTML = `<div class="card man-list">${r.cats.map((c,i)=>`<button class="man-row man-cat" data-act="man-cat" data-i="${i}"><span class="mr-ic">${MAN_IC[c.name] || '📁'}</span><span class="mr-t"><b>${esc(c.name)}</b><small>${c.items.length} 本</small></span><span class="mr-go">›</span></button>`).join('')}</div>`;
 }
+/** 封面小圖（背景圖，長按不會跳「儲存圖片」） */
+const manCover = x => x.fast && x.fast.c && /^[A-Za-z0-9+/=]+$/.test(x.fast.c) ? `background-image:url(data:image/${x.fast.c.indexOf('/9j/') === 0 ? 'jpeg' : 'webp'};base64,${x.fast.c})` : '';
 function renderManualCat(main){
   const c = S.man && S.man.cats[S.manCat]; if (!c) return go('account', {sub:'manual'});
   const topic = c.items.filter(x=>!x.live), live = c.items.filter(x=>x.live);
-  const row = x => `<button class="man-row man-item" data-act="man-open" data-id="${esc(x.id)}"><span class="mr-ic">📖</span><span class="mr-t"><b>${esc(x.title)}</b>${x.live ? `<small>${x.live} 月直播</small>` : ''}</span><span class="mr-go">›</span></button>`;
+  const row = x => `<button class="man-row man-item" data-act="man-open" data-id="${esc(x.id)}">${manCover(x) ? `<span class="mr-ic mr-cover" style="${manCover(x)}"></span>` : '<span class="mr-ic">📖</span>'}<span class="mr-t"><b>${esc(x.title)}</b>${x.live ? `<small>${x.live} 月直播</small>` : ''}</span><span class="mr-go">›</span></button>`;
   main.innerHTML = `<div class="card man-list"><h2 class="man-h">${MAN_IC[c.name] || '📁'} ${esc(c.name)}<small>${c.items.length} 本</small></h2>
       ${topic.length && live.length ? '<div class="man-sec">主題</div>' : ''}${topic.map(row).join('')}
       ${live.length ? `<div class="man-sec">每月直播</div>${live.map(row).join('')}` : ''}</div>
     ${PLAY_BACK('回到手冊')}`;
 }
 /* 閱讀：MAN.seq 換了＝離開或換一本（還在下載的就不要了）；MAN.keep 留最近看的一本，回上一頁再點開不用重抓 */
-const MAN = { seq:0, doc:null, obs:null, zoom:1, keep:null };
+const MAN = { seq:0, doc:null, obs:null, zoom:1, keep:null, fast:null };
 const MAN_ZOOMS = [1, 1.5, 2, 3];
 function manClose(){
-  MAN.seq++;
+  MAN.seq++; MAN.fast = null;
   if (MAN.obs) { MAN.obs.disconnect(); MAN.obs = null; }
   if (MAN.doc) { try { MAN.doc.destroy(); } catch(_) {} MAN.doc = null; }
 }
@@ -4601,6 +4619,7 @@ function renderManualView(main){
   const pg = $('#man-pages');
   pg.addEventListener('contextmenu', e=>e.preventDefault());   // 長按不跳「儲存圖片」
   pg.addEventListener('scroll', manPageNo, { passive:true });
+  pg.addEventListener('click', e=>{ const el = e.target.closest('.man-pg[data-err]'); if (el) { delete el.dataset.err; el.querySelector('.man-pn').textContent = el.dataset.n; manRender(el); } });   // 這頁沒載入：點一下再試
   manOpen(d);
 }
 function manProgress(done, all){
@@ -4624,26 +4643,27 @@ async function manCachePut(d, bytes){
     for (const k of keys) { if (total <= MAN_CACHE_MAX || k.url === manKey(d)) continue; total -= +new URL(k.url).searchParams.get('s') || 0; await c.delete(k); }   // 先放的先丟
   } catch(_) {}
 }
-async function manBytes(d, seq){
+async function manBytes(d, alive, opt = {}){
   if (MAN.keep && MAN.keep.id === d.id) return MAN.keep.bytes;
-  const hit = await manCacheGet(d);
+  const hit = opt.noCache ? null : await manCacheGet(d);
   if (hit && hit.length === d.size) { MAN.keep = { id: d.id, bytes: hit }; return hit; }
   const parts = new Array(d.parts); let next = 0, done = 0;
   manProgress(0, d.parts);
   const t = $('#man-pct'); if (t) t.textContent = d.parts >= 3 ? '這本比較大，第一次要等半分鐘左右；看過一次之後就很快' : '第一次打開要等幾秒；看過一次之後就很快';
-  const one = async ()=>{ while (next < d.parts) { const i = next++; const r = await api.manualPart(d.id, i); if (seq !== MAN.seq) throw new Error('CANCEL');
+  const one = async ()=>{ while (next < d.parts) { const i = next++; const r = await api.manualPart(d.id, i); if (!alive()) throw new Error('CANCEL');
     parts[i] = b64Bytes(r.data); manProgress(++done, d.parts); } };
   await Promise.all(Array.from({ length: Math.min(3, d.parts) }, one));   // 一次抓三段
   const total = parts.reduce((n, p)=>n + p.length, 0), out = new Uint8Array(total); let o = 0;
   parts.forEach(p=>{ out.set(p, o); o += p.length; });
   MAN.keep = { id: d.id, bytes: out };
-  manCachePut(d, out);
+  if (!opt.noCache) manCachePut(d, out);
   return out;
 }
 async function manOpen(d){
   const seq = ++MAN.seq;
+  if (d.fast) return manOpenFast(d, seq);
   try {
-    const [lib, bytes] = await Promise.all([loadPdfjs(), manBytes(d, seq)]);
+    const [lib, bytes] = await Promise.all([loadPdfjs(), manBytes(d, ()=>seq === MAN.seq)]);
     if (seq !== MAN.seq) return;
     let doc;
     try { doc = await lib.getDocument({ data: bytes.slice(), isEvalSupported:false, disableAutoFetch:true, disableStream:true }).promise; }   // slice：PDF.js 會把資料交給背景，留一份下次用
@@ -4669,6 +4689,7 @@ function manObserve(){
   pg.querySelectorAll('.man-pg').forEach(x=>MAN.obs.observe(x));
 }
 async function manRender(el){
+  if (MAN.fast) return manRenderFast(el);
   const doc = MAN.doc, key = String(MAN.zoom); if (!doc || el.dataset.r === key) return;
   const tok = (el._tok || 0) + 1; el._tok = tok;
   try {
@@ -4690,7 +4711,7 @@ function manFree(el){
   const cv = el.querySelector('canvas'); if (cv) { cv.width = cv.height = 0; cv.remove(); }
 }
 function manZoom(dir){
-  const pg = $('#man-pages'); if (!pg || !MAN.doc) return;
+  const pg = $('#man-pages'); if (!pg || !(MAN.doc || MAN.fast)) return;
   const i = MAN_ZOOMS.indexOf(MAN.zoom), z = MAN_ZOOMS[Math.max(0, Math.min(MAN_ZOOMS.length - 1, i + dir))];
   if (z === MAN.zoom) return toast(dir > 0 ? '已經放到最大' : '已經是原本大小');
   const ry = pg.scrollTop / Math.max(1, pg.scrollHeight), rx = (pg.scrollLeft + pg.clientWidth / 2) / Math.max(1, pg.scrollWidth);
@@ -4698,6 +4719,109 @@ function manZoom(dir){
   pg.scrollTop = ry * pg.scrollHeight; pg.scrollLeft = Math.max(0, rx * pg.scrollWidth - pg.clientWidth / 2);
   manObserve();
 }
+/* ---------- 快速版閱讀（2026-11-27 19:00 使用者：「手冊怎麼調整到可以很快速地打開」「用手機看一樣清楚，但是壓縮檔案」）----------
+   管理員做好的快速版：每頁一張圖（直的寬 1440、橫的寬 1920，WebP 品質 0.8），3 頁一包。打開只拿看得到的那幾包，往下滑再拿後面的。
+   拿過的包存在手機暫存；一樣畫在 canvas（不能存圖、沒有連結）。原檔換過（STALE）→ 自動改回整本讀。 */
+function manOpenFast(d, seq){
+  const pg = $('#man-pages'); if (!pg) return;
+  MAN.fast = { d, seq, chunks:{} };
+  pg.innerHTML = d.fast.r.map((r, i)=>`<div class="man-pg${i ? '' : ' man-pg-cover'}" data-n="${i+1}" style="aspect-ratio:1/${r};${i ? '' : manCover(d)}"><span class="man-pn">${i ? i+1 : ''}</span></div>`).join('');   // 第 1 頁先墊封面小圖，清楚的一到就蓋上去
+  $('#man-load') && $('#man-load').remove();
+  manObserve(); manPageNo();
+}
+const manFastKey = (d, k) => location.origin + '/__manualfast/' + encodeURIComponent(d.id) + '/' + k + '?s=' + Math.round(d.size / Math.max(1, Math.ceil(d.fast.pages / d.fast.per)) / 5);
+function manFastChunk(F, k){
+  if (F.chunks[k]) return F.chunks[k];
+  const d = F.d, key = manFastKey(d, k);
+  F.chunks[k] = (async ()=>{
+    try { if (window.caches) { const r = await (await caches.open(MAN_CACHE)).match(key); if (r) return (await r.text()).split('|'); } } catch(_) {}
+    const r = await api.manualFast(d.id, k);
+    try { if (window.caches) { const c = await caches.open(MAN_CACHE); await c.put(key, new Response(r.raw, { headers:{ 'Content-Type':'text/plain' } })); } } catch(_) {}
+    return r.raw.split('|');
+  })();
+  F.chunks[k].catch(()=>{ delete F.chunks[k]; });
+  return F.chunks[k];
+}
+async function manDecode(b64){
+  const u = b64Bytes(b64), blob = new Blob([u], { type: u[0] === 0xFF ? 'image/jpeg' : 'image/webp' });
+  if (window.createImageBitmap) { try { return await createImageBitmap(blob); } catch(_) {} }
+  return await new Promise((res, rej)=>{ const im = new Image(), url = URL.createObjectURL(blob); im.onload = ()=>{ URL.revokeObjectURL(url); res(im); }; im.onerror = ()=>{ URL.revokeObjectURL(url); rej(new Error('IMG')); }; im.src = url; });
+}
+async function manRenderFast(el){
+  const F = MAN.fast, n = +el.dataset.n; if (!F || el.dataset.r === 'f') return;
+  const tok = (el._tok || 0) + 1; el._tok = tok;
+  const per = F.d.fast.per, k = Math.floor((n - 1) / per);
+  try {
+    const list = await manFastChunk(F, k);
+    if (k + 1 < Math.ceil(F.d.fast.pages / per)) manFastChunk(F, k + 1).catch(()=>{});   // 先準備下一包
+    if (el._tok !== tok || MAN.fast !== F) return;
+    const img = await manDecode(list[(n - 1) % per]);
+    if (el._tok !== tok || MAN.fast !== F) { img.close && img.close(); return; }
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    cv.getContext('2d').drawImage(img, 0, 0); img.close && img.close();
+    const old = el.querySelector('canvas'); if (old) { old.width = old.height = 0; old.remove(); }
+    el.appendChild(cv); el.dataset.r = 'f';
+  } catch(e) {
+    if (MAN.fast !== F) return;
+    if (e.message === 'STALE') { S.manDoc = { ...F.d, fast:null }; renderManualView($('#main')); return; }   // 原檔換過了：改整本讀
+    el.dataset.err = '1'; const t = el.querySelector('.man-pn'); if (t) t.textContent = '沒載入，點一下再試';
+  }
+}
+/* ---------- 管理員：製作快速版（在這台手機／電腦把每一頁畫成圖片，3 頁一包存到後台）---------- */
+let MANB = null;
+function manBuildMsg(t){ const b = $('#man-build'); if (b) b.textContent = t; }
+function canvasB64(cv, q = 0.8){
+  let u = cv.toDataURL('image/webp', q);
+  if (u.indexOf('data:image/webp') !== 0) u = cv.toDataURL('image/jpeg', q + 0.02);   // iPhone 不會存 WebP：改 JPEG
+  return u.slice(u.indexOf(',') + 1);
+}
+async function manFastBuild(){
+  if (MANB) return toast('正在製作中…');
+  const todo = ((S.man && S.man.cats) || []).flatMap(c=>c.items).filter(x=>!x.fast);
+  if (!todo.length) return toast('全部都做好了 👍', 'ok');
+  if (!await confirmBox(`製作 ${todo.length} 本手冊的快速版？\n每本要等一下；做的時候皇家不要關掉（可以先看別頁，回來看進度）。`, '開始製作')) return;
+  MANB = { stop:false, done:0, n: todo.length, fail:0 };
+  if (S.sub === 'manual') renderManual($('#main'));
+  try {
+    const lib = await loadPdfjs();
+    for (const d of todo) {
+      if (MANB.stop) break;
+      const label = `${MANB.done + MANB.fail + 1}／${MANB.n}《${d.title}》`;
+      try {
+        manBuildMsg(`正在下載 ${label}`);
+        const bytes = await manBytes(d, ()=>!MANB.stop, { noCache:true });
+        const doc = await lib.getDocument({ data: bytes.slice(), isEvalSupported:false, disableAutoFetch:true, disableStream:true }).promise;
+        MAN.keep = null;
+        try {
+        const r = [], files = [], ups = []; let pack = [], pending = 0, upErr = null, cover = '';
+        const send = (k, data) => { pending++; ups.push(api.adminManualFastPut(d.id, k, data).then(x=>{ files[k] = x.fileId; }, e=>{ upErr = e; }).finally(()=>{ pending--; })); };   // 一邊畫一邊送（最多同時送兩包）
+        for (let i = 1; i <= doc.numPages && !MANB.stop; i++) {
+          const page = await doc.getPage(i), v1 = page.getViewport({ scale:1 });
+          const W = v1.width >= v1.height ? 1920 : 1440, vp = page.getViewport({ scale: W / v1.width });   // 19:05 使用者：「畫質一直清晰清楚」→ 直的 1440、橫的 1920（手機放大兩倍字還是清楚）
+          const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+          const c2 = cv.getContext('2d'); c2.fillStyle = '#fff'; c2.fillRect(0, 0, cv.width, cv.height);
+          await page.render({ canvasContext: c2, viewport: vp }).promise; page.cleanup();
+          r.push(Math.round(v1.height / v1.width * 1000) / 1000);
+          if (i === 1) { const sm = document.createElement('canvas'); sm.width = 240; sm.height = Math.round(240 * cv.height / cv.width); sm.getContext('2d').drawImage(cv, 0, 0, sm.width, sm.height); cover = canvasB64(sm, 0.6); sm.width = sm.height = 0; }   // 封面小圖
+          pack.push(canvasB64(cv)); cv.width = cv.height = 0;
+          if (pack.length === 3 || i === doc.numPages) { while (pending >= 2) await sleep(80); if (upErr) throw upErr; send(Math.floor((i - 1) / 3), pack); pack = []; }
+          manBuildMsg(`正在製作 ${label}：第 ${i}／${doc.numPages} 頁`);
+        }
+        await Promise.all(ups);
+        if (upErr) throw upErr;
+        if (MANB.stop) break;
+        await api.adminManualFastDone(d.id, r, files, cover);
+        MANB.done++;
+        } finally { doc.destroy(); }
+      } catch(e) { if (MANB.stop) break; MANB.fail++; console.warn('manFastBuild', d.title, e); }
+    }
+  } catch(e) { toast(errText(e), 'err'); }
+  const m = MANB; MANB = null;
+  toast(m.stop ? `已停止：做好 ${m.done} 本` : `快速版做好 ${m.done} 本${m.fail ? `，${m.fail} 本沒成功（再按一次會補做）` : ''}`, m.fail ? 'err' : 'ok');
+  if (S.sub === 'manual') { renderManual($('#main')); }
+  else manLoadQuiet();
+}
+async function manLoadQuiet(){ try { S.man = await api.manualList(true); } catch(_) {} }
 function manPageNo(){
   const pg = $('#man-pages'), t = $('#man-pg'); if (!pg || !t) return;
   const all = pg.querySelectorAll('.man-pg'); if (!all.length) return;
@@ -4849,16 +4973,17 @@ async function walkPull(){
 }
 /** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過門檻算一步。
  *  2026-11-27 16:58 使用者：「有點敏感」（沒在走也會跳、走路也算太多）→ 改嚴格（電腦模擬：手上亂晃 10 秒從 16 步降到 0～1 步，走路、跑步、口袋裡一樣準）：
- *  1. 門檻跟著自己的步伐力道調（最近幾步最高點的 45%，至少 1.1），比較小的回彈、晃動不算。
- *  2. 兩步至少隔 0.33 秒，而且不能比平常的一步快太多（同一步的第二下、手抖不算）。
- *  3. 節奏要穩：連續 7 步、每步間隔差不多（±25～35%）才開始算（7 步一起加上去）；
- *     走的時候節奏亂掉 2 次就重新確認；停 2 秒以上也重新確認。回傳這次加了幾步。 */
-const WALK_WARM = 7;
+ *  1. 門檻跟著自己的步伐力道調（最近幾步最高點的 50%，至少 WALK_THR），比較小的回彈、晃動不算。
+ *  2. 兩步至少隔 0.3 秒，而且不能比平常的一步快太多（同一步的第二下、手抖不算）。
+ *  3. 節奏要穩：連續 7 步、每步間隔差不多（－22%～＋30%）才開始算（7 步一起加上去）；
+ *     走的時候節奏亂掉 2 次就重新確認；停 2 秒以上也重新確認；剛好隔兩步的時間＝中間那步太輕：補 1 步。回傳這次加了幾步。
+ *  18:56 使用者：「太不敏感」→ 門檻 1.1 改 0.45（模擬：手拿著看螢幕走 力道 1.3 從 0 步→15／19、力道 1.0 從 0→12／18；亂晃、搭車、滑手機還是 0）。 */
+const WALK_WARM = 7, WALK_THR = 0.45;   // 18:56 使用者：「也太不敏感了」→ 門檻 1.1 降到 0.45（手拿著看螢幕走，晃動比較小），漏掉的一步照節奏補回來；亂晃還是靠「節奏穩了才算」擋掉
 function walkSensorReset(){ Object.assign(WALK, { slow:null, fast:null, armed:true, last:0, streak:0, amp:0, peak:0, iv:0, bad:0 }); }
 function stepFeed(mag, t){
   if (WALK.slow == null) { WALK.slow = WALK.fast = mag; return 0; }
   WALK.slow += (mag - WALK.slow) * 0.02; WALK.fast += (mag - WALK.fast) * 0.35;
-  const sig = WALK.fast - WALK.slow, thr = Math.max(1.1, WALK.amp * 0.45);
+  const sig = WALK.fast - WALK.slow, thr = Math.max(WALK_THR, WALK.amp * 0.5);
   if (!WALK.armed) {   // 這一下還沒過：記最高點，掉下來才準備算下一步
     WALK.peak = Math.max(WALK.peak, sig);
     if (sig < thr * 0.2) { WALK.armed = true; WALK.amp = WALK.amp ? WALK.amp * 0.7 + WALK.peak * 0.3 : WALK.peak; }
@@ -4867,18 +4992,23 @@ function stepFeed(mag, t){
   if (sig < thr) return 0;
   WALK.armed = false; WALK.peak = sig;
   const d = t - WALK.last;
-  if (WALK.last && d < Math.max(330, WALK.iv * 0.6)) return 0;   // 太快的第二下：不算
+  if (WALK.last && d < Math.max(300, WALK.iv * 0.55)) return 0;   // 太快的第二下（同一步的回彈）：不算
   WALK.last = t;
   if (!WALK.streak || d > 2000) { WALK.streak = 1; WALK.iv = 0; WALK.bad = 0; return 0; }   // 第一步（或停了 2 秒以上）：重新確認
-  const warm = WALK.streak < WALK_WARM;
-  if (WALK.iv && (d < WALK.iv * (warm ? 0.75 : 0.6) || d > WALK.iv * (warm ? 1.35 : 1.7))) {   // 節奏不對
-    if (warm || ++WALK.bad >= 2) { WALK.streak = 1; WALK.iv = d; WALK.bad = 0; }
-    return 0;
+  const warm = WALK.streak < WALK_WARM; let n = 1;
+  if (WALK.iv) {
+    const r = d / WALK.iv;
+    if (!warm && r > 1.7 && r < 2.4) n = 2;   // 中間有一步太輕沒過門檻：照節奏補回來（2026-11-27 18:56「太不敏感」）
+    else if (r < (warm ? 0.78 : 0.6) || r > (warm ? 1.3 : 1.7)) {   // 節奏不對
+      if (warm || ++WALK.bad >= 2) { WALK.streak = 1; WALK.iv = d; WALK.bad = 0; }
+      return 0;
+    }
   }
   WALK.bad = Math.max(0, WALK.bad - 1);
-  WALK.iv = WALK.iv ? WALK.iv * 0.7 + d * 0.3 : d;
-  WALK.streak++;
-  return WALK.streak === WALK_WARM ? WALK_WARM : WALK.streak > WALK_WARM ? 1 : 0;
+  WALK.iv = WALK.iv ? WALK.iv * 0.7 + (d / n) * 0.3 : d;
+  const before = WALK.streak; WALK.streak += n;
+  if (WALK.streak < WALK_WARM) return 0;
+  return before < WALK_WARM ? WALK.streak : n;   // 節奏穩了：前面確認的幾步一起加
 }
 function onWalkMotion(e){
   const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
@@ -7000,6 +7130,8 @@ document.addEventListener('click', async e=>{
     case 'man-cat': S.manCat = +el.dataset.i; go('account', {sub:'manualCat'}); break;
     case 'man-open': { const c = S.man && S.man.cats[S.manCat], d = c && c.items.find(x=>x.id===el.dataset.id); if (d) { S.manDoc = d; go('account', {sub:'manualView'}); } break; }
     case 'man-zoom': manZoom(+el.dataset.z); break;
+    case 'man-build': manFastBuild(); break;
+    case 'man-build-stop': if (MANB) { MANB.stop = true; manBuildMsg('停止中…'); } break;
     case 'man-retry': if (S.manDoc) renderManualView($('#main')); break;
     case 'man-refresh': { const b = $('#man-cats'); if (b) b.innerHTML = '<div class="card center muted">重新整理中…</div>'; manLoad(isAdminMe()); break; }
     case 'play-open': go('account', {sub:'play'}); break;
