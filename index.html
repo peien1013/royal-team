@@ -219,7 +219,21 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 #ptr.busy .ptr-ic{animation:ptrspin .8s linear infinite}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#ptr,#ptr .ptr-ic{transition:none}#ptr.busy .ptr-ic{animation:none}}
-.compose textarea.inp{min-height:150px}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
+.compose textarea.inp{min-height:150px}
+/* 走路計步（2026-11-27） */
+.walk-big{display:flex;align-items:baseline;justify-content:center;gap:8px;margin:14px 0 4px}
+.walk-big b{font-size:68px;line-height:1;font-weight:900;color:var(--brand);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.walk-big small{font-size:22px;font-weight:700;color:var(--muted)}
+.walk-sub{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;font-size:18px;margin-bottom:14px}
+.walk-sub b{font-variant-numeric:tabular-nums}
+.walk-on{display:flex;align-items:center;justify-content:center;gap:8px;color:#0f7a43;font-weight:700;margin-bottom:10px}
+.walk-on i{width:12px;height:12px;border-radius:50%;background:#16a34a;animation:wkpulse 1.2s ease-in-out infinite}
+@keyframes wkpulse{50%{opacity:.35;transform:scale(.8)}}
+@media (prefers-reduced-motion:reduce){.walk-on i{animation:none}}
+.walk-days{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:16px}
+.walk-days .bar{height:12px;border-radius:6px;background:var(--brand-soft, #E3EEF9);overflow:hidden}
+.walk-days .bar span{display:block;height:100%;border-radius:6px;background:var(--brand)}
+.walk-days .n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
 .compose .photo-btns .btn{min-height:52px}
 .compose .sticky-submit{margin-top:14px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -3388,7 +3402,7 @@ function watchNavVisible(){
 }
 
 function go(tab, opts={}){
-  stopReadTracking();
+  stopReadTracking(); if (WALK.on && opts.sub !== 'walk') walkStop(true);
   { const m = $('#main'); if (m) m.onclick = null; }
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
@@ -3404,6 +3418,7 @@ function go(tab, opts={}){
   if (S.sub==='adminTravelPeople') return renderAdminTravelPeople(main);
   if (S.sub==='adminClass') return renderAdminClass(main);
   if (S.sub==='settings') return renderSettings(main);
+  if (S.sub==='walk') return renderWalk(main);
   if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
@@ -4412,7 +4427,7 @@ const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:
 /** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
 const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
 const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
-const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','manual','team','tickets','card','settings'];
+const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','manual','walk','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
 const NUSHOP_URL = () => /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=com.nuskin.shoppingcart' : 'https://apps.apple.com/tw/app/id1448081635';
@@ -4422,6 +4437,8 @@ function manualTile(){
   if (!on && !isAdminMe()) return null;
   return { act:'manual-open', ic:'📘', t:'手冊', c:'#E6F0FB', off: !on };
 }
+/** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）：試用中，只有管理員看得到 */
+function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'走路', c:'#E3F4EA', off:true } : null; }
 /** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
 function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
 function appTilesHTML(){
@@ -4429,7 +4446,7 @@ function appTilesHTML(){
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
     team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
     card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' },
-    manual: manualTile() };
+    manual: manualTile(), walk: walkTile() };
   return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })).join('');
 }
 /* ---------- 自己排圖示（2026-11-25 08:06 使用者：「讓使用者自己排列順序，像手機這樣可以自己排列和移動」）----------
@@ -4493,6 +4510,78 @@ function initTileGrid(){
   g.addEventListener('pointerup', end); g.addEventListener('pointercancel', end);
 }
 /** 設定：大頭照、我的徽章、基本資料、登入方式、登出、放到手機桌面 */
+/* ---------- 走路計步（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步」「記錄步數、換算消耗的熱量」「我想要開著 APP 才會計算」「不填體重」）
+   用手機的動作感應器（DeviceMotion）算步數：APP 開著、螢幕亮著才算；鎖螢幕或切到別的 APP 就停（網頁讀不到手機「健康」的步數）。
+   熱量用一般人平均：每 1000 步約 40 大卡；距離：一步約 0.65 公尺。步數先存在這支手機（之後做團隊排行榜再上傳）。
+   試用中：只有管理員看得到「走路」圖示。 ---------- */
+const WALK_KEY = 'royal_walk', KCAL_PER_STEP = 0.04, KM_PER_STEP = 0.00065;
+const WALK = { on:false, got:false, wake:null, fast:null, slow:null, armed:true, last:0, streak:0 };
+function walkLoad(){
+  const d = store(WALK_KEY) || {}, T = todayStr(), hist = { ...(d.hist || {}) };
+  if (d.date === T) return { date:T, steps:+d.steps || 0, hist };
+  if (d.date && d.steps) hist[d.date] = d.steps;   // 換天：昨天的收進紀錄
+  return { date:T, steps:0, hist };
+}
+function walkSave(w){ const hist = {}; Object.keys(w.hist || {}).sort().slice(-30).forEach(k => { hist[k] = w.hist[k]; }); store(WALK_KEY, { date:w.date, steps:w.steps, hist }); }
+/** 判斷一步：加速度大小（含重力，m/s²）快的平均減慢的平均，往上超過 1.1 算一步；兩步至少隔 0.28 秒。
+ *  連續 4 步（每步間隔 2 秒內）才開始算，手晃一兩下不會算。回傳這次加了幾步。 */
+function stepFeed(mag, t){
+  if (WALK.slow == null) { WALK.slow = WALK.fast = mag; return 0; }
+  WALK.slow += (mag - WALK.slow) * 0.02; WALK.fast += (mag - WALK.fast) * 0.35;
+  const sig = WALK.fast - WALK.slow;
+  if (sig < 0.2) { WALK.armed = true; return 0; }
+  if (!WALK.armed || sig < 1.1 || t - WALK.last < 280) return 0;
+  WALK.armed = false;
+  if (t - WALK.last > 2000) WALK.streak = 0;
+  WALK.last = t; WALK.streak++;
+  return WALK.streak === 4 ? 4 : WALK.streak > 4 ? 1 : 0;
+}
+function onWalkMotion(e){
+  const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+  WALK.got = true;
+  const add = stepFeed(Math.hypot(a.x, a.y, a.z || 0), e.timeStamp || performance.now());
+  if (add) { const w = walkLoad(); w.steps += add; walkSave(w); drawWalkNums(w.steps); }
+}
+/** 距離：不到 1 公里用公尺（取到 10 公尺），1 公里以上用公里（小數一位） */
+const walkDist = n => { const km = n * KM_PER_STEP; return km < 1 ? Math.round(km * 100) * 10 + ' 公尺' : km.toFixed(1) + ' 公里'; };
+function drawWalkNums(n){
+  const a = $('#wk-steps'), b = $('#wk-kcal'), c = $('#wk-dist'); if (!a) return;
+  a.textContent = n.toLocaleString('en-US'); b.textContent = Math.round(n * KCAL_PER_STEP); c.textContent = walkDist(n);
+}
+async function walkWake(){ try { if (WALK.on && navigator.wakeLock && document.visibilityState==='visible') WALK.wake = await navigator.wakeLock.request('screen'); } catch(_){} }   // 走路時螢幕不要自己暗掉
+document.addEventListener('visibilitychange', () => { if (WALK.on && document.visibilityState==='visible') walkWake(); });
+async function walkStart(){
+  if (typeof DeviceMotionEvent === 'undefined') return toast('這台裝置沒有動作感應器，請用手機打開皇家', 'err');
+  if (typeof DeviceMotionEvent.requestPermission === 'function') {   // iPhone：第一次要按「允許」
+    let r = 'denied'; try { r = await DeviceMotionEvent.requestPermission(); } catch(_){}
+    if (r !== 'granted') return toast('要先允許「動作與方向」才能算步數：關掉皇家重開，再按一次「開始走路」，跳出來時按「允許」', 'err');
+  }
+  Object.assign(WALK, { on:true, got:false, slow:null, fast:null, armed:true, last:0, streak:0 });
+  window.addEventListener('devicemotion', onWalkMotion);
+  walkWake();
+  setTimeout(() => { if (WALK.on && !WALK.got) toast('沒有收到感應器的資料：請用手機打開皇家（電腦不能算步數）', 'err'); }, 3000);
+  if (S.sub==='walk') renderWalk($('#main'));
+}
+function walkStop(silent){
+  window.removeEventListener('devicemotion', onWalkMotion);
+  WALK.on = false; try { WALK.wake && WALK.wake.release(); } catch(_){} WALK.wake = null;
+  if (!silent && S.sub==='walk') renderWalk($('#main'));
+}
+function renderWalk(main){
+  const w = walkLoad(), n = w.steps, days = [];
+  for (let i = 6; i >= 0; i--) { const d = addDays(w.date, -i); days.push({ d, n: d===w.date ? n : (+w.hist[d] || 0) }); }
+  const max = Math.max(1000, ...days.map(x=>x.n));
+  main.innerHTML = `<div class="card center"><h2 style="margin:0">🚶 走路</h2>
+      <div class="muted mt">開著皇家走路，就會自動算步數。<br>手機拿在手上或放口袋都可以，螢幕要亮著。</div>
+      <div class="walk-big"><b id="wk-steps">${n.toLocaleString('en-US')}</b><small>步</small></div>
+      <div class="walk-sub"><span>🔥 約 <b id="wk-kcal">${Math.round(n * KCAL_PER_STEP)}</b> 大卡</span><span>📏 約 <b id="wk-dist">${walkDist(n)}</b></span></div>
+      ${WALK.on ? '<div class="walk-on"><i></i>正在算步數…</div><button class="btn btn-outline" data-act="walk-stop">⏸ 停下來</button>'
+        : `<button class="btn btn-primary" data-act="walk-start">▶ ${n ? '繼續走路' : '開始走路'}</button>`}
+      <div class="hint mt">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考。<br>鎖螢幕或切到別的 APP 就不會算。</div></div>
+    <div class="card"><h3 style="margin-top:0">最近 7 天</h3><div class="walk-days">${days.map(x=>`<span>${x.d===w.date?'今天':mdZh(x.d)}</span><span class="bar"><span style="width:${Math.round(x.n/max*100)}%"></span></span><span class="n">${x.n.toLocaleString('en-US')} 步</span>`).join('')}</div>
+      ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}</div>
+    ${isAdminMe() ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「走路」。步數先存在這支手機；要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}`;
+}
 function renderSettings(main){
   const me = S.me, same = me.sameTw || [], has = k => (me.logins||[]).some(x=>String(x).toUpperCase()===k);
   main.innerHTML = `
@@ -6540,6 +6629,10 @@ document.addEventListener('click', async e=>{
     case 'acct-settings': go('account', {sub:'settings'}); break;
     case 'member-card': go('account', {sub:'memberCard'}); break;
     case 'manual-open': showManualSoon(); break;
+    case 'walk-open': go('account', {sub:'walk'}); break;
+    case 'walk-start': walkStart(); break;
+    case 'walk-stop': walkStop(); break;
+    case 'walk-reset': if (await confirmBox('今天的步數歸零？', '歸零', true)) { const w = walkLoad(); w.steps = 0; walkSave(w); renderWalk($('#main')); } break;
     case 'tiles-edit': tileEdit(true); break;
     case 'notice-open': noticeSheet(); break;
     case 'mq-mode': case 'mq-times': {   // 跑馬燈跑法、次數（後台）
