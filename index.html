@@ -363,6 +363,11 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .play-card{padding:6px 8px 10px}.play-card .app-grid{padding-top:14px}
 .play-hero .play-ic.walk-ic,.walk-ic{width:84px;height:84px;border-radius:24px;display:block;margin:2px auto 0;box-shadow:0 6px 18px rgba(20,60,140,.18)}
 .btn.play-back{width:100%;margin:4px 0 12px}
+/* 遊樂園背景（2026-11-27 16:39 使用者請 GPT 做的：摩天輪、旋轉木馬、熱氣球）：只有健康遊樂場的頁面才載入、才顯示；字都放在白色卡片裡 */
+.play-bg{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .35s ease;background:#4AA2EC center bottom/cover no-repeat}
+body.play-on .play-bg{opacity:1;background-image:url('tiles/play-bg.webp')}
+body.play-on .bubbles{display:none}
+@media (prefers-reduced-motion:reduce){.play-bg{transition:none}}
 /* 會員卡（2026-11-25） */
 .card.mcard{background:linear-gradient(160deg,#fff 0%,#F7F1E1 100%);border:2px solid #E8C766;text-align:center;padding:18px 16px 20px}
 .mc-top{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#7A5A00;letter-spacing:2px;font-size:16px}
@@ -1022,7 +1027,7 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 </style>
 </head>
 <body>
-<div class="bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+<div class="bubbles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div><div class="play-bg" aria-hidden="true"></div>
 <div id="app"></div>
 <script>
 /* 掃描音效：取自 D:\claude\其他\出貨作業系統\姓名貼紙\出貨核對.html（與出貨核對同一組）
@@ -3431,6 +3436,7 @@ function go(tab, opts={}){
   { const m = $('#main'); if (m) m.onclick = null; }
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
+  document.body.classList.toggle('play-on', ['play','walk','walkAdmin'].includes(S.sub));   // 健康遊樂場的頁面：換成遊樂園背景
   const main = $('#main');
   if (S.sub==='admin') return renderAdmin(main);
   if (S.sub==='adminMember') return renderAdminMember(main);
@@ -4655,7 +4661,8 @@ function walkDaysHTML(w){
   for (let i = 6; i >= 0; i--) { const d = addDays(w.date, -i); days.push({ d, n: d===w.date ? n : (+w.hist[d] || 0) }); }
   const max = Math.max(1000, ...days.map(x=>x.n));
   return `<h3 style="margin-top:0">最近 7 天</h3><div class="walk-days">${days.map(x=>`<span>${x.d===w.date?'今天':mdZh(x.d)}</span><span class="bar"><span style="width:${Math.round(x.n/max*100)}%"></span></span><span class="n">${x.n.toLocaleString('en-US')} 步</span>`).join('')}</div>
-      ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}`;
+      ${n ? '<button class="link-btn mt" data-act="walk-reset">今天的步數歸零</button>' : ''}
+      <div class="hint mt">每天的步數會存起來，換手機也找得回來；管理員看得到大家的步數（之後做排行榜）。</div>`;
 }
 function drawWalkDays(){ const el = $('#wk-days'); if (el) el.innerHTML = walkDaysHTML(walkLoad()); }
 function renderWalk(main){
@@ -4668,7 +4675,6 @@ function renderWalk(main){
         : `<button class="btn btn-primary" data-act="walk-start">▶ ${n ? '繼續走路' : '開始走路'}</button>`}
       <div class="hint mt">熱量用一般人的平均算（每 1000 步約 40 大卡），只是參考。<br>鎖螢幕、切到別的 APP 或離開這一頁就不會算。</div></div>
     <div class="card" id="wk-days">${walkDaysHTML(w)}</div>
-    <div class="hint center" style="margin:-4px 8px 12px">每天的步數會存起來，換手機也找得回來；管理員看得到大家的步數（之後做排行榜）。</div>
     ${isAdminMe() ? '<button class="btn btn-outline mb" data-act="walk-admin">👀 看大家的步數（管理員）</button><div class="notice info small">🔒 試用中：只有你（管理員）看得到「一起走走」。要開給大家、做團隊排行榜再跟 Claude 說。</div>' : ''}
     ${PLAY_BACK('回到遊樂場')}`;
   walkSync(); walkPull();
@@ -4680,8 +4686,8 @@ async function renderWalkAdmin(main){
   if (S.sub !== 'walkAdmin') return;
   main.innerHTML = `<div class="card"><h2 style="margin:0">👀 大家的步數</h2><div class="muted mt">今天 ${mdZh(r.today)}，走比較多的排前面；右邊小字是最近 7 天合計。只有管理員看得到。</div></div>
     <div class="card">${r.rows.length ? `<div class="wk-list">${r.rows.map((x,i)=>`<div class="wk-row"><span class="rk">${i+1}</span>${avatarHTML(x)}<span class="nm">${esc(x.name)}</span><span class="t"><b>${(+x.today||0).toLocaleString('en-US')}</b> 步<small>7 天 ${(+x.week||0).toLocaleString('en-US')}</small></span></div>`).join('')}</div>`
-      : '<div class="muted center" style="padding:12px">還沒有人送步數上來</div>'}</div>
-    <div class="hint center">完整紀錄在雲端硬碟「紀錄」試算表的 WalkDays 分頁（一人一天一列）。</div>
+      : '<div class="muted center" style="padding:12px">還沒有人送步數上來</div>'}
+      <div class="hint mt">完整紀錄在雲端硬碟「紀錄」試算表的 WalkDays 分頁（一人一天一列）。</div></div>
     ${PLAY_BACK('回到一起走走')}`;
 }
 function renderSettings(main){
