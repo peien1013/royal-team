@@ -3870,6 +3870,24 @@ document.addEventListener('error', e=>{
     t.dataset.fb = '1'; const id = new URL(t.src).searchParams.get('id'); t.src = 'https://lh3.googleusercontent.com/d/' + id + '=w1080';
   }
 }, true);
+/* APP 自己的圖（功能選單圖示、徽章…）沒載入：多半是網路剛好斷一下（手機切 5G／Wi-Fi、剛從背景回來）→ 自動再試 3 次；
+   還是不行：功能選單圖示先換成表情符號，其他圖藏起來，不要出現「?」破圖（2026-11-27 22:36 使用者截圖：新享購、榮譽的圖不見了）。 */
+const IMG_FALLBACK = { nushop:'🛍️', honors:'🏆', dreams:'✨', travel:'✈️', hsr:'🚄', meal:'🍱', team:'👥', tickets:'🎫', card:'🪪', settings:'⚙️', manual:'📘', play:'🎡', walk:'🚶', catalog:'📖' };
+function imgRetry(im){
+  const src = im.getAttribute('src') || '';
+  if (!src || /^(data|blob):/.test(src) || im.classList.contains('avatar')) return;
+  let u; try { u = new URL(src, location.href); } catch(_) { return; }
+  if (u.origin !== location.origin) return;
+  const n = +(im.dataset.retry || 0), base = im.dataset.src0 || (im.dataset.src0 = src.split('?')[0]);
+  if (n < 3) { im.dataset.retry = n + 1; setTimeout(()=>{ if (im.isConnected) im.src = base + '?r=' + Date.now(); }, 700 * (n + 1)); return; }
+  const sp = im.closest('.ai.img'), key = im.closest('[data-key]') && im.closest('[data-key]').dataset.key;
+  if (sp) { sp.classList.remove('img'); sp.style.background = '#EEF3FA'; sp.textContent = IMG_FALLBACK[key] || '⭐'; }
+  else im.style.visibility = 'hidden';
+}
+document.addEventListener('error', e=>{ const t = e.target; if (t && t.tagName==='IMG') imgRetry(t); }, true);
+function imgRetryBroken(){ document.querySelectorAll('img').forEach(im=>{ if (im.complete && im.naturalWidth === 0 && im.getAttribute('src')) { im.dataset.retry = 0; imgRetry(im); } }); }
+window.addEventListener('online', imgRetryBroken);
+document.addEventListener('visibilitychange', ()=>{ if (document.visibilityState==='visible') imgRetryBroken(); });   // 從背景回來：沒載到的圖再拿一次
 window.addEventListener('offline', ()=>toast('目前沒有網路，連上後再試', 'err'));
 // 正式網址才註冊「加入主畫面」用的背景程式（預覽畫面不用）
 if (CONFIG.MODE==='live' && 'serviceWorker' in navigator && window.self===window.top) {
@@ -4636,6 +4654,7 @@ function manClose(){
   MAN.seq++; MAN.fast = null;
   if (MAN.obs) { MAN.obs.disconnect(); MAN.obs = null; }
   if (MAN.doc) { try { MAN.doc.destroy(); } catch(_) {} MAN.doc = null; }
+  document.querySelectorAll('#man-pages canvas').forEach(cv=>{ cv.width = cv.height = 0; });   // 高畫質頁很佔記憶體：離開時馬上還給 iPhone（不然其他圖可能載不出來）
 }
 function renderManualView(main){
   const d = S.manDoc; if (!d) return go('account', {sub:'manual'});
