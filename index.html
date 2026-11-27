@@ -496,7 +496,7 @@ body.play-on .bubbles{display:none}
 
 /* 對話框、提示 */
 .sheet-bg{position:fixed;inset:0;background:rgba(10,20,30,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:#fff;width:100%;max-width:600px;max-height:88vh;border-radius:20px 20px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.sheet{background:#fff;width:100%;max-width:600px;max-height:min(88vh, 94%);border-radius:20px 20px 0 0;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
 .sheet-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
 .sheet-h h3{margin:0}
 .sheet-h button{border:0;background:var(--gray-soft);border-radius:12px;min-width:52px;min-height:48px;font-size:17px;font-weight:700}
@@ -3422,6 +3422,20 @@ function fitTopTitle(){
   while (t.scrollWidth > t.clientWidth + 1 && fs > 12){ fs -= 0.5; t.style.fontSize = fs + 'px'; }
 }
 window.addEventListener('resize', ()=>requestAnimationFrame(fitTopTitle));
+/* 鍵盤跳出來時，底部的視窗（留言等）跟著移到鍵盤上面（2026-11-27 21:37 使用者：「在別人的日誌下要留言，看不到自己打的字」）
+   iPhone 打開鍵盤時畫面本身不會變矮，貼在底部的視窗會被鍵盤蓋住 → 把半透明底和視窗縮到「看得到的那一塊」（visualViewport）。 */
+function vvFit(){
+  const vv = window.visualViewport; if (!vv) return;
+  const full = document.documentElement.clientHeight, kb = full - vv.height;
+  const on = kb > 80 && Math.abs((vv.scale || 1) - 1) < 0.05;   // 少了 80 以上＝鍵盤（手指放大畫面不算）
+  document.querySelectorAll('.sheet-bg, .dialog-bg').forEach(bg=>{
+    if (on) { bg.style.top = Math.max(0, vv.offsetTop) + 'px'; bg.style.bottom = 'auto'; bg.style.height = vv.height + 'px'; }
+    else if (bg.style.height) { bg.style.top = bg.style.bottom = bg.style.height = ''; }
+  });
+}
+if (window.visualViewport) { visualViewport.addEventListener('resize', vvFit); visualViewport.addEventListener('scroll', vvFit); }
+document.addEventListener('focusin', ()=>{ vvFit(); setTimeout(vvFit, 350); });   // 鍵盤是慢慢升上來的：等一下再對一次
+document.addEventListener('focusout', ()=>setTimeout(vvFit, 350));
 if (window.matchMedia) { const mq = matchMedia('(min-width:1024px)'); const f = () => { if (S.sub==='admin' && $('#mlist') && ADM) drawMemberList(); };
   mq.addEventListener ? mq.addEventListener('change', f) : mq.addListener(f); }
 /* 括號、引號黏住旁邊的字：不會出現「（」在行尾、「）」在行首這種斷法（使用者寫的內容不動） */
