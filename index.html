@@ -365,8 +365,6 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .btn.play-back{width:100%;margin:4px 0 12px}
 /* 產品目錄（2026-11-27）：如新電子目錄放在 APP 裡面 */
 .cat-card{padding:10px 10px 12px}
-.cat-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 4px 10px;font-size:18px}
-.cat-ext{font-size:15px;color:var(--brand);text-decoration:none;font-weight:700;white-space:nowrap;padding:6px 2px}
 .cat-box{position:relative;height:70vh;min-height:360px;border-radius:14px;overflow:hidden;background:#F4F6FA}
 .cat-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
 .cat-wait{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:17px}
@@ -383,10 +381,6 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .man-cat .mr-ic{width:54px;height:54px;font-size:28px}
 .man-row .mr-cover{background:#EEF4FB center/cover no-repeat;box-shadow:0 1px 3px rgba(0,0,0,.18);border-radius:8px;height:56px}
 .man-pg-cover{background-size:cover;background-position:center;background-repeat:no-repeat}.man-cat .mr-t b{font-size:20px}
-.man-view .cat-h{padding-bottom:8px}
-.man-vt{flex:1;min-width:0;font-size:17px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.man-tools{flex:none;display:flex;align-items:center;gap:6px}.man-tools small{font-size:13px;color:var(--muted);white-space:nowrap;margin-right:2px}
-.man-zb{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:22px;font-weight:700;color:var(--brand);line-height:1}
 .man-box{background:#E9EDF2}
 .man-pages{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:8px;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .man-pg{position:relative;width:calc(var(--z,1) * 100%);margin:0 0 10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.12);border-radius:4px;overflow:hidden}
@@ -395,6 +389,27 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .man-load{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;font-size:18px;background:#F4F6FA}
 .man-bar{width:72%;height:12px;border-radius:6px;background:#DCE3EC;overflow:hidden}.man-bar i{display:block;height:100%;width:6%;background:var(--brand);border-radius:6px;transition:width .3s ease}
 .man-load small{font-size:15px;color:var(--muted)}
+/* 滿版閱讀（2026-11-27 20:07）：目錄、手冊；按鈕半透明浮在上面（浮水印），一陣子沒碰更淡 */
+body.fv-on .topbar, body.fv-on .nav, body.fv-on #ptr, body.fv-on .bubbles{display:none!important}
+.fv{position:fixed;inset:0;z-index:60;background:#fff}
+.fv.fv-dark{background:#2B3038}
+.fv .fv-box{position:absolute;inset:0;height:auto!important;min-height:0;border-radius:0;background:transparent}
+.fv .cat-box iframe{padding-top:env(safe-area-inset-top);box-sizing:border-box}
+.fv-dark .man-pages{padding:calc(8px + env(safe-area-inset-top)) 8px calc(90px + env(safe-area-inset-bottom))}
+.fv-dark .man-load{background:#2B3038;color:#E8ECF2}.fv-dark .man-load small{color:#AEB7C3}.fv-dark .man-bar{background:#454C57}
+.fv-btn{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;min-width:52px;height:52px;padding:0 14px;border:0;border-radius:26px;
+  background:rgba(20,26,36,.42);color:#fff;font-size:20px;font-weight:700;text-decoration:none;line-height:1;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);
+  opacity:.4;transition:opacity .35s ease;-webkit-tap-highlight-color:transparent;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.fv.fv-awake .fv-btn{opacity:.92}
+.fv-btn:active{opacity:1;transform:scale(.96)}
+.fv-back{left:12px;top:calc(12px + env(safe-area-inset-top));font-size:19px}
+.fv-ext{right:12px;top:calc(12px + env(safe-area-inset-top));width:52px;padding:0}
+.fv-pg{right:12px;top:calc(12px + env(safe-area-inset-top));font-size:15px;font-weight:600;pointer-events:none;min-width:0}
+.fv-pg:empty{display:none}
+.fv-side{position:absolute;right:12px;top:50%;transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;gap:12px}
+.fv-zoom{position:absolute;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:3;display:flex;gap:12px}
+.fv-side .fv-btn,.fv-zoom .fv-btn{position:static;width:52px;padding:0}
+@media (min-width:700px){.fv-dark .man-pg{width:calc(var(--z,1) * min(100%, 760px));margin-left:auto;margin-right:auto}}   /* 電腦大螢幕：一頁不要撐滿整個視窗 */
 .card .play-p{text-align:left;text-wrap:wrap}   /* 2026-11-27 17:27 使用者：「敘述就是都在同一行，不要斷行、不要分開」→ 不手動換行、不照標點分段（PHRASE_SKIP）、不平均行長，整段靠左排滿每一行 */
 /* 遊樂園背景（2026-11-27 16:39 使用者請 GPT 做的：摩天輪、旋轉木馬、熱氣球）：只有健康遊樂場的頁面才載入、才顯示；字都放在白色卡片裡 */
 .play-bg{position:fixed;inset:0;z-index:-1;opacity:0;pointer-events:none;transition:opacity .35s ease;background:#4AA2EC center bottom/cover no-repeat}
@@ -3481,6 +3496,7 @@ function go(tab, opts={}){
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
   document.body.classList.toggle('play-on', ['play','walk','walkAdmin'].includes(S.sub));   // 健康遊樂場的頁面：換成遊樂園背景
+  document.body.classList.toggle('fv-on', ['catalog','manualView'].includes(S.sub));   // 目錄、手冊閱讀：滿版（上面標題列、下面導覽列先藏起來）
   const main = $('#main');
   if (S.sub==='admin') return renderAdmin(main);
   if (S.sub==='adminMember') return renderAdminMember(main);
@@ -4523,22 +4539,21 @@ function manualTile(){
  *  打不開的手機：上面「用瀏覽器開」。sandbox 不給 allow-top-navigation：目錄頁不能把整個 APP 換掉。 */
 const CATALOG_URL = 'https://nuskin-ebook.com.tw/';
 function catalogTile(){ return { act:'catalog-open', ic:'📖', t:'目錄', c:'#FBEFDB' }; }
+/* 滿版閱讀（2026-11-27 20:07 使用者：「產品目錄可以滿版嗎？要不然看不到在翻什麼」「按鍵做浮水印的感覺，還有退回鍵」「手冊也一樣滿版，上下頁、返回 APP 也是浮水印」）
+   整個畫面都給內容；返回、翻頁、放大縮小是半透明的按鈕浮在上面，一陣子沒碰就更淡，一碰就變清楚。 */
+function fvWire(){
+  const fv = $('#fv'); if (!fv) return;
+  let tm = null; const wake = () => { fv.classList.add('fv-awake'); clearTimeout(tm); tm = setTimeout(()=>fv.classList.remove('fv-awake'), 2500); };
+  ['pointerdown','touchstart','scroll','wheel'].forEach(ev=>fv.addEventListener(ev, wake, { passive:true, capture:true }));
+  wake();
+}
 function renderCatalog(main){
-  main.innerHTML = `<div class="card cat-card"><div class="cat-h"><b>📖 如新產品目錄</b><a class="cat-ext" href="${CATALOG_URL}" target="_blank" rel="noopener">用瀏覽器開 ↗</a></div>
-      <div class="cat-box" id="cat-box"><div class="cat-wait">目錄載入中…</div><iframe id="cat-frame" src="${CATALOG_URL}" title="如新產品目錄" allow="fullscreen" allowfullscreen
-        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-forms" referrerpolicy="no-referrer"></iframe></div></div>
-    ${PLAY_BACK('回到功能選單')}`;
-  catFit();
+  main.innerHTML = `<div class="fv" id="fv"><div class="fv-box cat-box" id="cat-box"><div class="cat-wait">目錄載入中…</div><iframe id="cat-frame" src="${CATALOG_URL}" title="如新產品目錄" allow="fullscreen" allowfullscreen
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-forms" referrerpolicy="no-referrer"></iframe></div>
+      <button class="fv-btn fv-back" data-act="back" aria-label="回到功能選單">‹ 返回</button>
+      <a class="fv-btn fv-ext" href="${CATALOG_URL}" target="_blank" rel="noopener" aria-label="用瀏覽器開">↗</a></div>`;
+  fvWire();
 }
-/** 目錄的高度：剛好塞滿一個畫面（扣掉上面標題、下面的返回鍵和導覽列），不用上下捲 */
-function catFit(){
-  const b = $('#cat-box'); if (!b) return;
-  const nav = $('.nav'), nr = nav && nav.getBoundingClientRect(), cr = nav && $('.nav .circle') && $('.nav .circle').getBoundingClientRect();
-  const top = nr ? Math.min(nr.top, cr && cr.height ? cr.top : nr.top) : window.innerHeight;   // 中間「打卡」圓鈕會凸出導覽列
-  const navH = nr && nr.top > window.innerHeight / 2 ? window.innerHeight - top + 8 : 0;   // 電腦版導覽列在左邊，不用扣
-  b.style.height = Math.max(360, Math.round(window.innerHeight - b.getBoundingClientRect().top - window.scrollY - navH - 90)) + 'px';
-}
-window.addEventListener('resize', ()=>{ if (S.sub==='catalog' || S.sub==='manualView') catFit(); });
 
 /* ---------- 📘 產品手冊（2026-11-27 使用者：「各個產品的手冊歸類到手冊裡面」「我不希望他們下載和把連結傳給別人」「我提供閱讀而已」）
    手冊 → 一類（營養字典／保養字典／品牌故事）→ 一本 → 在 APP 裡一頁一頁看。
@@ -4612,12 +4627,13 @@ function renderManualView(main){
   const d = S.manDoc; if (!d) return go('account', {sub:'manual'});
   const c = S.man && S.man.cats[S.manCat];
   MAN.zoom = 1;
-  main.innerHTML = `<div class="card cat-card man-view"><div class="cat-h"><b class="man-vt">${esc(d.title)}</b>
-      <span class="man-tools"><small id="man-pg"></small><button class="man-zb" data-act="man-zoom" data-z="-1" aria-label="縮小">－</button><button class="man-zb" data-act="man-zoom" data-z="1" aria-label="放大">＋</button></span></div>
-      <div class="cat-box man-box" id="cat-box"><div class="man-load" id="man-load"><div>手冊載入中…</div><div class="man-bar"><i id="man-bar"></i></div><small id="man-pct">第一次打開比較久，請稍等</small></div>
-        <div class="man-pages" id="man-pages"></div></div></div>
-    ${PLAY_BACK('回到' + (c ? c.name : '手冊'))}`;
-  catFit();
+  main.innerHTML = `<div class="fv fv-dark man-view" id="fv"><div class="fv-box man-box" id="cat-box"><div class="man-load" id="man-load"><div>${esc(d.title)}</div><div class="man-bar"><i id="man-bar"></i></div><small id="man-pct">載入中…</small></div>
+        <div class="man-pages" id="man-pages"></div></div>
+      <button class="fv-btn fv-back" data-act="back" aria-label="回到${esc(c ? c.name : '手冊')}">‹ 返回</button>
+      <div class="fv-btn fv-pg" id="man-pg"></div>
+      <div class="fv-side"><button class="fv-btn" data-act="man-step" data-d="-1" aria-label="上一頁">▲</button><button class="fv-btn" data-act="man-step" data-d="1" aria-label="下一頁">▼</button></div>
+      <div class="fv-zoom"><button class="fv-btn" data-act="man-zoom" data-z="-1" aria-label="縮小">－</button><button class="fv-btn" data-act="man-zoom" data-z="1" aria-label="放大">＋</button></div></div>`;
+  fvWire();
   const pg = $('#man-pages');
   pg.addEventListener('contextmenu', e=>e.preventDefault());   // 長按不跳「儲存圖片」
   pg.addEventListener('scroll', manPageNo, { passive:true });
@@ -4824,6 +4840,18 @@ async function manFastBuild(){
   else manLoadQuiet();
 }
 async function manLoadQuiet(){ try { S.man = await api.manualList(true); } catch(_) {} }
+/** ▲▼：跳到上一頁／下一頁的開頭（「這一頁」跟右上角頁碼同一頁：畫面正中間那頁） */
+function manStep(d){
+  const pg = $('#man-pages'); if (!pg) return;
+  const all = [...pg.querySelectorAll('.man-pg')]; if (!all.length) return;
+  const top = pg.scrollTop, mid = top + pg.clientHeight / 2;
+  let i = 0; all.forEach((x, k)=>{ if (x.offsetTop <= mid) i = k; });
+  let j = i + d;
+  if (d < 0 && all[i].offsetTop < top - 20) j = i;   // 這頁的開頭還沒看到：先回到這頁開頭
+  if (j < 0) return top < 4 ? toast('已經是第一頁') : pg.scrollTo({ top: 0, behavior: 'smooth' });
+  if (j >= all.length) return top + pg.clientHeight >= pg.scrollHeight - 4 ? toast('已經是最後一頁') : pg.scrollTo({ top: pg.scrollHeight, behavior: 'smooth' });
+  pg.scrollTo({ top: all[j].offsetTop - 8, behavior: 'smooth' });
+}
 function manPageNo(){
   const pg = $('#man-pages'), t = $('#man-pg'); if (!pg || !t) return;
   const all = pg.querySelectorAll('.man-pg'); if (!all.length) return;
@@ -7151,6 +7179,7 @@ document.addEventListener('click', async e=>{
     case 'man-cat': S.manCat = +el.dataset.i; go('account', {sub:'manualCat'}); break;
     case 'man-open': { const c = S.man && S.man.cats[S.manCat], d = c && c.items.find(x=>x.id===el.dataset.id); if (d) { S.manDoc = d; go('account', {sub:'manualView'}); } break; }
     case 'man-zoom': manZoom(+el.dataset.z); break;
+    case 'man-step': manStep(+el.dataset.d); break;
     case 'man-build': manFastBuild(); break;
     case 'man-build-stop': if (MANB) { MANB.stop = true; manBuildMsg('停止中…'); } break;
     case 'man-retry': if (S.manDoc) renderManualView($('#main')); break;
