@@ -2248,13 +2248,13 @@ const MockApi = {
     const saved = (days||[]).slice(0,8).filter(d=>/^\d{4}-\d{2}-\d{2}$/.test(d.date) && d.date <= T && d.date >= addDays(T,-7) && +d.steps >= 0 && +d.steps <= 100000)
       .map(d=>{ const n = Math.floor(+d.steps); mine[d.date] = d.reset ? n : Math.max(mine[d.date]||0, n); return { date:d.date, steps:mine[d.date] }; }); return { ok:true, saved }; },
   async manualList(){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); const F = MockDB.manualFast || {};
-    return { on: MockDB.manualOn==='Y', cats: MOCK_MANUAL.cats.map(c=>({ name:c.name, items:c.items.map(x=>F[x.id] ? { ...x, fast:{ pages:F[x.id].r.length, per:3, r:F[x.id].r, c:F[x.id].c } } : { ...x }) })), at: tvNow() }; },
+    return { on: MockDB.manualOn==='Y', cats: MOCK_MANUAL.cats.map(c=>({ name:c.name, items:c.items.map(x=>F[x.id] ? { ...x, fast:{ pages:F[x.id].r.length, per:F[x.id].per || 3, r:F[x.id].r, c:F[x.id].c, v:F[x.id].v || 1 } } : { ...x }) })), at: tvNow() }; },
   async manualFast(id, k){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN'); const f = (MockDB.manualFast||{})[id]; if (!f) throw new Error('STALE');
     if (!(k>=0 && k<f.files.length)) throw new Error('BAD_REQUEST'); MockDB.manualFastReads = (MockDB.manualFastReads||0) + 1; return { id, k, raw: MockDB.manualFastFiles[f.files[k]] }; },
   async adminManualFastPut(id, k, data){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); if (!Array.isArray(data) || !data.length || data.length > 3) throw new Error('BAD_REQUEST');
     MockDB.manualFastFiles = MockDB.manualFastFiles || {}; const fid = uid('MF'); MockDB.manualFastFiles[fid] = data.join('|'); return { k, fileId: fid }; },
-  async adminManualFastDone(id, r, files, c){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); if (files.length !== Math.ceil(r.length/3)) throw new Error('BAD_REQUEST');
-    (MockDB.manualFast = MockDB.manualFast || {})[id] = { r: r.map(x=>Math.round(x*1000)/1000), files, c: c||'' }; return { ok:true, pages:r.length }; },
+  async adminManualFastDone(id, r, files, c, per = 3, v = 1){ await this._wait(); if (S.role!=='admin') throw new Error('FORBIDDEN'); if (!(per >= 1 && per <= 3) || files.length !== Math.ceil(r.length/per)) throw new Error('BAD_REQUEST');
+    (MockDB.manualFast = MockDB.manualFast || {})[id] = { r: r.map(x=>Math.round(x*1000)/1000), files, c: c||'', per, v }; return { ok:true, pages:r.length }; },
   async manualPart(id, i){ await this._wait(); if (S.role!=='admin' && MockDB.manualOn!=='Y') throw new Error('FORBIDDEN');
     const it = MOCK_MANUAL.cats.flatMap(c=>c.items).find(x=>x.id===id); if (!it) throw new Error('NOT_FOUND'); if (!(i>=0 && i<it.parts && Math.floor(i)===i)) throw new Error('BAD_REQUEST');
     MockDB.manualReads = (MockDB.manualReads||0) + 1;
@@ -2491,7 +2491,7 @@ const GasApi = {
   manualPart(id, i){ return this.call('manual.part', { id, i }, {retry:2}); },
   manualFast(id, k){ return this.call('manual.fast', { id, k }, {retry:2}); },
   adminManualFastPut(id, k, data){ return this.call('admin.manual.fastPut', { id, k, data }, {retry:2}); },
-  adminManualFastDone(id, r, files, c){ return this.call('admin.manual.fastDone', { id, r, files, c }, {retry:1}); },
+  adminManualFastDone(id, r, files, c, per, v){ return this.call('admin.manual.fastDone', { id, r, files, c, per, v }, {retry:4}); },   // 21:40 之前有 2 本卡在「忙線」(BUSY)：多試幾次
   adminWalkList(){ return this.call('admin.walk.list', {}, {retry:1}); },
   adminWalkProbe(s, steps, algo, ua){ return this.call('admin.walk.probe', { s, steps, algo, ua }, {retry:1}); },
   adminSettingSet(key, value){ return this.call('admin.setting.set', {key, value}, {retry:0}); },
@@ -4585,7 +4585,7 @@ function renderManual(main){
         : '<div class="notice mb">🔒 還沒開放：現在只有你（管理員）看得到。</div><button class="btn btn-primary mb" data-act="manual-toggle" data-on="1">打開給大家看</button>'}
       <button class="btn btn-outline mb" data-act="man-refresh">🔄 重新整理（雲端放了新的手冊）</button>
       ${MANB ? `<div class="notice info mb" id="man-build">製作中…</div><button class="btn btn-ghost" data-act="man-build-stop">停止製作</button>`
-        : '<button class="btn btn-outline" data-act="man-build" id="man-build-btn">⚡ 製作快速版（打開比較快）</button>'}
+        : '<button class="btn btn-outline" data-act="man-build" id="man-build-btn" style="white-space:normal;line-height:1.3">⚡ 製作高畫質版</button>'}
       <div class="muted small mt play-p">手冊放在你的雲端硬碟「Nu Skin 產品培育資料」：裡面一個資料夾就是一類，PDF 放進去這裡就會出現；檔案維持私人，不用開分享。</div></div>` : ''}
     <div id="man-cats"><div class="card center muted">手冊清單載入中…</div></div>
     ${PLAY_BACK('回到功能選單')}`;
@@ -4600,8 +4600,8 @@ async function manLoad(fresh){
   const box = $('#man-cats'); if (!box) return;
   if (r.error === 'NO_FOLDER') { box.innerHTML = '<div class="card center">找不到雲端硬碟的手冊資料夾（可能被改名搬走或刪除），請跟 Claude 說。</div>'; return; }
   if (!r.cats.length) { box.innerHTML = '<div class="card center muted">還沒有手冊</div>'; return; }
-  const all = r.cats.flatMap(c=>c.items), nf = all.filter(x=>x.fast).length, bb = $('#man-build-btn');
-  if (bb) bb.textContent = nf >= all.length ? `⚡ 快速版：${all.length} 本都做好了` : `⚡ 製作快速版（${all.length - nf} 本還沒做，做好打開比較快）`;
+  const all = r.cats.flatMap(c=>c.items), nf = all.filter(manHdDone).length, bb = $('#man-build-btn');
+  if (bb) bb.textContent = nf >= all.length ? `⚡ 高畫質版：${all.length} 本都做好了` : `⚡ 製作高畫質版（${all.length - nf} 本還沒做）`;
   box.innerHTML = `<div class="card man-list">${r.cats.map((c,i)=>`<button class="man-row man-cat" data-act="man-cat" data-i="${i}"><span class="mr-ic">${MAN_IC[c.name] || '📁'}</span><span class="mr-t"><b>${esc(c.name)}</b><small>${c.items.length} 本</small></span><span class="mr-go">›</span></button>`).join('')}</div>`;
 }
 /** 封面小圖（背景圖，長按不會跳「儲存圖片」） */
@@ -4703,7 +4703,7 @@ function manObserve(){
   const pg = $('#man-pages'); if (!pg) return;
   if (MAN.obs) MAN.obs.disconnect();
   pg.style.setProperty('--z', MAN.zoom);
-  MAN.obs = new IntersectionObserver(es=>es.forEach(e=>{ if (e.isIntersecting) manRender(e.target); else manFree(e.target); }), { root: pg, rootMargin: '900px 300px' });
+  MAN.obs = new IntersectionObserver(es=>es.forEach(e=>{ if (e.isIntersecting) manRender(e.target); else manFree(e.target); }), { root: pg, rootMargin: '700px 300px' });
   pg.querySelectorAll('.man-pg').forEach(x=>MAN.obs.observe(x));
 }
 async function manRender(el){
@@ -4715,7 +4715,7 @@ async function manRender(el){
     if (el._tok !== tok || MAN.doc !== doc) return;
     const v1 = page.getViewport({ scale:1 });
     el.style.aspectRatio = v1.width + '/' + v1.height;
-    const px = Math.min(el.clientWidth * Math.min(window.devicePixelRatio || 1, 2), 2400);   // 太大的圖 iPhone 畫不出來
+    const px = Math.min(el.clientWidth * Math.min(window.devicePixelRatio || 1, 3) * 1.5, 2400);   // 比螢幕再清楚一點（手指放大不會馬上糊）；太大的圖 iPhone 畫不出來
     const vp = page.getViewport({ scale: px / v1.width }), cv = document.createElement('canvas');
     cv.width = Math.floor(vp.width); cv.height = Math.floor(vp.height);
     await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
@@ -4738,8 +4738,12 @@ function manZoom(dir){
   manObserve();
 }
 /* ---------- 快速版閱讀（2026-11-27 19:00 使用者：「手冊怎麼調整到可以很快速地打開」「用手機看一樣清楚，但是壓縮檔案」）----------
-   管理員做好的快速版：每頁一張圖（直的寬 1440、橫的寬 1920，WebP 品質 0.8），3 頁一包。打開只拿看得到的那幾包，往下滑再拿後面的。
+   管理員做好的快速版：每頁一張圖，打開只拿看得到的那幾包，往下滑再拿後面的。
+   v1（19:00）：直的寬 1440、橫的寬 1920，WebP 0.8，3 頁一包 → 21:18 使用者：「我不是說要照片一樣清晰嗎」「要在照片看得清楚下去壓縮檔案」（手指放大字會糊）
+   v2 高畫質（21:30）：直的寬 2400、橫的寬 2880（一頁最多 840 萬點），WebP 0.85，2 頁一包（每頁約 0.5MB，第一包不會太久）；手機放大兩倍字還是銳利。
    拿過的包存在手機暫存；一樣畫在 canvas（不能存圖、沒有連結）。原檔換過（STALE）→ 自動改回整本讀。 */
+const MAN_HD = { v:2, per:2, w:2400, wl:2880, px:8.4e6, q:0.85 };
+const manHdDone = x => !!(x.fast && (x.fast.v || 1) >= MAN_HD.v);
 function manOpenFast(d, seq){
   const pg = $('#man-pages'); if (!pg) return;
   MAN.fast = { d, seq, chunks:{} };
@@ -4747,7 +4751,7 @@ function manOpenFast(d, seq){
   $('#man-load') && $('#man-load').remove();
   manObserve(); manPageNo();
 }
-const manFastKey = (d, k) => location.origin + '/__manualfast/' + encodeURIComponent(d.id) + '/' + k + '?s=' + Math.round(d.size / Math.max(1, Math.ceil(d.fast.pages / d.fast.per)) / 5);
+const manFastKey = (d, k) => location.origin + '/__manualfast/' + encodeURIComponent(d.id) + '/' + k + '?s=' + d.size + '&v=' + (d.fast.v || 1) + '&p=' + d.fast.per;   // 換畫質版本或幾頁一包：鑰匙不同，不會拿到舊的
 function manFastChunk(F, k){
   if (F.chunks[k]) return F.chunks[k];
   const d = F.d, key = manFastKey(d, k);
@@ -4776,7 +4780,10 @@ async function manRenderFast(el){
     const img = await manDecode(list[(n - 1) % per]);
     if (el._tok !== tok || MAN.fast !== F) { img.close && img.close(); return; }
     const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
-    cv.getContext('2d').drawImage(img, 0, 0); img.close && img.close();
+    let g = cv.getContext('2d');
+    if (!g) { cv.width = Math.round(img.width / 2); cv.height = Math.round(img.height / 2); g = cv.getContext('2d'); }   // iPhone 畫圖記憶體不夠：這頁先用一半大小
+    if (!g) { img.close && img.close(); throw new Error('MEM'); }
+    g.drawImage(img, 0, 0, cv.width, cv.height); img.close && img.close();
     const old = el.querySelector('canvas'); if (old) { old.width = old.height = 0; old.remove(); }
     el.appendChild(cv); el.dataset.r = 'f';
   } catch(e) {
@@ -4785,7 +4792,8 @@ async function manRenderFast(el){
     el.dataset.err = '1'; const t = el.querySelector('.man-pn'); if (t) t.textContent = '沒載入，點一下再試';
   }
 }
-/* ---------- 管理員：製作快速版（在這台手機／電腦把每一頁畫成圖片，3 頁一包存到後台）---------- */
+/* ---------- 管理員：製作快速版（在這台手機／電腦把每一頁畫成高畫質圖片，2 頁一包存到後台）----------
+   21:30：製作時不用計時器等（瀏覽器在背景時計時器會被拖到一分鐘才動一次，之前做 38 本花了 3 個多小時）。 */
 let MANB = null;
 function manBuildMsg(t){ const b = $('#man-build'); if (b) b.textContent = t; }
 function canvasB64(cv, q = 0.8){
@@ -4793,11 +4801,11 @@ function canvasB64(cv, q = 0.8){
   if (u.indexOf('data:image/webp') !== 0) u = cv.toDataURL('image/jpeg', q + 0.02);   // iPhone 不會存 WebP：改 JPEG
   return u.slice(u.indexOf(',') + 1);
 }
-async function manFastBuild(){
+async function manFastBuild(opt = {}){
   if (MANB) return toast('正在製作中…');
-  const todo = ((S.man && S.man.cats) || []).flatMap(c=>c.items).filter(x=>!x.fast);
+  const todo = ((S.man && S.man.cats) || []).flatMap(c=>c.items).filter(x=>!manHdDone(x) && (!opt.ids || opt.ids.includes(x.id)));   // opt.ids：只做這幾本（兩個分頁一起做比較快）
   if (!todo.length) return toast('全部都做好了 👍', 'ok');
-  if (!await confirmBox(`製作 ${todo.length} 本手冊的快速版？\n每本要等一下；做的時候皇家不要關掉（可以先看別頁，回來看進度）。`, '開始製作')) return;
+  if (!opt.yes && !await confirmBox(`製作 ${todo.length} 本手冊的高畫質版？\n每本要等一下；做的時候皇家不要關掉（可以先看別頁，回來看進度）。`, '開始製作')) return;
   MANB = { stop:false, done:0, n: todo.length, fail:0 };
   if (S.sub === 'manual') renderManual($('#main'));
   try {
@@ -4811,24 +4819,27 @@ async function manFastBuild(){
         const doc = await lib.getDocument({ data: bytes.slice(), isEvalSupported:false, disableAutoFetch:true, disableStream:true }).promise;
         MAN.keep = null;
         try {
-        const r = [], files = [], ups = []; let pack = [], pending = 0, upErr = null, cover = '';
-        const send = (k, data) => { pending++; ups.push(api.adminManualFastPut(d.id, k, data).then(x=>{ files[k] = x.fileId; }, e=>{ upErr = e; }).finally(()=>{ pending--; })); };   // 一邊畫一邊送（最多同時送兩包）
+        const r = [], files = [], ups = [], busy = new Set(), per = MAN_HD.per; let pack = [], upErr = null, cover = '';
+        const send = (k, data) => { const p = api.adminManualFastPut(d.id, k, data).then(x=>{ files[k] = x.fileId; }, e=>{ upErr = e; }); busy.add(p); p.finally(()=>busy.delete(p)); ups.push(p); };   // 一邊畫一邊送（最多同時送兩包）
         for (let i = 1; i <= doc.numPages && !MANB.stop; i++) {
           const page = await doc.getPage(i), v1 = page.getViewport({ scale:1 });
-          const W = v1.width >= v1.height ? 1920 : 1440, vp = page.getViewport({ scale: W / v1.width });   // 19:05 使用者：「畫質一直清晰清楚」→ 直的 1440、橫的 1920（手機放大兩倍字還是清楚）
+          let W = v1.width >= v1.height ? MAN_HD.wl : MAN_HD.w;   // 21:30 高畫質：直的 2400、橫的 2880
+          if (W * W * v1.height / v1.width > MAN_HD.px) W = Math.floor(Math.sqrt(MAN_HD.px * v1.width / v1.height));   // 特別長的頁：總點數不超過 840 萬（iPhone 才畫得出來）
+          const vp = page.getViewport({ scale: W / v1.width });
           const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
           const c2 = cv.getContext('2d'); c2.fillStyle = '#fff'; c2.fillRect(0, 0, cv.width, cv.height);
           await page.render({ canvasContext: c2, viewport: vp }).promise; page.cleanup();
           r.push(Math.round(v1.height / v1.width * 1000) / 1000);
-          if (i === 1) { const sm = document.createElement('canvas'); sm.width = 240; sm.height = Math.round(240 * cv.height / cv.width); sm.getContext('2d').drawImage(cv, 0, 0, sm.width, sm.height); cover = canvasB64(sm, 0.6); sm.width = sm.height = 0; }   // 封面小圖
-          pack.push(canvasB64(cv)); cv.width = cv.height = 0;
-          if (pack.length === 3 || i === doc.numPages) { while (pending >= 2) await sleep(80); if (upErr) throw upErr; send(Math.floor((i - 1) / 3), pack); pack = []; }
+          if (i === 1) { const sm = document.createElement('canvas'); sm.width = 280; sm.height = Math.round(280 * cv.height / cv.width); sm.getContext('2d').drawImage(cv, 0, 0, sm.width, sm.height); cover = canvasB64(sm, 0.65); if (cover.length > 75000) cover = canvasB64(sm, 0.4); sm.width = sm.height = 0; }   // 封面小圖
+          let b = canvasB64(cv, MAN_HD.q); if (b.length > 3.4e6) b = canvasB64(cv, 0.72);   // 整頁大照片太大：壓多一點
+          pack.push(b); cv.width = cv.height = 0;
+          if (pack.length === per || i === doc.numPages) { while (busy.size >= 2) await Promise.race(busy); if (upErr) throw upErr; send(Math.floor((i - 1) / per), pack); pack = []; }
           manBuildMsg(`正在製作 ${label}：第 ${i}／${doc.numPages} 頁`);
         }
         await Promise.all(ups);
         if (upErr) throw upErr;
         if (MANB.stop) break;
-        await api.adminManualFastDone(d.id, r, files, cover);
+        await api.adminManualFastDone(d.id, r, files, cover, per, MAN_HD.v);
         MANB.done++;
         } finally { doc.destroy(); }
       } catch(e) { if (MANB.stop) break; MANB.fail++; console.warn('manFastBuild', d.title, e); }
