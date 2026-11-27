@@ -219,7 +219,7 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 #ptr.busy .ptr-ic{animation:ptrspin .8s linear infinite}
 @keyframes ptrspin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#ptr,#ptr .ptr-ic{transition:none}#ptr.busy .ptr-ic{animation:none}}
-.compose textarea.inp{min-height:150px}
+.compose textarea.inp{min-height:150px}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
 /* 走路計步（2026-11-27） */
 .walk-big{display:flex;align-items:baseline;justify-content:center;gap:8px;margin:14px 0 4px}
 .walk-big b{font-size:68px;line-height:1;font-weight:900;color:var(--brand);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
@@ -233,7 +233,7 @@ label.lbl.lbl-row{display:flex;justify-content:space-between;align-items:baselin
 .walk-days{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:center;font-size:16px}
 .walk-days .bar{height:12px;border-radius:6px;background:var(--brand-soft, #E3EEF9);overflow:hidden}
 .walk-days .bar span{display:block;height:100%;border-radius:6px;background:var(--brand)}
-.walk-days .n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}   /* 2026-11-27 11:45 使用者（OPPO Reno 15）：框拉大一點，字看得到多一點（原本 112） */
+.walk-days .n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .compose .photo-btns .btn{min-height:52px}
 .compose .sticky-submit{margin-top:14px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -350,6 +350,10 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .cs-form textarea.inp{min-height:96px}
 /* 我的帳號：個人小卡＋桌面圖示（2026-11-25 08:02）；自己排列（08:06） */
 .app-card{padding:6px 8px 10px}
+/* 健康遊樂場（2026-11-27 14:53）：功能選單下面另一區，放走路和以後的小遊戲 */
+.play-hero .play-ic{width:96px;height:96px;border-radius:26px;display:block;margin:4px auto 0;box-shadow:0 6px 18px rgba(20,60,140,.18)}
+.app-tile .ao.tag{background:#C99A2E}   /* 試用中的小標（金色） */
+.play-card{padding:6px 8px 10px}.play-card .app-grid{padding-top:14px}
 /* 會員卡（2026-11-25） */
 .card.mcard{background:linear-gradient(160deg,#fff 0%,#F7F1E1 100%);border:2px solid #E8C766;text-align:center;padding:18px 16px 20px}
 .mc-top{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#7A5A00;letter-spacing:2px;font-size:16px}
@@ -3419,6 +3423,7 @@ function go(tab, opts={}){
   if (S.sub==='adminClass') return renderAdminClass(main);
   if (S.sub==='settings') return renderSettings(main);
   if (S.sub==='walk') return renderWalk(main);
+  if (S.sub==='play') return renderPlay(main);
   if (S.sub==='memberCard') return renderMemberCard(main);
   if (S.sub==='adminLinkEdit') return renderAdminLinkEdit(main);
   if (S.sub==='tickets') return renderMyTickets(main);
@@ -4405,7 +4410,7 @@ function renderAccount(main){
 /** 桌面圖示：夢想・榮譽・旅遊・高鐵・便當・團隊・票券・設定 */
 const TRIP_TILE = { travel:{ ic:'✈️', t:'旅遊', c:'#E4F0FB' }, hsr:{ ic:'🚄', t:'高鐵', c:'#FCEBE4' }, meal:{ ic:'🍽️', t:'便當', c:'#E9F5DC' } };
 function appTile(x){
-  const inner = `${x.img ? `<span class="ai img" aria-hidden="true"><img src="${x.img}" alt="" draggable="false"></span>` : `<span class="ai" style="background:${x.c}" aria-hidden="true">${x.ic}</span>`}<span class="al">${x.t}</span>${x.off?'<span class="ao">未開放</span>':''}`;
+  const inner = `${x.img ? `<span class="ai img" aria-hidden="true"><img src="${x.img}" alt="" draggable="false"></span>` : `<span class="ai" style="background:${x.c}" aria-hidden="true">${x.ic}</span>`}<span class="al">${x.t}</span>${x.off?'<span class="ao">未開放</span>':x.tag?`<span class="ao tag">${x.tag}</span>`:''}`;
   return x.href ? `<a class="app-tile" href="${esc(x.href)}" target="_blank" rel="noopener" draggable="false" data-act="trip-link" data-key="${x.key}">${inner}</a>`
     : `<button class="app-tile${x.off?' off':''}" data-act="${x.act}"${x.k?` data-k="${x.k}"`:''} data-key="${x.key}">${inner}</button>`;
 }
@@ -4423,11 +4428,11 @@ function tripTile(kind){
 }
 /** 圖示圖片（2026-11-25 09:12 使用者請 GPT 做的一整套：藍底金線；新享購用它自己的 APP 圖示；09:35 會員卡＝金色皇冠卡）。 */
 const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:'tiles/travel.jpg', hsr:'tiles/hsr.jpg', meal:'tiles/meal.jpg',
-  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg', manual:'tiles/manual.jpg' };   // manual：手冊（2026-11-26 12:51 使用者請 GPT 做的）
+  team:'tiles/team.jpg', tickets:'tiles/tickets.jpg', card:'tiles/card.jpg', settings:'tiles/settings.jpg', nushop:'tiles/nushop.jpg', manual:'tiles/manual.jpg', play:'tiles/play.jpg' };   // manual：手冊（2026-11-26 12:51 使用者請 GPT 做的）
 /** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
 const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
 const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
-const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','manual','walk','team','tickets','card','settings'];
+const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','manual','play','team','tickets','card','settings'];
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
 const NUSHOP_URL = () => /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=com.nuskin.shoppingcart' : 'https://apps.apple.com/tw/app/id1448081635';
@@ -4438,7 +4443,7 @@ function manualTile(){
   return { act:'manual-open', ic:'📘', t:'手冊', c:'#E6F0FB', off: !on };
 }
 /** 走路（2026-11-27 14:02 使用者：「開著皇家一邊走路可以算幾步、換算消耗的熱量」「可以先試試看」）：試用中，只有管理員看得到 */
-function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'走路', c:'#E3F4EA', off:true } : null; }
+function walkTile(){ return isAdminMe() ? { act:'walk-open', ic:'🚶', t:'走路', c:'#E3F4EA', trial:true } : null; }   // trial：試用中（不變灰，標題旁寫「試用中」）
 /** 夥伴自己排過的順序在前；之後新增的圖示接在後面 */
 function tileOrder(){ const mine = ((S.me && S.me.tiles) || []).filter(k=>TILE_DEFAULT.includes(k)); return [...mine, ...TILE_DEFAULT.filter(k=>!mine.includes(k))]; }
 function appTilesHTML(){
@@ -4446,8 +4451,21 @@ function appTilesHTML(){
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
     team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
     card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' },
-    manual: manualTile(), walk: walkTile() };
+    manual: manualTile(), play: playTile() };
   return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })).join('');
+}
+/** 💪 健康遊樂場（2026-11-27 14:53 使用者：「這是遊樂區還是休閒區？幫我想個名稱，我不只這個遊戲而已」→ 選「健康遊樂場」；15:04 給了 GPT 做的摩天輪圖示）
+ *  功能選單裡一個「遊樂場」圖示（摩天輪），點進去是遊戲清單（走路，以後的小遊戲）。以後新增遊戲：PLAY_DEFAULT 加一個 key、playTiles() 加一行。
+ *  一個遊戲都沒有（夥伴、還沒開放）就不出現；全部還在試用 → 圖示右上角「試用」。 */
+const PLAY_DEFAULT = ['walk'];
+function playTiles(){ const T = { walk: walkTile() }; return PLAY_DEFAULT.filter(k=>T[k]).map(k=>({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })); }
+function playTile(){ const L = playTiles(); return L.length ? { act:'play-open', ic:'🎡', t:'遊樂場', c:'#E3EEF9', tag: L.every(x=>x.trial) ? '試用' : '' } : null; }
+function renderPlay(main){
+  const L = playTiles();
+  main.innerHTML = `<div class="card center play-hero"><img class="play-ic" src="${TILE_IMG.play}" alt=""><h2 style="margin:8px 0 0">💪 健康遊樂場</h2>
+      <div class="muted mt">邊玩邊動，越玩越健康。<br>更多小遊戲陸續加入！</div></div>
+    <div class="card play-card">${L.length ? `<div class="app-grid" id="play-grid">${L.map(appTile).join('')}</div>` : '<div class="muted center" style="padding:16px">還沒有開放的遊戲</div>'}</div>
+    ${L.length && L.every(x=>x.trial) ? '<div class="notice info small">🔒 試用中：只有你（管理員）看得到「遊樂場」。要開給大家再跟 Claude 說。</div>' : ''}`;
 }
 /* ---------- 自己排圖示（2026-11-25 08:06 使用者：「讓使用者自己排列順序，像手機這樣可以自己排列和移動」）----------
    按住 0.5 秒（或按「↕ 排列圖示」）→ 圖示會抖動 → 拖到想放的位置；手不穩也可以「先點一個、再點要放的位置」。
@@ -6449,6 +6467,7 @@ document.addEventListener('click', async e=>{
     /* 導覽 */
     case 'tab': if (el.dataset.tab==='compose' && !S.draft){ S.draft=newDraft(); const dr=store('royal_draft'); if(dr&&dr.text) S.draft.text=dr.text; } go(el.dataset.tab); break;
     case 'back': { if (S.sub==='tmember' && S.tmBack==='team'){ go(S.tab,{sub:'team'}); break; }
+      if (S.sub==='walk') { go('account',{sub:'play'}); break; }   // 走路 → 回遊樂場
       if (S.sub==='person' && (S.personBack==='honors' || S.personBack==='dreams')){ go(S.tab,{sub:S.personBack}); break; } if (S.sub==='dreamEdit' && S.dreamBack){ go(S.tab,{sub:S.dreamBack==='person'?'honors':S.dreamBack}); break; }
       if (S.sub==='adminMember' && S.memBack==='roster') { S.memBack = null; go('account',{sub:'adminRoster'}); break; }
       if (S.sub==='adminCourseEdit') { go('account',{sub:'adminCourses'}); break; }
@@ -6629,6 +6648,7 @@ document.addEventListener('click', async e=>{
     case 'acct-settings': go('account', {sub:'settings'}); break;
     case 'member-card': go('account', {sub:'memberCard'}); break;
     case 'manual-open': showManualSoon(); break;
+    case 'play-open': go('account', {sub:'play'}); break;
     case 'walk-open': go('account', {sub:'walk'}); break;
     case 'walk-start': walkStart(); break;
     case 'walk-stop': walkStop(); break;
