@@ -3617,12 +3617,12 @@ function classTimes(c){ const all = String(c.time||'').match(/\d{1,2}\s*[:：]\s
 function todayClass(cs){
   const T = todayStr(), d = new Date(), now = d.getHours()*60 + d.getMinutes();
   return (cs||[]).filter(c => c.date===T && c.zoom && c.zoom!=='#' && c.mode!=='onsite')
-    .map(c => ({ c, ...classTimes(c), now })).filter(x => x.en==null || now <= x.en + 15)   // 下課 15 分鐘後就收起來
+    .map(c => ({ c, ...classTimes(c), now })).filter(x => (x.st==null || now >= x.st - 15) && (x.en==null || now <= x.en + 15))   // 上課前 15 分鐘才出現（11/28 00:18 使用者：「太早出來啦，大約前 15 分鐘再開啟就好」）、下課 15 分鐘後收起來
     .sort((a,b) => (a.st??0) - (b.st??0))[0] || null;
 }
 function classBannerHTML(cs){
   const x = todayClass(cs); if (!x) return '';
-  const c = x.c, soon = x.st!=null && x.now >= x.st - 30, started = x.st!=null && x.now >= x.st;
+  const c = x.c, soon = x.st!=null && x.now >= x.st - 15, started = x.st!=null && x.now >= x.st;
   const tag = started ? '🔴 上課中' : soon ? '⏰ 快開始了' : `📺 今天 ${esc(c.time||'')}`;
   const btn = CONFIG.MODE==='live' ? `<a class="btn btn-class" href="${esc(c.zoom)}" target="_blank" rel="noopener" data-cid="${esc(c.id)}">▶ 進入教室</a>`
     : `<button class="btn btn-class" data-act="zoom" data-id="${esc(c.id)}">▶ 進入教室</button>`;
@@ -3630,6 +3630,14 @@ function classBannerHTML(cs){
     <div class="cb-sub">${c.teacher?`講師：${esc(c.teacher)}・`:''}${esc(c.time||'')}</div>${btn}</div>`;
 }
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S.session && S.tab==='home' && !S.sub) fillClassBanner(); });
+/* 開著首頁等上課：每分鐘用手上的課表再算一次（不另外跟後台拿）→ 前 15 分鐘自動出現、時間到變「上課中」、下課後收起來 */
+setInterval(() => {
+  if (!S.session || S.tab!=='home' || S.sub || document.hidden) return;
+  const b = $('#class-banner'); if (!b) return;
+  if (CONFIG.MODE!=='live') { fillClassBanner(); return; }
+  const cs = QuickCache.get('courses'); if (!cs) return;
+  const h = classBannerHTML(cs); if (h !== b._h) { b._h = h; b.innerHTML = h; }
+}, 60000);
 /* 按「進入教室」「進入 Zoom 上課」：自動點名（2026-11-26，說明在後端 86_ClassAttend.gs）。不等回應，失敗也不影響進教室 */
 document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[data-cid]'); if (a && S.session) api.classJoin(a.dataset.cid).catch(()=>{}); }, true);   // 切回 APP：上課狀態（快開始了／上課中）跟著更新
 async function fillClassBanner(){
