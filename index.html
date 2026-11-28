@@ -460,11 +460,28 @@ body.play-on .bubbles{display:none}
 .app-tile .al{font-size:16px;font-weight:700;line-height:1.2}
 .app-tile.off .ai,.app-tile.off .al{opacity:.42}
 .app-tile{position:relative}
-.flags{display:inline-flex;gap:2px;margin-left:4px;vertical-align:-2px}   /* 活動國旗徽章（2026-11-26） */
-.flag{display:inline-block;width:19px;height:13px;border-radius:2.5px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.14);background:#fff}
+.flags{display:inline-flex;gap:5px;margin-left:3px;vertical-align:-2px;position:relative}   /* 活動國旗徽章（2026-11-26）；11-28 每面國旗間距一樣：組內 5px＝組和組之間（.bdgs 的 2px＋這裡的 3px） */
+.flag{position:relative;display:inline-block;width:19px;height:13px;border-radius:2.5px;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.14);background:#fff;transform-origin:0 50%}
 .flag svg{width:100%;height:100%;display:block}
+.flags.big{gap:6px}
 .flags.big .flag{width:30px;height:20px;border-radius:4px}
 .my-flags{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.my-flags .flags{margin-left:0}
+/* 國旗「亮亮＋波浪」（2026-11-28）：只動 transform／opacity；只有畫面上看得到的國旗才動（.vis 跟聘階徽章同一個觀察器） */
+.flag::before,.flag::after{content:"";position:absolute;top:0;bottom:0;left:0;pointer-events:none}
+.flag::after{width:200%;transform:translateX(-50%);   /* 布料的明暗起伏：一面國旗看得到兩道波，從旗桿那邊往外跑 */
+  background:linear-gradient(90deg,rgba(0,0,0,.15) 0%,rgba(255,255,255,.24) 12.5%,rgba(0,0,0,.15) 25%,rgba(255,255,255,.24) 37.5%,rgba(0,0,0,.15) 50%,rgba(255,255,255,.24) 62.5%,rgba(0,0,0,.15) 75%,rgba(255,255,255,.24) 87.5%,rgba(0,0,0,.15) 100%)}
+.flag::before{z-index:1;width:100%;transform:translateX(-115%);background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.95) 50%,transparent 70%)}   /* 掃過去的亮光 */
+.flags::after{content:"✦";position:absolute;top:-7px;right:-5px;font-size:9px;line-height:1;color:#FFD54A;text-shadow:0 0 3px #fff,0 0 6px rgba(255,213,74,.8);opacity:0;pointer-events:none;z-index:2}
+.flags.big::after{top:-9px;right:-6px;font-size:12px}
+.flags.vis .flag{animation:flag-wave 2.4s ease-in-out infinite;animation-delay:calc(var(--i,0) * -.35s)}
+.flags.vis .flag::after{animation:flag-ripple 1.6s linear infinite;animation-delay:calc(var(--i,0) * -.25s)}
+.flags.vis .flag::before{animation:flag-glint 3.4s cubic-bezier(0.77,0,0.175,1) infinite;animation-delay:calc(var(--i,0) * .14s)}
+.flags.vis::after{animation:bdg-star 3.4s ease-in-out infinite;animation-delay:calc(var(--g,0) * .14s + .7s)}
+@keyframes flag-wave{0%,100%{transform:perspective(60px) rotateY(0) skewY(0)}30%{transform:perspective(60px) rotateY(-12deg) skewY(-2.5deg)}70%{transform:perspective(60px) rotateY(9deg) skewY(2deg)}}
+@keyframes flag-ripple{from{transform:translateX(-50%)}to{transform:translateX(0)}}
+@keyframes flag-glint{0%,52%{transform:translateX(-115%)}78%,100%{transform:translateX(115%)}}
+@media (prefers-reduced-motion: reduce){.flags .flag,.flags .flag::before,.flags .flag::after,.flags::after{animation:none!important}}
 .ev-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:6px 0 10px}
 .ev-opt{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 12px;border-radius:14px;border:2px solid #DCE3EC;background:#fff;font-size:18px;font-weight:700;color:#1B2B44;text-align:left}
 .ev-opt[aria-pressed="true"]{border-color:var(--brand);background:#EAF3FF}
@@ -3239,7 +3256,10 @@ const FLAG_SVG = {
 const EVENTS = [ { k:'TH', n:'泰國', f:['th'] }, { k:'SH', n:'上海', f:['cn'] }, { k:'PS', n:'巴黎瑞士', f:['fr','ch'] },
   { k:'JP', n:'日本年會', f:['jp'] }, { k:'BCN', n:'巴塞隆納', f:['es'] }, { k:'WH', n:'武漢', f:['cn'] } ];
 const evOf = k => EVENTS.find(x=>x.k===k);
-const flagsHTML = (ks, big) => (ks||[]).map(evOf).filter(Boolean).map(ev => `<span class="flags${big?' big':''}" title="${ev.n}" role="img" aria-label="${ev.n}">${ev.f.map(c=>`<span class="flag">${FLAG_SVG[c]}</span>`).join('')}</span>`).join('');
+/* 2026-11-28 11:36 使用者：「每個國旗正常的間距」「閃閃發亮的感覺，或者是亮亮＋波浪」
+   → --i：第幾面國旗（波浪錯開、亮光從第一面依序掃到最後一面）；--g：這一組最後一面的號碼（亮光掃完，角落的星星才閃） */
+const flagsHTML = (ks, big) => { let i = 0; return (ks||[]).map(evOf).filter(Boolean).map(ev => { const g = i + ev.f.length - 1;
+  return `<span class="flags${big?' big':''}" style="--g:${g}" title="${ev.n}" role="img" aria-label="${ev.n}">${ev.f.map(c=>`<span class="flag" style="--i:${i++}">${FLAG_SVG[c]}</span>`).join('')}</span>`; }).join(''); };
 const evNames = ks => (ks||[]).map(evOf).filter(Boolean).map(x=>x.n).join('・');
 /** 選好幾個：點一下選、再點一下取消；回傳 key 陣列（按取消＝null） */
 function multiPick(title, opts, cur){
@@ -3464,13 +3484,14 @@ function splitPhrase(t){
   t.replaceWith(frag);
 }
 /* 徽章只有在畫面上看得到時才閃 */
+const BDG_SEL = '.bdg-s, .flags';   // 國旗也一樣：看得到才動（2026-11-28）
 const BDG_IO = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('vis', e.isIntersecting))) : null;
 function watchBadges(n){
   if (n.nodeType !== 1) return;
-  const list = n.classList.contains('bdg-s') ? [n] : n.querySelectorAll('.bdg-s');
+  const list = n.matches(BDG_SEL) ? [n] : n.querySelectorAll(BDG_SEL);
   list.forEach(b => BDG_IO ? BDG_IO.observe(b) : b.classList.add('vis'));
 }
-function unwatchBadges(n){ if (!BDG_IO || n.nodeType !== 1) return; (n.classList.contains('bdg-s') ? [n] : n.querySelectorAll('.bdg-s')).forEach(b => BDG_IO.unobserve(b)); }
+function unwatchBadges(n){ if (!BDG_IO || n.nodeType !== 1) return; (n.matches(BDG_SEL) ? [n] : n.querySelectorAll(BDG_SEL)).forEach(b => BDG_IO.unobserve(b)); }
 function glueText(root){
   const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const list = []; while (w.nextNode()) list.push(w.currentNode);
