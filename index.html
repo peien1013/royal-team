@@ -793,6 +793,7 @@ button.stat:active{transform:scale(.98)}
 body{overflow-wrap:break-word;line-break:strict}   /* 2026-11-25 拿掉 keep-all：iPhone Safari 會把中文標點當成字、整段黏住後硬斷；改用 .ph 分段 */
 h1,h2,h3,p,.hint,.muted,.small,.notice,.announce,.toast,.dialog p,.sheet-b,.mt,.venue,.onsite-info,.sched-row .t,.scan-res .sub,.scan-tip,.login .sub,.ml-row b,.tk-row b{text-wrap:balance}
 .uc,.post-text,.cmt .bubble,.cmt .bubble div,textarea,input{text-wrap:wrap;word-break:normal;overflow-wrap:anywhere}
+.ph-mix{text-wrap:wrap}   /* 2026-11-28：一般字＋分段字混在一起時不要 balance（iPhone 會一個字一行） */
 .ml-row b{display:block}.scan-demo button{white-space:nowrap}
 .stat .k{font-size:clamp(12px,3.4vw,15px)}
 .stat .k small{display:block;font-size:.85em;opacity:.85;white-space:nowrap}
@@ -895,6 +896,7 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .cf-title{flex:1;min-width:0;font-weight:700;font-size:17px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cf-plus{font-size:24px;font-weight:700;color:var(--brand);flex:none}
 .cf-close{display:block;margin:10px auto 0}
+.zoom-later{padding:14px 12px;border-radius:14px;background:var(--brand-soft);color:var(--brand-dark);font-weight:700;text-align:center;line-height:1.5}
 .pill.case{background:#FFF4DC;color:#7A4E00}
 .case-sum{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
 .case-sel{font-size:20px;font-weight:700}
@@ -3752,7 +3754,10 @@ function splitPhrase(t){
   const v = t.nodeValue, parts = v.match(PH_RE); if (!parts || parts.length < 2 || parts.join('') !== v) return;
   const frag = document.createDocumentFragment();
   parts.forEach(x => { const sp = document.createElement('span'); sp.className = 'ph'; sp.textContent = x; frag.appendChild(sp); });
+  const el = t.parentElement;
   t.replaceWith(frag);
+  // 同一段裡還有沒切的字（例如「這是<b>補打卡</b>：…」）：iPhone Safari 的 text-wrap:balance 遇到這種混排會把前面的字一個字一行（2026-11-28 21:09 使用者截圖）→ 這段改成一般換行
+  if (el && [...el.childNodes].some(n => (n.nodeType === 3 && n.nodeValue.trim()) || (n.nodeType === 1 && !n.classList.contains('ph')))) el.classList.add('ph-mix');
 }
 /* 徽章只有在畫面上看得到時才閃 */
 const BDG_SEL = '.bdg-s, .flags';   // 國旗也一樣：看得到才動（2026-11-28）
@@ -4808,6 +4813,17 @@ function courseOver(c, T){
   return en != null && d.getHours()*60 + d.getMinutes() > en + 15;
 }
 const isOnline = c => !c.mode || c.mode==='online' || c.mode==='hybrid';
+/** 「進入 Zoom 上課」什麼時候按得到（2026-11-28 21:08 使用者：「星期一的 BOM 線上 Zoom，當天再開啟，要不然現在很多人在進進出出」）
+ *  上課當天、開始前 15 分鐘（跟使用者提早開會議室、首頁「進入教室」出現的時間一樣）；沒寫開始時間＝當天整天。 */
+function zoomOpen(c, T){
+  if (c.date !== T) return false;
+  const st = classTimes(c).st, d = new Date();
+  return st == null || d.getHours()*60 + d.getMinutes() >= st - 15;
+}
+function zoomOpenText(c, T){
+  const st = classTimes(c).st, at = st == null ? '' : `${String(Math.floor((st-15)/60)).padStart(2,'0')}:${String((st-15+1440)%60).padStart(2,'0')} `;
+  return c.date === T ? `今天 ${at}` : `${mdZh(c.date)} ${at}`;   // 2026-11-28 21:16 使用者：「18:45 開啟、按此進入」
+}
 const isOnsite = c => c.mode==='onsite' || c.mode==='hybrid';
 function renderAcademy(main){
   return quickRender(main, 'courses', () => api.getCourses(), cs => drawAcademy(main, cs));
@@ -4836,7 +4852,7 @@ async function drawAcademy(main, cs){
           <div class="row" style="gap:6px;justify-content:center">${ticketPills(tk)}</div>
           ${isUp&&!full?`<button class="btn btn-outline btn-sm" data-act="course-register" data-id="${c.id}">＋ 加買同行票</button>`:''}`:''}
         ${showOnsite&&!tk&&isUp?(full?'<button class="btn btn-ghost" disabled>名額已滿</button>':`<button class="btn btn-primary" data-act="course-register" data-id="${c.id}">🙋 我要報名現場上課</button>`):''}
-        ${showOnline&&isUp&&c.zoom?link(c.zoom,'btn-primary','進入 Zoom 上課','zoom',c.id):''}
+        ${showOnline&&isUp&&c.zoom?(zoomOpen(c, T)?link(c.zoom,'btn-primary','▶ 按此進入','zoom',c.id):`<div class="zoom-later">🔒 ${zoomOpenText(c, T)}開啟</div>`):''}
         ${c.sprintOnly?`<div class="notice info small">🔒 衝刺班專屬：有報名衝刺班的夥伴才進得去${S.reg&&S.reg.canApply?'<br><button class="link-btn" data-act="reg-apply">我要報名衝刺班 ›</button>':''}</div>`:''}
         ${showOnline&&!c.sprintOnly?(c.replayGone?'<div class="hint">回放已下架（影片只保留 14 天）</div>':c.replay?`<button class="btn btn-ghost" data-act="replay-open" data-id="${esc(c.id)}">▶ 觀看回放</button><div class="hint">保留到 ${mdZh(rpUntil(c))}</div>`:(isUp?'':'<div class="hint">回放整理中</div>')):''}
         ${c.date > T ? '' : c.myNoteAt ? `<div class="row" style="justify-content:center"><span class="pill ok">✓ 已交課後心得（${mdZh(c.myNoteAt)}）</span></div>`
@@ -6997,7 +7013,7 @@ function drawAdminClass(main){
         <div class="stat"><div class="v">${joins.filter(j=>j.sources.includes('app')).length}</div><div class="k">APP 自動點名</div></div>
         <div class="stat"><div class="v">${guests.length}</div><div class="k">沒進 APP 的人</div></div>
         <div class="stat"><div class="v">${absent.length}</div><div class="k">${c.must?'衝刺班沒來':'夥伴沒來'}</div></div>${c.must?`<div class="stat"><div class="v">${leaves.length}</div><div class="k">請假</div></div>`:''}</div>
-      <div class="muted small mt">夥伴在 APP 按「進入 Zoom 上課」就自動記到（上課當天才算）。還沒進 APP 的人：下課後把 Zoom 的參加者名單貼到下面。</div>
+      <div class="muted small mt">夥伴在 APP 按「按此進入」（或首頁「進入教室」）就自動記到（上課當天才算）。還沒進 APP 的人：下課後把 Zoom 的參加者名單貼到下面。</div>
       ${c.must?'<div class="notice info small mt">📌 這堂是衝刺班必到：「沒來」只列衝刺班的人；沒來又沒請假的人會記 1 次違規。點名字可以「記成有來」或「幫他請假」。</div>':''}</div>
     <div class="card"><div class="seg" role="group" aria-label="看誰">${[['in','有來 '+joins.length],['out',(c.must?'沒來 ':'夥伴沒來 ')+absent.length]].concat(c.must?[['lv','請假 '+leaves.length]]:[]).map(([k,t])=>`<button data-act="att-view" data-v="${k}" class="${view===k?'on':''}">${t}</button>`).join('')}</div>
       <div class="att-grid mt">${view==='in' ? (joins.map(chip).join('') || '<div class="muted">還沒有人</div>') : view==='lv' ? (leaves.map(lvChip).join('') || '<div class="muted">沒有人請假</div>') : (absent.map(ab).join('') || '<div class="muted">夥伴都到了 🎉</div>')}</div>
@@ -8147,7 +8163,7 @@ document.addEventListener('click', async e=>{
         replayUrl:rpUrl, replayPass: rpUrl ? (v('cs-replay-pass') || pickPass(rpRaw)) : '', mustAttend: !!($('#cs-must')||{}).checked, venue:v('cs-venue'), fee:+v('cs-fee')||0, capacity:+v('cs-cap')||0 });
       if (!c.title) { x.textContent = '請填課程主題。'; x.classList.remove('hidden'); $('#cs-title').focus(); break; }
       if (!c.date) { x.textContent = '請選上課日期。'; x.classList.remove('hidden'); break; }
-      if (c.mode!=='onsite' && !c.zoomUrl && !await confirmBox('還沒放 Zoom 連結，夥伴會看不到「進入 Zoom 上課」。先存起來，之後再補嗎？', '先存起來')) break;
+      if (c.mode!=='onsite' && !c.zoomUrl && !await confirmBox('還沒放 Zoom 連結，夥伴會看不到「按此進入」。先存起來，之後再補嗎？', '先存起來')) break;
       el.disabled = true; el.textContent = '儲存中…';
       try { await api.adminCourseSave({ id:c.id, title:c.title, teacher:c.teacher, date:c.date, time:c.time, intro:c.intro, zoomUrl:c.zoomUrl, replayUrl:c.replayUrl, replayPass:c.replayPass||'', mustAttend:!!c.mustAttend, mode:c.mode, venue:c.venue, fee:c.fee, capacity:c.capacity });
         toast(c.id ? '已儲存' : '✅ 已新增，夥伴在皇家學院就看得到', 'ok'); S.csDraft = null; go('account', {sub:'adminCourses'}); }
