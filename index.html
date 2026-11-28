@@ -273,6 +273,16 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .photo-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 /* 拍照／從相簿選／影片：一排三格，圖示在上（2026-11-28） */
 .media-btns{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px}
+/* 這篇是：行動日誌／課後心得（2026-11-28） */
+.kind-seg{grid-template-columns:1fr 1fr}
+.kind-seg button{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.25;padding:8px 4px}
+.kind-seg button small{font-size:13px;font-weight:500;opacity:.75}
+.note-picks{display:grid;gap:8px}
+.note-pick{display:flex;align-items:center;gap:10px;min-height:58px;padding:8px 14px;border:2px solid var(--line);border-radius:14px;background:#fff;text-align:left;font-size:17px;touch-action:manipulation;transition:transform 140ms var(--ease-out,ease)}
+.note-pick:active{transform:scale(.98)}
+.note-pick.on{border-color:var(--brand);background:var(--brand-soft)}
+.note-pick .np-d{flex:0 0 auto;font-weight:800;color:var(--brand-dark);font-variant-numeric:tabular-nums}
+.note-pick .np-t{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .mb-tile{flex-direction:column;gap:2px;min-height:84px;padding:8px 4px;font-size:18px;line-height:1.2;border-radius:18px !important}
 .mb-ic{display:block;font-size:28px;line-height:1.1}
 .mb-tile small{display:block;font-size:13px;font-weight:500;opacity:.75;white-space:nowrap}
@@ -894,6 +904,11 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .cs-must small{display:block;font-size:14px;font-weight:400;color:var(--muted,#6b7280)}
 /* 回放專區（2026-11-28） */
 .rp-more{display:block;margin:-4px 4px 10px}
+/* 回放專區：上完的課、可以補心得（灰色＝已經結束，按鈕還是亮的） */
+.rp-todo{background:linear-gradient(180deg,#F3F5F8,#FFFFFF 60%);border-left:5px solid #9AA6B5}
+.rp-todo .c-title{color:#3C4A5C}
+.pill.ended{background:#5F6B7A;color:#fff}
+.rp-todo-f{display:flex;flex-direction:column;gap:8px;margin-top:12px}
 .rp-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .rp-intro-t{min-width:0}
 .rp-grid{display:grid;gap:14px}
@@ -1117,6 +1132,10 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .tree-node .cnt,.tree-head .cnt{font-size:13px;color:var(--muted);white-space:nowrap}
 .fee-what{display:grid;gap:6px;background:var(--gold-soft);border:1px solid var(--gold-line);border-radius:12px;padding:10px 12px;font-weight:600}
 .fee-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+/* 沒繳月費（場地費）：只看得到全部動態（2026-11-28） */
+.fee-lock{border-left:5px solid var(--bad);background:linear-gradient(180deg,#FFF4F2,#fff 70%)}
+.fee-lock .fl-t{font-size:19px;font-weight:800;color:#9B2C1F}
+.fee-lock .fl-d{margin-top:6px;font-size:16px;line-height:1.55;color:var(--text)}
 .fee-banner .btn{width:auto;min-height:40px}
 .fee-stats{grid-template-columns:repeat(4,1fr)}
 .hp-quote{margin:12px 0 0;padding:10px 14px;background:var(--gold-soft);border-radius:12px;color:#4A3B12;font-size:17px}
@@ -2025,6 +2044,8 @@ const MockApi = {
   _me(){ return MockDB.byId[S.session.memberId]; },
   async login(method){ await sleep(600); return { token:uid('SESSION'), memberId:MockDB.ME.id, method, expiresAt: Date.now()+30*86400e3 }; },
   async getHome(){ await this._wait(); const me=this._me(), joined = mockJoined(me), T = todayStr();
+    if (Demo.feeBlocked) return { me:mockMe(me), activity:null, joined:false, reg:null, todayDone:false, progress:null, honors:[], dreams:[], teamCount:0, links:[], badges:{},   // 示範版：沒繳月費（測試用）
+      fee:{ state:'blocked', month:T.slice(0,7), fee:300, dueDay:5, next:{ month:ymAddJs(T.slice(0,7),1), state:'none' } }, feeLocked:true };
     return { me:mockMe(me), activity:MockDB.activity, joined, reg:mockRegStatus(me), todayDone: MockDB.posts.some(p=>p.authorId===me.id && p.status==='active' && !p.courseId && p.actionDate===T),
       progress: joined ? computeDays(me.id, MockDB.activity) : null, honors:mockHonorBoard().strip, dreams:mockDreamsHome(), teamCount: mockDownline(me.id).length,
       links: MockDB.links.map(l=>({...l})), marquee: MockDB.marqueeMode || 'v', marqueeTimes: MockDB.marqueeTimes || 'loop',   // 示範版：切換管理員檢視時不重拿首頁，所以全部給（夥伴畫面本來就只顯示開放中的）
@@ -2325,9 +2346,10 @@ const MockApi = {
     return { result:'ok', member:who, paidNow:!!payNow && fee>0, fee, at:t.checkedInAt };
   },
   async getFee(){ await this._wait(); const T = todayStr(), ym = T.slice(0,7), nx = ymAddJs(ym,1);
-    return { summary:{ state:'paid', month:ym, fee:300, dueDay:5, next:{month:nx, state:'none'}, nextRemind:+T.slice(8)>=20 }, fee:300, dueDay:5,
+    return { summary:{ state: Demo.feeBlocked ? 'blocked' : 'paid', month:ym, fee:300, dueDay:5, next:{month:nx, state:'none'}, nextRemind:+T.slice(8)>=20 }, fee:300, dueDay:5,
       payInfo:'請轉帳到：○○銀行（012）帳號 1234-5678-9012，或把現金交給管理員。', months:[{month:ym,state:'paid',method:'cash',last5:''},{month:nx,state:'none',method:'',last5:''}] }; },
   async feeApply(){ await this._wait(); toast('示範版：不會真的送出','ok'); return this.getFee(); },
+  /* 示範版：Demo.feeBlocked＝true 模擬「過了期限沒繳月費」（測試用） */
   async adminFeeList(month){ await this._wait(); const now = todayStr().slice(0,7), ym = month || now, st = ['paid','pending','none','paid','exempt'];
     const F = this._fee = this._fee || {};
     MockDB.members.slice(1).forEach((m,i)=>{ if (!F[m.id]) { F[m.id] = {}; if (st[i%5]!=='none') F[m.id][now] = st[i%5]; } });
@@ -2597,7 +2619,7 @@ const GasApi = {
       }
     }
     if (['LOGIN_REQUIRED','LOGIN_EXPIRED','NOT_APPROVED'].includes(lastErr.message) && S.session) onSessionLost(lastErr.message);
-    if (lastErr.message==='FEE_REQUIRED' && S.session) renderFeeLock();
+    if (lastErr.message==='FEE_REQUIRED' && S.session && !S.feeLocked) renderFeeLock();
     throw lastErr;
   },
   lineStart(p){ return this.call('auth.lineStart', p, {retry:1}); },
@@ -2807,7 +2829,7 @@ const Perf = {
 };
 /** 進首頁後，趁空檔先把「我的成長」「皇家學院」準備好 */
 function prefetchPages(delay = 1200){
-  if (CONFIG.MODE !== 'live' || !S.me) return;
+  if (CONFIG.MODE !== 'live' || !S.me || S.feeLocked) return;   // 沒繳月費：其他頁不用先準備
   setTimeout(() => {
     if (!QuickCache.fresh('growth:me', QC_RECENT)) QuickCache.fetch('growth:me', () => api.getGrowth()).catch(()=>{});
     if (!QuickCache.fresh('courses', QC_RECENT)) QuickCache.fetch('courses', () => api.getCourses()).catch(()=>{});
@@ -2856,7 +2878,7 @@ const S = {
   calMonth: null, calSel: null,
   role: 'member', admin: { q:'', team:'', today:'', reach:'', pay:'', memberId:null, calMonth:null, calSel:null }
 };
-function newDraft(preset={}){ return { actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', cases:0, video:null, videoChanged:false, courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
+function newDraft(preset={}){ return { kind:'log', actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', cases:0, video:null, videoChanged:false, courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
 
 /* ---------- 提示 ---------- */
 let toastTimer;
@@ -3232,9 +3254,30 @@ function feeFormBind(box, info, F, redraw, done){
   };
 }
 const FEE_WHAT = '<div class="fee-what"><div>✅ 使用皇家 APP（打卡、動態、皇家學院）</div><div>✅ 每週一 BOM 免費參加（線上或現場）</div></div>';
-/** 過了繳費期限還沒繳：整個 APP 只剩這個畫面 */
-let feeLockOn = false;
+/* 過了繳費期限還沒繳月費（場地費，不是衝刺班的報名費）：只看得到「全部動態」，其他功能都不能用（2026-11-28 18:41 使用者）
+   後端 feeGate_ 只放行 home.get／feed.list／comment.list／read.batch 和繳費；前台把其他按鈕攔下來，跳出繳費單。 */
+const FEE_LOCK_OK = new Set(['fee-open','show-more','photo','video-play','comments','rx-who','feed-refresh','logout','logout-all','more-hint']);
+function feeLockBannerHTML(){
+  const f = S.fee || {};
+  return `<div class="card fee-lock"><div class="fl-t">💳 ${f.month ? monthZh(f.month) : '這個月'}的月費（場地費）還沒繳</div>
+    <div class="fl-d">每月 ${f.dueDay || 5} 號前繳。現在只能看「全部動態」；繳了就可以打卡、按讚、留言、上課。</div>
+    <button class="btn btn-primary mt" data-act="fee-open">💳 去繳月費</button></div>`;
+}
+let feeSheetOpen = false;
+function feeLockedNotice(){
+  toast('要先繳這個月的月費（場地費），才能用這個功能', 'err');
+  if (!feeSheetOpen) openFeeSheet();
+}
+/** 後端說要先繳月費：改成「只看全部動態」，並跳出繳費單（只跳一次） */
 async function renderFeeLock(){
+  if (S.feeLocked) return;
+  S.feeLocked = true;
+  if (S.tab !== 'home' || S.sub) go('home'); else renderHome($('#main'));
+  if (!feeSheetOpen) openFeeSheet();
+}
+/** 舊版：整個 APP 只剩繳費畫面（2026-11-28 改成上面的「只看全部動態」，留著備用） */
+let feeLockOn = false;
+async function renderFeeLockFull(){
   if (feeLockOn) return; feeLockOn = true;
   const app = $('#app'), head = `<img class="logo-big" src="${LOGO}" alt="皇家團隊"><h1>皇家主任月費</h1>`;
   app.innerHTML = `<div class="login">${head}<div class="center" style="padding:20px"><span class="spinner" style="border-color:#cfe0f0;border-top-color:var(--brand);width:36px;height:36px"></span></div></div>`;
@@ -3252,18 +3295,19 @@ async function renderFeeLock(){
 }
 /** 「我的帳號」或首頁提醒：打開繳費單 */
 async function openFeeSheet(){
-  let info; try { info = await api.getFee(); } catch(e){ return toast(errText(e),'err'); }
-  const F = { month: info.summary.state==='due' ? info.summary.month : info.summary.next.month, payMethod:'transfer', last5:'' };
-  const bg = document.createElement('div'); bg.className='sheet-bg';
+  let info; try { info = await api.getFee(); } catch(e){ feeSheetOpen = false; return toast(errText(e),'err'); }
+  const F = { month: ['due','blocked'].includes(info.summary.state) ? info.summary.month : info.summary.next.month, payMethod:'transfer', last5:'' };
+  const bg = document.createElement('div'); bg.className='sheet-bg'; feeSheetOpen = true;
   const draw = () => {
     bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="sheet-h"><h3>💳 皇家主任月費</h3><button data-x>關閉</button></div>
       <div class="sheet-b"><div class="muted mb">每月 <b>NT$${(+info.fee).toLocaleString()}</b>，每月 ${info.dueDay} 號前繳，包含：</div>${FEE_WHAT}
         <div class="fee-months mt">${info.months.map(m=>`<div class="kv"><span class="k">${monthZh(m.month)}</span><span class="v">${feePill(m.state)}${m.last5?` <span class="muted small">後五碼 ${esc(m.last5)}</span>`:''}</span></div>`).join('')}</div>
         <div id="fee-form" class="mt">${feeFormHTML(info, F)}</div></div></div>`;
     feeFormBind(bg.querySelector('#fee-form'), info, F, draw, async r => {
+      if (S.feeLocked && r.summary && r.summary.state !== 'blocked') { toast('已送出，等管理員確認；功能都打開了','ok'); setTimeout(() => location.reload(), 900); return; }
       info = r; S.fee = r.summary; toast('已送出，等管理員確認','ok'); QuickCache.dropPrefix('home'); draw(); if (S.tab==='account' && !S.sub) renderAccount($('#main')); });
   };
-  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) bg.remove(); });
+  bg.addEventListener('click', e=>{ if (e.target===bg || e.target.closest('[data-x]')) { bg.remove(); feeSheetOpen = false; } });
   document.body.appendChild(bg); draw();
 }
 /** 管理員首頁最上面：有新夥伴申請加入（2026-11-24 使用者：有新夥伴要申請，跳通知給我看） */
@@ -3570,7 +3614,7 @@ function goStart(){
   go(wantAdmin ? 'account' : 'home', wantAdmin ? {sub:'admin'} : {});
 }
 async function loadHome(){ const h = await api.getHome(); S.homeStale = false; applyHome(h); if (CONFIG.MODE==='live') store('royal_home_last', h); }
-function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.newApplicants=h.newApplicants||0; S.badges=h.badges||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[]; S.links=h.links||[]; S.marquee=h.marquee==='h'?'h':'v'; S.marqueeTimes=h.marqueeTimes==='3'?'3':'loop';
+function applyHome(h){ S.me=h.me; S.act=h.activity; S.fee=h.fee||null; S.feeLocked=!!h.feeLocked; S.newApplicants=h.newApplicants||0; S.badges=h.badges||null; S.progress=h.progress; S.honors=h.honors||[]; S.dreams=h.dreams||[]; S.links=h.links||[]; S.marquee=h.marquee==='h'?'h':'v'; S.marqueeTimes=h.marqueeTimes==='3'?'3':'loop';
   S.acts = h.acts || []; S.joined = h.joined !== false; S.reg = h.reg || null; S.teamCount = h.teamCount || 0; S.todayDone = h.todayDone != null ? !!h.todayDone : !!(h.progress && h.progress.todayDone); setTopTitle(); }
 /** 底部第二顆按鈕：有參加進行中的衝刺班＝「我的進度」；其他人（或活動結束後）＝「我的成長」 */
 const growthMode = () => !(S.joined && S.act && S.progress && !S.progress.ended);
@@ -3875,6 +3919,13 @@ async function fillClassBanner(){
   const b = $('#class-banner'); if (b && S.tab==='home' && !S.sub) b.innerHTML = classBannerHTML(cs);
 }
 function renderHome(main){
+  if (S.feeLocked) {   // 沒繳月費（場地費）：只看得到全部動態（2026-11-28 18:41 使用者）
+    main.innerHTML = `${feeLockBannerHTML()}<div class="feed-head" style="margin-top:4px"><h2>全部動態</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
+      <div id="feed"></div><div id="feed-foot"></div>`;
+    S.scope = 'all';
+    if (!S.feed.items.length || S.feed.scope !== 'all') loadFeed(true); else drawFeed();
+    return;
+  }
   const team = S.teamCount > 0 && S.scope==='team';
   main.innerHTML = `<div id="class-banner">${classBannerHTML(CONFIG.MODE==='live' ? QuickCache.get('courses') : null)}</div>${applyBannerHTML()}${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
     ${team?'<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>':''}
@@ -4144,16 +4195,46 @@ function casesAsked(ymd){
   const list = (S.acts && S.acts.length) ? S.acts : (S.act ? [{ ...S.act, joined: S.joined }] : []);
   return list.some(a => a && a.joined && a.caseGoal > 0 && a.start <= ymd && ymd <= a.end);
 }
+/** 課後心得：列出最近 14 天上過的課，點一堂（2026-11-28 18:34 使用者：「補上近期課後心得，讓對方可以自己選」「幾月幾號的課後心得」）
+ *  今天的課：開始上課之後才列出來（還沒上課不能交心得，後端也會擋） */
+let NOTE_CS = null;   // 發文頁用的課程清單（{at, list}）；示範版沒有暫存，所以自己記
+function recentNoteCourses(d){
+  const fresh = NOTE_CS && Date.now() - NOTE_CS.at < 5*60000 ? NOTE_CS.list : null;
+  const cs = fresh || QuickCache.get('courses') || (ACAD && ACAD.length ? ACAD : null);
+  if (!cs) return null;
+  const T = todayStr(), from = addDays(T, -14), now = new Date(), nm = now.getHours()*60 + now.getMinutes();
+  const list = cs.filter(c => !c.hidden && c.date && c.date >= from && (c.date < T || (c.date === T && (classTimes(c).st == null || nm >= classTimes(c).st))))
+    .sort((a,b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0).slice(0, 8);
+  if (d.courseId && !list.some(c => c.id === d.courseId)) { const c = cs.find(x => x.id === d.courseId); list.unshift(c || { id:d.courseId, title:d.courseTitle, date:'' }); }
+  return list;
+}
+function notePickHTML(d){
+  const list = recentNoteCourses(d);
+  if (!list) {
+    if (!NOTE_CS || !NOTE_CS.loading) { NOTE_CS = { at:0, list:null, loading:true };
+      qget('courses', () => api.getCourses()).then(cs => { NOTE_CS = { at:Date.now(), list:cs || [] }; if (S.tab === 'compose' && S.draft === d) renderCompose($('#main')); })
+        .catch(() => { NOTE_CS = { at:Date.now(), list:[] }; if (S.tab === 'compose' && S.draft === d) renderCompose($('#main')); }); }
+    return '<div class="muted small mt">載入最近的課…</div>'; }
+  if (!list.length) return '<div class="notice info small mt">最近 14 天沒有上過的課。</div>';
+  return `<label class="lbl lbl-row"><span>是哪一堂課的心得？<span class="req">必選</span></span><span class="lbl-side">最近 14 天</span></label>
+    <div class="note-picks">${list.map(c => `<button class="note-pick${d.courseId===c.id?' on':''}" data-act="note-course" data-id="${esc(c.id)}" data-title="${esc(c.title)}">
+      <span class="np-d">${c.date ? mdZh(c.date) : ''}</span><span class="np-t">${esc(c.title)}</span>${c.myNoteAt ? '<span class="pill ok">✓ 已交</span>' : ''}</button>`).join('')}</div>`;
+}
 function renderCompose(main){
   if (!S.draft) S.draft = newDraft();
-  const d = S.draft, T = todayStr(), Y = addDays(T,-1), needPhoto = !d.courseId && photoNeeded(d.actionDate);
+  const d = S.draft, T = todayStr(), Y = addDays(T,-1), needPhoto = !d.courseId && d.kind !== 'note' && photoNeeded(d.actionDate);
   const late = diffDays(d.actionDate, T);
   const editing = !!S.editing, live = $('#vz-live video');   // 正在壓縮的影片：重畫畫面時搬過去，不要中斷
+  const isNote = !!d.courseId || d.kind === 'note';   // 這篇是行動日誌還是課後心得：夥伴自己按（2026-11-28 18:34 使用者：「讓對方可以自己選要補分類的是什麼」）
   main.innerHTML = `<div class="card compose">
-    <h2>${d.courseId?(editing?'編輯課後心得':'寫課後心得'):(editing?'編輯行動日誌':'發布行動日誌')}</h2>
-    ${d.courseId?`<div class="course-tag">📚 課後心得：${esc(d.courseTitle)}${editing?'':'<button data-act="course-clear" aria-label="改成一般行動日誌">✕</button>'}</div>
-      <div class="notice info small">課後心得記在今天，<b>不算每日打卡</b>；上課後 ${S.act&&S.act.noteDays!=null?S.act.noteDays:7} 天內交，才算進達標。</div>`:''}
-    <div class="${d.courseId?'hidden':''}">
+    <h2>${isNote?(editing?'編輯課後心得':'寫課後心得'):(editing?'編輯行動日誌':'發布行動日誌')}</h2>
+    ${editing ? (d.courseId?`<div class="course-tag">📚 課後心得：${esc(d.courseTitle)}</div>`:'') : `<label class="lbl">這篇是</label>
+    <div class="seg kind-seg" role="group" aria-label="這篇是">
+      <button data-act="post-kind" data-k="log" class="${isNote?'':'on'}">📝 行動日誌<small>算每日打卡</small></button>
+      <button data-act="post-kind" data-k="note" class="${isNote?'on':''}">📚 課後心得<small>選是哪一堂課</small></button></div>`}
+    ${isNote && !editing ? notePickHTML(d) : ''}
+    ${isNote?`<div class="notice info small">課後心得記在今天，<b>不算每日打卡</b>（要打卡請另外發一篇行動日誌）；上課後 ${S.act&&S.act.noteDays!=null?S.act.noteDays:7} 天內交，才算進達標。</div>`:''}
+    <div class="${isNote?'hidden':''}">
     <label class="lbl lbl-row">行動日期<span class="lbl-side">${fullZh(d.actionDate).replace(/^\d+ 年 /,'')}</span></label>
     <div class="seg" role="group" aria-label="行動日期">
       <button data-act="date-mode" data-m="today" class="${d.dateMode==='today'?'on':''}">今天</button>
@@ -4161,13 +4242,13 @@ function renderCompose(main){
       <button data-act="date-mode" data-m="other" class="${d.dateMode==='other'?'on':''}">其他日期</button>
     </div>
     <input class="inp mt ${d.dateMode==='other'?'':'hidden'}" type="date" id="c-date" max="${T}" value="${d.actionDate}" aria-label="選擇行動日期">
-    ${casesAsked(d.actionDate) ? `<label class="lbl lbl-row" for="c-cases"><span>💼 這天談了幾個 CASE</span><span class="lbl-side">沒有就選 0</span></label>
+    ${!isNote ? `<label class="lbl lbl-row" for="c-cases"><span>💼 這天談了幾個 CASE</span><span class="lbl-side">沒有就選 0</span></label>
       <select class="inp case-sel" id="c-cases">${Array.from({length:11},(_,i)=>`<option value="${i}"${(+d.cases||0)===i?' selected':''}>${i===0?'0 個（今天沒有）':i+' 個'}</option>`).join('')}</select>` : ''}
     </div>
-    ${late>0&&!d.courseId?`<div class="notice late">這是<b>補打卡</b>：行動日期是 ${mdZh(d.actionDate)}，發布時間會記錄為現在。是否計入有效打卡，依活動規則決定。</div>`:''}
+    ${late>0&&!isNote?`<div class="notice late">這是<b>補打卡</b>：行動日期是 ${mdZh(d.actionDate)}，發布時間會記錄為現在。是否計入有效打卡，依活動規則決定。</div>`:''}
 
-    <label class="lbl lbl-row" for="c-text"><span>${d.courseId?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></span><span class="lbl-side" id="c-count">${d.text.length} 字</span></label>
-    <textarea class="inp" id="c-text" maxlength="2000" placeholder="${d.courseId?'例如：今天學到…，我打算這樣用在自己身上…':'例如：今天打電話關心了三位夥伴，也約好下週見面…'}">${esc(d.text)}</textarea>
+    <label class="lbl lbl-row" for="c-text"><span>${isNote?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></span><span class="lbl-side" id="c-count">${d.text.length} 字</span></label>
+    <textarea class="inp" id="c-text" maxlength="2000" placeholder="${isNote?'例如：今天學到…，我打算這樣用在自己身上…':'例如：今天打電話關心了三位夥伴，也約好下週見面…'}">${esc(d.text)}</textarea>
 
     <label class="lbl lbl-row"><span>照片・影片${needPhoto?'<span class="req">照片必填</span>':'<span class="muted small" style="font-weight:400">（可以不放）</span>'}</span>${d.photos.length?`<span class="lbl-side">已選 ${d.photos.length} 張</span>`:''}</label>
     ${needPhoto && !d.photos.length ? '<div class="notice info small photo-need">📷 衝刺班打卡要附<b>至少 1 張照片</b>（補打卡也是）。</div>' : ''}
@@ -4438,6 +4519,7 @@ async function submitPost(){
   d.text = $('#c-text').value;
   if (!d.text.trim()) { showErr('請先寫下今天做了什麼。'); $('#c-text').focus(); return; }
   if (diffDays(d.actionDate, todayStr()) < 0) { showErr('不能選還沒到的日期。'); return; }
+  if (d.kind === 'note' && !d.courseId) { showErr('請先點選是哪一堂課的心得。'); const np = $('.note-pick'); if (np) np.scrollIntoView({block:'center'}); return; }
   if (!d.courseId && !d.photos.length && photoNeeded(d.actionDate)) { showErr('衝刺班打卡要附至少 1 張照片：按「📷 拍照」或「🖼️ 從相簿選」。'); const b = $('[data-act="photo-cam"]'); if (b) b.scrollIntoView({block:'center'}); return; }
   const v = d.video;
   if (v && !v.keep && v.state !== 'done') {   // 影片還沒傳好：上傳中就等它，其他情況請他處理
@@ -4455,11 +4537,11 @@ async function submitPost(){
   $('#c-err').classList.add('hidden');
   try {
     if (S.editing) {
-      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos, ...(casesAsked(d.actionDate) ? { cases:+d.cases||0 } : {}), ...(d.videoChanged ? { videoId } : {}) });
+      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos, ...(!d.courseId ? { cases:+d.cases||0 } : {}), ...(d.videoChanged ? { videoId } : {}) });
       replacePostEverywhere(p);
       toast('已儲存修改','ok');
     } else {
-      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId, cases: !d.courseId && casesAsked(d.actionDate) ? (+d.cases||0) : 0, ...(videoId ? { videoId } : {}) });
+      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId, cases: !d.courseId ? (+d.cases||0) : 0, ...(videoId ? { videoId } : {}) });
       S.feed.items.unshift(p); if (S.feed.items.length>1) S.feed.cursor++;
       const mp = QuickCache.get('myposts'); if (mp) QuickCache.put('myposts', { ...mp, items:[p, ...mp.items] });   // 我的日誌馬上看得到
       if (S.myPosts) S.myPosts.unshift(p);
@@ -4513,6 +4595,7 @@ async function openComments(id){
     } catch(e){ toast('留言沒有送出，請再按一次', 'err'); }
     btn.disabled = false; btn.textContent = '送出'; sending = false;
   };
+  if (S.feeLocked) { const f = $('.sheet-f', bg); if (f) f.innerHTML = '<div class="muted small" style="padding:6px 4px">繳了這個月的月費（場地費），就可以留言。</div>'; return; }
   $('#cm-send', bg).addEventListener('click', send);
   $('#cm-in', bg).addEventListener('keydown', e=>{ if (e.key==='Enter' && !e.isComposing) send(); });
 }
@@ -4723,14 +4806,15 @@ async function drawAcademy(main, cs){
       <button class="btn btn-primary btn-sm" data-act="my-ticket" data-id="${c.id}">🎫 入場 QR</button></div>`).join('')
     : ''}</div>`;
   const list = cs.filter(view==='online' ? isOnline : isOnsite);
-  const up = list.filter(c=>!courseOver(c, T)).sort((a,b)=>a.date<b.date?-1:1), past = list.filter(c=>courseOver(c, T)).sort((a,b)=>a.date<b.date?1:-1);
-  const nOn = cs.filter(c=>isOnline(c) && !courseOver(c, T)).length, nSite = cs.filter(c=>isOnsite(c) && !courseOver(c, T)).length, nRp = replayList(cs, T).length;
-  const empty = view==='online' ? '目前沒有線上課程。' : '目前沒有現場課程，新課程公布後會出現在這裡。';
+  // 上完的課不放在這裡（2026-11-28 18:38 使用者：「過去式的課程就不用出現在這一區了，放到回放專區，強調已經結束、可以補課後心得，補完就不用再出現」）
+  const up = list.filter(c=>!courseOver(c, T)).sort((a,b)=>a.date<b.date?-1:1);
+  const nOn = cs.filter(c=>isOnline(c) && !courseOver(c, T)).length, nSite = cs.filter(c=>isOnsite(c) && !courseOver(c, T)).length, nRp = replayList(cs, T).length, nNote = noteTodo(cs, T).length;
+  const empty = view==='online' ? '目前沒有即將開課的線上課程。' : '目前沒有現場課程，新課程公布後會出現在這裡。';
   const sw = `<div class="acad-switch" role="tablist">
       <button role="tab" class="${view==='online'?'on':''}" data-act="acad-view" data-v="online"><span class="sw-ic" aria-hidden="true">💻</span>${two2('線上課程')}${nOn?`<small>${nOn} 堂將開課</small>`:''}</button>
       <button role="tab" class="${view==='onsite'?'on':''}" data-act="acad-view" data-v="onsite"><span class="sw-ic" aria-hidden="true">📍</span>${two2('現場課程')}${nSite?`<small>${nSite} 堂可報名</small>`:''}</button>
       <button role="tab" class="${view==='month'?'on':''}" data-act="acad-view" data-v="month"><span class="sw-ic" aria-hidden="true">📅</span>${two2('本月課表')}<small>各會場</small></button>
-      <button role="tab" class="${view==='replay'?'on':''}" data-act="acad-view" data-v="replay"><span class="sw-ic" aria-hidden="true">▶️</span>${two2('回放專區')}<small>${nRp?nRp+' 部影片':'會議錄影'}</small></button>
+      <button role="tab" class="${view==='replay'?'on':''}" data-act="acad-view" data-v="replay"><span class="sw-ic" aria-hidden="true">▶️</span>${two2('回放專區')}<small>${nNote?nNote+' 堂可補心得':nRp?nRp+' 部影片':'會議錄影'}</small></button>
     </div>`;
   const hasTk = cs.some(c=>(c.myTickets||[]).length);
   if (view==='month'){ main.innerHTML = mineHTML + sw + '<div id="sched"><div class="skeleton"></div></div>'; return renderSchedule($('#sched')); }
@@ -4738,9 +4822,8 @@ async function drawAcademy(main, cs){
   main.innerHTML = `${mineHTML}
     ${sw}
     ${view==='onsite'&&hasTk&&!mine.length?'<button class="link-btn" data-act="my-tickets">🎫 我的票券 ›</button>':''}
-    ${up.length?up.map(card).join(''):''}
-    ${past.length?`<h2 class="acad-h">過去的課程</h2>${view==='online'&&nRp?'<button class="link-btn rp-more" data-act="acad-view" data-v="replay">▶️ 全部錄影都在「回放專區」 ›</button>':''}${past.map(card).join('')}`:''}
-    ${!list.length?`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`:''}`;
+    ${up.length?up.map(card).join(''):`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`}
+    ${view==='online' ? `<button class="link-btn rp-more" data-act="acad-view" data-v="replay">${nNote?`📝 上過的課在「回放專區」：還有 ${nNote} 堂可以補課後心得 ›`:'▶️ 上過的課、錄影都在「回放專區」 ›'}</button>` : ''}`;
 }
 let ACAD = [];
 /* =====================================================================
@@ -4794,6 +4877,11 @@ function replayKind(u){
   return { k:'link', embed:'', thumb:'', open: /zoom\.us\//i.test(u) ? '打開 Zoom 錄影' : '打開回放', app:'' };
 }
 const replayList = (cs, T) => (cs||[]).filter(c => c.replay && !c.replayGone && c.date <= T).sort((a,b) => a.date<b.date ? 1 : a.date>b.date ? -1 : 0);
+/** 上完、還沒交心得的線上課（最近 14 天）：放在回放專區最上面，補完就不見（2026-11-28 18:38 使用者）。
+ *  有錄影的課已經有影片卡（下面有「寫心得」），這裡就不重複。 */
+const noteTodo = (cs, T) => { const vid = new Set(replayList(cs, T).map(c => c.id));
+  return (cs||[]).filter(c => !c.hidden && isOnline(c) && c.date && c.date <= T && courseOver(c, T) && diffDays(c.date, T) <= 14 && !c.myNoteAt && !vid.has(c.id))
+    .sort((a,b) => a.date<b.date ? 1 : a.date>b.date ? -1 : 0); };
 /** 影片保留到哪天（後端給 replayUntil；舊資料沒有就用上課日＋14 天） */
 const rpUntil = c => c.replayUntil || addDays(c.date, 14);
 function rpKeepHTML(c, T){
@@ -4809,7 +4897,15 @@ const rpSeen = () => new Set(store(RP_KEY()) || []);
 function rpMark(id){ const s = rpSeen(); if (s.has(id)) return; s.add(id); store(RP_KEY(), [...s].slice(-300)); }
 function replayHTML(cs, T){
   const vids = replayList(cs, T), seen = rpSeen(), admin = isAdminNow();
-  const wait = (cs||[]).filter(c => !c.replay && !c.replayGone && isOnline(c) && c.date <= T && diffDays(c.date, T) <= 14).sort((a,b) => a.date<b.date ? 1 : -1);
+  const wait = admin ? (cs||[]).filter(c => !c.replay && !c.replayGone && isOnline(c) && c.date <= T && diffDays(c.date, T) <= 14).sort((a,b) => a.date<b.date ? 1 : -1) : [];   // 管理員：還沒貼錄影的課
+  const todo = noteTodo(cs, T), nd = (S.act && S.act.noteDays != null) ? S.act.noteDays : 7;
+  const todoCard = c => `<div class="card course rp-todo"><div class="c-head">${dateTile(c.date, true)}<div class="c-main">
+      <div class="c-tags"><span class="pill ended">已結束</span>${c.mustMe?'<span class="pill must">📌 衝刺班必到</span>':''}</div>
+      <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
+      <div class="muted small">${c.time?esc(c.time):''}${c.teacher?`・${esc(c.teacher)}`:''}</div></div></div>
+    ${c.mustMe ? meetCardHTML(c, T) : ''}
+    <div class="rp-todo-f"><span class="muted small">${c.replay ? '' : '⏳ 回放整理中・'}${diffDays(c.date, T) <= nd ? `${mdZh(addDays(c.date, nd))} 前交，算進達標` : '超過交心得的期限了，還是可以寫'}</span>
+      <button class="btn btn-primary" data-act="share-course" data-id="${esc(c.id)}" data-title="${esc(c.title)}">✍️ 補課後心得</button></div></div>`;
   const gone = admin ? (cs||[]).filter(c => c.replayGone).sort((a,b) => a.date<b.date ? 1 : -1) : [];
   const card = c => { const k = replayKind(c.replay), sn = seen.has(c.id);
     return `<div class="rp-card" data-id="${esc(c.id)}">
@@ -4824,13 +4920,14 @@ function replayHTML(cs, T){
   if (lastM) html += '</div>';
   const top = `<div class="card rp-intro"><div class="rp-intro-t"><b>▶️ 回放專區</b><div class="muted small">上過的線上會議、課程錄影，點一下就能看；看完記得寫心得。影片只保留 14 天。</div></div>
     ${admin?'<button class="btn btn-outline btn-sm" data-act="rp-admin">✏️ 貼回放連結</button>':''}</div>`;
-  const waitHTML = wait.length ? `<div class="card rp-wait"><b>⏳ 回放整理中</b>${wait.map(c=>`<div class="rp-w"><span>${esc(c.title)}</span><span class="muted nw">${mdZh(c.date)}</span></div>`).join('')}
-    <div class="hint">管理員貼上錄影連結後，就會出現在上面。</div></div>` : '';
-  const empty = vids.length ? '' : `<div class="card center"><div style="font-size:40px">🎬</div><div class="muted">還沒有回放影片。</div>
+  const waitHTML = wait.length ? `<div class="card rp-wait"><b>⏳ 還沒貼錄影的課（只有管理員看得到）</b>${wait.map(c=>`<div class="rp-w"><span>${esc(c.title)}</span><span class="muted nw">${mdZh(c.date)}</span></div>`).join('')}
+    <div class="hint">貼上錄影連結後，就會出現在下面的影片。</div></div>` : '';
+  const todoHTML = todo.length ? `<h2 class="acad-h">📝 已經上完・可以補課後心得</h2><div class="hint" style="margin:-6px 4px 10px">補完心得，這堂就不會再出現在這裡。</div>${todo.map(todoCard).join('')}` : '';
+  const empty = vids.length || todo.length ? '' : `<div class="card center"><div style="font-size:40px">🎬</div><div class="muted">還沒有回放影片。</div>
     <div class="hint">${admin?'到後台「課程管理」打開上過的課，貼上「錄影回放連結」就會出現在這裡。':'上完線上課，管理員貼上錄影後就會出現在這裡。'}</div></div>`;
   const goneHTML = gone.length ? `<div class="card rp-wait rp-gone"><b>🗑️ 已從 APP 下架（夥伴已經看不到）</b>${gone.map(c=>`<div class="rp-w"><span>${esc(c.title)}</span><span class="muted nw">${mdZh(addDays(c.date, 30))} 之後可以刪</span></div>`).join('')}
     <div class="hint">只有管理員看得到這一區。錄影檔留一個月（上課日＋30 天），之後再自己到 Zoom 刪掉。</div></div>` : '';
-  return top + waitHTML + html + empty + goneHTML;
+  return top + todoHTML + waitHTML + html + empty + goneHTML;
 }
 function openReplay(c){
   if (!c || !c.replay) return;
@@ -7603,6 +7700,7 @@ function exportCSV(){
 document.addEventListener('click', async e=>{
   const el = e.target.closest('[data-act]'); if (!el) return;
   const act = el.dataset.act, postEl = el.closest('.post'), pid = postEl && postEl.dataset.id;
+  if (S.feeLocked && S.session && !FEE_LOCK_OK.has(act) && !(act==='tab' && el.dataset.tab==='home')) { e.preventDefault(); feeLockedNotice(); return; }   // 沒繳月費：只能看全部動態
   switch(act){
     /* 登入 */
     case 'login-line': if (CONFIG.MODE==='live') lineLinkTapped(e); else renderLogin('who',{method:'LINE'}); break;
@@ -7848,6 +7946,9 @@ document.addEventListener('click', async e=>{
     case 'video-play': { if (pid) queueRead(pid); openVideo(findPost(pid)); break; }
     case 'photo-rm': S.draft.text=$('#c-text').value; S.draft.photos.splice(Number(el.dataset.i),1); S.draft.photoInfo=''; renderCompose($('#main')); break;
     case 'course-clear': S.draft.text=$('#c-text').value; S.draft.courseId=null; S.draft.courseTitle=null; renderCompose($('#main')); break;
+    case 'post-kind': { const d = S.draft; d.text = $('#c-text').value; d.kind = el.dataset.k;
+      if (d.kind === 'log') { d.courseId = null; d.courseTitle = null; } renderCompose($('#main')); break; }
+    case 'note-course': { const d = S.draft; d.text = $('#c-text').value; d.kind = 'note'; d.courseId = el.dataset.id; d.courseTitle = el.dataset.title; renderCompose($('#main')); break; }
     case 'submit': submitPost(); break;
     case 'cancel-edit': S.editing=null; S.draft=null; go('home'); break;
     /* 進度日曆 */
@@ -7862,7 +7963,7 @@ document.addEventListener('click', async e=>{
     case 'leave-off': { if (!await confirmBox('確定要取消請假嗎？取消後這堂課就要出席。', '取消請假')) break;
       try { await api.leaveSet(el.dataset.id, false); toast('已取消請假', 'ok'); renderAcademy($('#main')); } catch(err){ toast(errText(err), 'err'); } break; }
     case 'rp-admin': go('account',{sub:'adminCourses'}); break;
-    case 'share-course': S.editing=null; S.draft=newDraft({courseId:el.dataset.id, courseTitle:el.dataset.title, text:'', actionDate:todayStr(), dateMode:'today'}); go('compose'); break;
+    case 'share-course': S.editing=null; S.draft=newDraft({kind:'note', courseId:el.dataset.id, courseTitle:el.dataset.title, text:'', actionDate:todayStr(), dateMode:'today'}); go('compose'); break;
     /* 帳號 */
     case 'bind': toast('正式上線後，這裡會引導你用 LINE 或 Email 驗證後綁定'); break;
     case 'logout': if (await confirmBox('確定要登出嗎？','登出')) { try { await api.logout(); } catch(_){} QuickCache.clear(); store(SESSION_KEY,null); S.session=null; S.feed={items:[],cursor:0,done:false,loading:false}; renderLogin('start'); } break;
