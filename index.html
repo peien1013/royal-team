@@ -165,6 +165,17 @@ img.avatar{object-fit:cover;display:block}
 .post-imgs.n2{grid-template-columns:1fr 1fr}.post-imgs.n2 img{aspect-ratio:1/1}
 .post-imgs.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;aspect-ratio:3/2}
 .post-imgs.n3 img:first-child{grid-row:1 / 3}
+/* 4 張以上（2026-11-28 照片最多 10 張）：前 4 張排 2×2，第 4 張蓋「+幾張」，點了可以左右滑看全部 */
+.post-imgs.n4{grid-template-columns:1fr 1fr;position:relative}.post-imgs.n4 img{aspect-ratio:1/1}
+.post-imgs.n4 img:nth-child(n+5){display:none}
+.post-imgs.more::after{content:attr(data-more);position:absolute;right:0;bottom:0;width:calc(50% - 1.5px);aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45);color:#fff;font-size:34px;font-weight:800;pointer-events:none}
+.post-cases{margin:8px 16px 0;display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:999px;background:#FFF4DC;color:#7A4E00;font-size:16px;font-weight:700}
+.post-cases b{font-size:18px}
+.lightbox.gal{padding:0}
+.gal-track{display:flex;width:100%;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.gal-track::-webkit-scrollbar{display:none}
+.lightbox.gal .gal-track img{flex:0 0 100%;width:100%;height:100%;object-fit:contain;scroll-snap-align:center;max-width:none;max-height:none}
+.gal-n{position:absolute;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);color:#fff;background:rgba(0,0,0,.5);border-radius:999px;padding:4px 14px;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
 .post-stats{display:flex;justify-content:space-between;padding:10px 16px;font-size:15px;color:var(--muted);border-bottom:1px solid var(--line)}
 .post-actions{display:grid;grid-template-columns:1fr 1fr}
 .post-actions button{border:0;background:none;min-height:54px;font-size:17px;font-weight:700;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:6px}
@@ -488,6 +499,7 @@ body.play-on .bubbles{display:none}
 .ev-opt[aria-pressed="true"]::after{content:"✓";margin-left:auto;color:var(--brand);font-size:20px}
 .ev-opt .flags{margin-left:0}
 .att-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}   /* 線上課點名單 */
+.att-p.lv{background:#FFF6E0;border-color:#F3C97A}
 .att-p{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:58px;padding:8px 12px;border-radius:12px;border:1.5px solid #BFE0CB;background:#F1FAF4;text-align:left;cursor:pointer}
 .att-p .n{font-size:17px;font-weight:700;color:#1B2B44}
 .att-p .t{font-size:12px;color:#5B6B7F;margin-top:2px}
@@ -832,6 +844,22 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .acad-switch button small{display:block;font-size:13px;font-weight:600;opacity:.8;margin-top:2px}
 .acad-switch button.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,114,196,.25)}
 .acad-h{margin:16px 4px 10px}
+/* 衝刺班週一會議（2026-11-28） */
+.pill.must{background:#FFF1D6;color:#8A5300;border:1px solid #F3C97A}
+.pill.case{background:#FFF4DC;color:#7A4E00}
+.case-sum{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.case-sel{font-size:20px;font-weight:700}
+.meet-st{border-radius:12px;padding:10px 12px;margin-top:10px;font-size:16px;line-height:1.5}
+.meet-st.ok{background:#E8F6EE;color:#1E7A45}
+.meet-st.leave{background:#FFF6E0;color:#7A4E00}
+.meet-st.bad{background:#FDECEC;color:#B42318}
+.meet-st .small{font-size:15px;opacity:.9}
+.meet-st .link-btn{margin-top:4px}
+.leave-btn{margin-top:10px}
+.meet-sum{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.notes-head .big.bad{color:var(--bad)}
+.cs-must{margin-top:14px}
+.cs-must small{display:block;font-size:14px;font-weight:400;color:var(--muted,#6b7280)}
 /* 回放專區（2026-11-28） */
 .rp-more{display:block;margin:-4px 4px 10px}
 .rp-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -886,6 +914,8 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .acad-switch{grid-template-columns:repeat(4,1fr);gap:6px}   /* 2026-11-28 多了「回放專區」：四個一排，圖示放上面 */
 .acad-switch button{font-size:16px;padding:8px 2px;line-height:1.25}
 .acad-switch .sw-ic{display:block;font-size:22px;line-height:1.15;margin-bottom:2px}
+.acad-switch button{white-space:normal}
+.t22{display:inline-block;white-space:nowrap}
 .acad-switch button small{font-size:12px}
 .sched-head{margin:14px 4px 10px}.sched-head h2{margin:0}
 .sched{padding:0;overflow:hidden}
@@ -1521,7 +1551,7 @@ const CONFIG = {
   READ_FLUSH_MS: 8000,     // 已讀紀錄每幾秒批次送出一次
   PHOTO_MAX_EDGE: 1080,    // 照片壓縮後最長邊：手機螢幕看很清楚，不是列印用
   PHOTO_QUALITY: 0.72,
-  MAX_PHOTOS: 3,           // 每篇最多幾張照片
+  MAX_PHOTOS: 10,          // 每篇最多幾張照片（2026-11-28 使用者：「照片最多 10 張」，原本 3 張）
   SHOW_TEAM: false         // 目前不分組：資料保留「團隊」欄，但畫面不顯示
 };
 /** LINE 標誌（登入按鈕）、NU SKIN 噴泉標誌（如新帳號前面）：2026-11-25 16:33 使用者給的圖 */
@@ -1606,7 +1636,8 @@ const MockDB = (() => {
 
   // 示範活動：開始於 40 天前，共 90 天，門檻 85 天（後台可改，非正式規則）
   const activity = { id:'ACT-DEMO', name:'2027 皇家巴塞隆納早鳥衝刺班', start:addDays(T,-40), end:addDays(T,49),
-    threshold:85, lateDays:3, fee:3000, feeMode:'personal', note:'', courseNotes:true, noteDays:7, joinMode:'list', regDeadline:'' };
+    threshold:85, lateDays:3, fee:3000, feeMode:'personal', note:'', courseNotes:true, noteDays:7, joinMode:'list', regDeadline:'',
+    photoReq:false, meetReq:false, strikeMax:3, caseGoal:0 };   // 2026-11-28 衝刺班：打卡要附照片、週一會議必到（示範版預設關著，測試會打開）
 
   const courses = [
     {id:'C001', title:'如何用一句話打開話題', teacher:'林老師（外聘講師）', date:addDays(T,-12), time:'20:00–21:30',
@@ -1781,7 +1812,7 @@ function computeDays(memberId, act){
   const days = {}; Object.keys(map).forEach(d=>{ days[d] = map[d].status; });
   const notes = mockNotes(memberId, act);
   const daysReached = valid >= act.threshold, daysReachable = maxPossible >= act.threshold;
-  return { days, valid, late, pending, invalid, missing, remaining, todayDone, need: Math.max(0, act.threshold - valid), notes,
+  return { days, valid, late, pending, invalid, missing, remaining, todayDone, need: Math.max(0, act.threshold - valid), notes, meet: mockMeet(memberId, act), cases: mockCases(memberId, act),
            daysReached, daysReachable, reachable: daysReachable && notes.missed + notes.late === 0, reached: daysReached && notes.done === notes.required };
 }
 /** 課後心得（跟後端同一套規則）：活動期間每一堂純線上課，上課後 noteDays 天內交才算 */
@@ -1810,6 +1841,38 @@ function mockHonorBoard(){
   return { people:list, strip:strip.slice(0,15) };
 }
 /** 示範：有沒有參加衝刺班（名單是空的＝全部都算） */
+/** 示範版：衝刺班週一會議（跟後端 89_Leave.gs 同一套規則） */
+function mockMeetActs(m, d){ const a = MockDB.activity; return a && a.meetReq && m && mockJoined(m) && a.start <= d && d <= a.end ? [a] : []; }
+const mockNowHm = () => { const d = new Date(); return ymd(d) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+function mockClassStart(c){ const m = String(c.time||'').match(/(\d{1,2})\s*[:：]\s*(\d{2})/); return c.date + ' ' + (m ? pad(+m[1]) + ':' + m[2] : '23:59'); }
+function mockLeaveOf(cid, mid){ return (MockDB.leaves||[]).find(l => l.courseId===cid && l.memberId===mid && l.status!=='cancelled') || null; }
+function mockAttended(cid, mid){ return (MockDB.classJoins||[]).some(j => j.courseId===cid && j.memberId===mid && j.status!=='cancelled'); }
+function mockNoteAt(cid, mid){ return MockDB.posts.filter(p=>p.courseId===cid && p.authorId===mid && p.status==='active').map(p=>ymd(new Date(p.postedAt))).sort()[0] || ''; }
+function mockLeaveWrite(c, m, on, reason, by){
+  MockDB.leaves = MockDB.leaves || []; const cur = mockLeaveOf(c.id, m.id);
+  if (on) { if (cur) Object.assign(cur, { reason, by }); else MockDB.leaves.push({ id:uid('LV'), courseId:c.id, memberId:m.id, name:m.name, reason, at:tvNow(), by, status:'' }); }
+  else if (cur) cur.status = 'cancelled';
+  return { ok:true, on, reason: on ? reason : '' };
+}
+function mockMeet(memberId, act){
+  if (!act || !act.meetReq) return null;
+  const T = todayStr(), plan = MockDB.courses.filter(c=>!c.hidden && c.mustAttend && c.date>=act.start && c.date<=act.end).sort((a,b)=>a.date<b.date?-1:1);
+  const sum = { total:plan.length, attend:0, leave:0, makeup:0, open:0, upcoming:0, strikes:0, max:act.strikeMax||3, noteDays:act.noteDays ?? 7 };
+  sum.items = plan.map(c=>{ const att = mockAttended(c.id, memberId), lv = mockLeaveOf(c.id, memberId), due = addDays(c.date, sum.noteDays), at = mockNoteAt(c.id, memberId); let st;
+    if (att) st = 'attend'; else if (c.date >= T) st = lv ? 'leave' : 'upcoming'; else if (lv) st = at && at >= c.date && at <= due ? 'makeup' : (T <= due ? 'open' : 'nomakeup'); else st = 'absent';
+    if (st==='attend') sum.attend++; if (lv) sum.leave++; if (st==='makeup') sum.makeup++; if (st==='open') sum.open++; if (st==='leave'||st==='upcoming') sum.upcoming++; if (st==='absent'||st==='nomakeup') sum.strikes++;
+    return { id:c.id, title:c.title, date:c.date, time:c.time||'', due, status:st, reason: lv ? lv.reason : '', noteAt:at }; });
+  sum.left = Math.max(0, sum.max - sum.strikes); sum.out = sum.strikes >= sum.max; return sum;
+}
+function mockCases(memberId, act){
+  if (!act || !(act.caseGoal > 0)) return null;
+  const T = todayStr(), dow = (new Date(T+'T12:00:00').getDay() + 6) % 7, wk = addDays(T, -dow), mo = T.slice(0,7), seen = new Set();
+  const sum = { goal:act.caseGoal, total:0, week:0, month:0, today:0, days:0 };
+  MockDB.posts.forEach(p=>{ const n = Math.max(0, Math.min(10, +p.cases||0)); if (!n || p.authorId!==memberId || p.status!=='active' || p.courseId || p.review==='rejected' || p.actionDate<act.start || p.actionDate>act.end) return;
+    sum.total += n; if (p.actionDate>=wk && p.actionDate<=T) sum.week += n; if (p.actionDate.slice(0,7)===mo) sum.month += n; if (p.actionDate===T) sum.today += n; if (!seen.has(p.actionDate)) { seen.add(p.actionDate); sum.days++; } });
+  sum.left = Math.max(0, sum.goal - sum.total); sum.reached = sum.total >= sum.goal; return sum;
+}
+function mockPhotoReq(m, ymd){ const a = MockDB.activity; return !!(a && a.photoReq && mockJoined(m) && a.start <= ymd && ymd <= a.end); }
 function mockJoined(m){
   if (m.id===MockDB.ME.id && Demo.notJoined) return false;
   if (m.title) return false;   // 公司專員、皇家CEO 不用打卡
@@ -1905,7 +1968,7 @@ function mockCounts(m){ const c={}; m.forEach(t=>{ c[t]=(c[t]||0)+1; }); return 
 function publicPost(p, meId){
   const a = MockDB.byId[p.authorId], c = p.courseId ? MockDB.courses.find(x=>x.id===p.courseId) : null;
   return { id:p.id, author:{id:a.id, name:a.name, color:a.color, avatarUrl:a.avatarUrl||''}, actionDate:p.actionDate, postedAt:p.postedAt,
-    editedAt:p.editedAt, text:p.text, photoUrls: p.photoDatas || (p.photo ? p.photo.scenes.map(demoPhotoUrl) : []),
+    editedAt:p.editedAt, text:p.text, cases: p.cases || 0, photoUrls: p.photoDatas || (p.photo ? p.photo.scenes.map(demoPhotoUrl) : []),
     isLate:p.isLate, review:p.review, course: c ? {id:c.id, title:c.title} : null,
     likeCount:p.likes.size, liked:p.likes.has(meId), myReaction:p.likes.get(meId)||'', reactionCounts:mockCounts(p.likes), reactors:mockReactors(p.likes), commentCount:p.comments.length, readCount:p.reads.size, mine:p.authorId===meId };
 }
@@ -1932,7 +1995,7 @@ const MockApi = {
   async getTeam(){ await this._wait(); const act = MockDB.activity, me = this._me();
     const rows = mockDownline(me.id).map(d=>{ const m = MockDB.byId[d.id], j = mockJoined(m), x = j ? computeDays(d.id, act) : null;
       return { m:{ id:m.id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, depth:d.depth, uplineName:(MockDB.byId[m.uplineId]||{}).name||'' }, joined:j,
-        pr: x ? { valid:x.valid, need:x.need, todayDone:x.todayDone, reached:x.reached, reachable:x.reachable, notesDone:x.notes?x.notes.done:0, notesRequired:x.notes?x.notes.required:0, notesMissed:x.notes?x.notes.missed+x.notes.late:0 } : null }; });
+        pr: x ? { cases: x.cases ? x.cases.total : 0, casesWeek: x.cases ? x.cases.week : 0, caseGoal: x.cases ? x.cases.goal : 0, valid:x.valid, need:x.need, todayDone:x.todayDone, reached:x.reached, reachable:x.reachable, notesDone:x.notes?x.notes.done:0, notesRequired:x.notes?x.notes.required:0, notesMissed:x.notes?x.notes.missed+x.notes.late:0 } : null }; });
     const j = rows.filter(r=>r.joined);
     return { act, rows, stats:{ total:rows.length, joined:j.length, todayDone:j.filter(r=>r.pr.todayDone).length, reached:j.filter(r=>r.pr.reached).length,
       danger:j.filter(r=>!r.pr.reachable).length, notToday:j.filter(r=>!r.pr.todayDone).length } }; },
@@ -2004,7 +2067,8 @@ const MockApi = {
     const items = all.slice(cursor, cursor+limit).map(p=>publicPost(p, me.id));
     return { items, nextCursor: cursor+limit < all.length ? cursor+limit : null };
   },
-  async createPost({actionDate, text, photos=[], courseId, clientRequestId}){
+  async createPost({actionDate, text, photos=[], courseId, clientRequestId, cases=0}){
+    // （mockPhotoReq：示範版的衝刺班「打卡一定要附照片」，跟後端 photoRequired_ 一樣）
     if (courseId){ const c = MockDB.courses.find(x=>x.id===courseId); if (c && c.date > todayStr()) throw new Error('COURSE_NOT_YET'); actionDate = todayStr(); }
     if (MockDB.requests.has(clientRequestId)) return MockDB.requests.get(clientRequestId); // 防重複送出
     await this._wait();
@@ -2012,25 +2076,28 @@ const MockApi = {
     if (!text || !text.trim()) throw new Error('TEXT_REQUIRED');
     if (diffDays(actionDate, T) < 0) throw new Error('FUTURE_DATE');
     if (photos.length > CONFIG.MAX_PHOTOS) throw new Error('TOO_MANY_PHOTOS');
+    if (!courseId && !photos.length && mockPhotoReq(this._me(), actionDate)) throw new Error('PHOTO_REQUIRED');
     const me = this._me(), late = diffDays(actionDate, T);
     const p = { id:uid('P'), authorId:me.id, actionDate, postedAt:Date.now(), editedAt:null, editCount:0, text:text.trim(),
       photo:null, photoDatas:photos.slice(), isLate: late>0, review: late===0||late<=MockDB.activity.lateDays ? 'auto':'pending',
-      activityId:MockDB.activity.id, courseId:courseId||null, status:'active', likes:new Map(), reads:new Set(), comments:[] };
+      activityId:MockDB.activity.id, courseId:courseId||null, status:'active', likes:new Map(), reads:new Set(), comments:[], cases: courseId ? 0 : Math.max(0, Math.min(10, Math.floor(+cases||0))) };
     MockDB.posts.push(p);
     const res = publicPost(p, me.id); MockDB.requests.set(clientRequestId, res); return res;
   },
-  async updatePost(id, {actionDate, text, photos=[]}){
+  async updatePost(id, {actionDate, text, photos=[], cases}){
     await this._wait();
     const p = MockDB.posts.find(x=>x.id===id), me=this._me();
     if (!p || p.authorId!==me.id) throw new Error('FORBIDDEN');
     if (p.courseId) actionDate = p.actionDate;   // 課後心得的日期不能改
     if (diffDays(actionDate, todayStr()) < 0) throw new Error('FUTURE_DATE');
+    if (!p.courseId && !photos.length && mockPhotoReq(me, actionDate)) throw new Error('PHOTO_REQUIRED');
     MockDB.audit.push({at:Date.now(), who:me.id, action:'EDIT_POST', postId:id, before:{actionDate:p.actionDate,text:p.text}});
     const late = diffDays(actionDate, ymd(new Date(p.postedAt)));
     p.actionDate = actionDate; p.text = text.trim(); p.isLate = late>0;
     if (p.review!=='rejected') p.review = late<=MockDB.activity.lateDays ? 'auto' : 'pending';
     if (photos.length > CONFIG.MAX_PHOTOS) throw new Error('TOO_MANY_PHOTOS');
     p.photo=null; p.photoDatas=photos.slice();
+    if (cases !== undefined && !p.courseId) p.cases = Math.max(0, Math.min(10, Math.floor(+cases||0)));
     p.editedAt = Date.now(); p.editCount++;
     return publicPost(p, me.id);
   },
@@ -2073,6 +2140,8 @@ const MockApi = {
     const me = this._me(), T = todayStr(), admin = S.role==='admin';
     return MockDB.courses.filter(c=>!c.hidden).map(c=>({ mode:'online', venue:'', fee:0, capacity:0, ...c,
       ...(c.replay ? (u => u < T ? { replayUntil:u, replayGone:true, replay: admin ? c.replay : '', replayPass: admin ? (c.replayPass||'') : '' } : { replayUntil:u })(addDays(c.date, 14)) : {}),
+      ...(c.mustAttend && mockMeetActs(me, c.date).length ? (lv => ({ must:true, mustMe:true, myLeave: lv ? { reason:lv.reason, at:lv.at, byAdmin: lv.by !== me.id } : null,
+        leaveOpen: mockNowHm() < mockClassStart(c), attended: mockAttended(c.id, me.id), makeupDue: addDays(c.date, MockDB.activity.noteDays ?? 7) }))(mockLeaveOf(c.id, me.id)) : { must: !!c.mustAttend, mustMe:false }),
       shareCount: new Set(MockDB.posts.filter(p=>p.courseId===c.id && p.status==='active').map(p=>p.authorId)).size,
       myNoteAt: MockDB.posts.filter(p=>p.courseId===c.id && p.authorId===me.id && p.status==='active').map(p=>ymd(new Date(p.postedAt))).sort()[0] || '',
       taken: MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length,
@@ -2213,7 +2282,7 @@ const MockApi = {
   async adminFeeSet(id, month, to){ await this._wait(); const F = this._fee = this._fee || {}, f = F[id] = F[id] || {}, ms = Array.isArray(month) ? month : [month];
     ms.forEach(k=>{ if (to==='none') delete f[k]; else f[k] = to; }); return { ok:true, state:to, states:Object.fromEntries(ms.map(k=>[k, to])) }; },
   async adminCourseAll(){ await this._wait();
-    const list = MockDB.courses.map(c=>({ id:c.id, title:c.title, teacher:c.teacher||'', date:c.date, time:c.time||'', intro:c.intro||'', zoomUrl:c.zoom||'', replayUrl:c.replay||'', replayPass:c.replayPass||'',
+    const list = MockDB.courses.map(c=>({ id:c.id, title:c.title, teacher:c.teacher||'', date:c.date, time:c.time||'', intro:c.intro||'', zoomUrl:c.zoom||'', replayUrl:c.replay||'', replayPass:c.replayPass||'', mustAttend:!!c.mustAttend,
       mode:c.mode||'online', venue:c.venue||'', fee:c.fee||0, capacity:c.capacity||0, hidden:!!c.hidden, taken:MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length }))
       .sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
     return { courses:list, lastZoom:(list.find(c=>c.zoomUrl && c.zoomUrl!=='#')||{}).zoomUrl||'' }; },
@@ -2221,7 +2290,7 @@ const MockApi = {
     const t = String(p.title||'').trim(); if (!t) throw new Error('COURSE_TITLE_REQUIRED'); if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')) throw new Error('BAD_DATE');
     for (const u of [p.zoomUrl, p.replayUrl]) if (u && !/^https:\/\/\S+$/i.test(u)) throw new Error('BAD_URL');
     const mode = ['online','onsite','hybrid'].includes(p.mode) ? p.mode : 'online';
-    const c = { title:t, teacher:p.teacher||'', date:p.date, time:p.time||'', intro:p.intro||'', zoom:mode==='onsite'?'':(p.zoomUrl||''), replay:p.replayUrl||'', replayPass:p.replayUrl?String(p.replayPass||'').slice(0,40):'', mode,
+    const c = { title:t, teacher:p.teacher||'', date:p.date, time:p.time||'', intro:p.intro||'', zoom:mode==='onsite'?'':(p.zoomUrl||''), replay:p.replayUrl||'', replayPass:p.replayUrl?String(p.replayPass||'').slice(0,40):'', mustAttend:!!p.mustAttend, mode,
       venue:mode==='online'?'':(p.venue||''), fee:mode==='online'?0:(+p.fee||0), capacity:mode==='online'?0:(+p.capacity||0) };
     if (p.id) { const x = MockDB.courses.find(y=>y.id===p.id); if (!x) throw new Error('NOT_FOUND'); Object.assign(x, c); return { ok:true, id:p.id }; }
     const id = uid('C'); MockDB.courses.push({ id, announce:'', ...c }); return { ok:true, id }; },
@@ -2271,13 +2340,24 @@ const MockApi = {
     if (!c || c.mode==='onsite' || c.date!==todayStr()) return { ok:false };
     if (MockDB.classJoins.some(j=>j.courseId===courseId && j.memberId===me.id && j.status!=='cancelled')) return { ok:true, already:true };
     MockDB.classJoins.push({ id:uid('CJ'), courseId, memberId:me.id, name:me.name, zoomName:'', minutes:0, source:'app', at:tvNow(), status:'' }); return { ok:true }; },
+  async leaveSet(courseId, on, reason){ await this._wait(); const c = MockDB.courses.find(x=>x.id===courseId), me = this._me();
+    if (!c || !c.mustAttend) throw new Error('NOT_FOUND'); if (!mockMeetActs(me, c.date).length) throw new Error('NOT_JOINED');
+    if (mockNowHm() >= mockClassStart(c)) throw new Error('LEAVE_CLOSED');
+    return mockLeaveWrite(c, me, on !== false, String(reason||'').slice(0, 60), me.id); },
+  async adminLeaveSet(p){ await this._wait(); const c = MockDB.courses.find(x=>x.id===p.courseId), m = MockDB.byId[p.memberId];
+    if (!c || !m) throw new Error('NOT_FOUND'); const on = p.on !== false;
+    return mockLeaveWrite(c, m, on, String(p.reason||'').slice(0, 60) || (on ? '管理員登記' : ''), this._me().id); },
   async adminClassAttend(courseId){ await this._wait(); const c = MockDB.courses.find(x=>x.id===courseId); if (!c) throw new Error('NOT_FOUND'); mockClassSeed(c);
     const seen = {}, joins = [];
     MockDB.classJoins.filter(j=>j.courseId===courseId && j.status!=='cancelled').sort((a,b)=>a.at<b.at?-1:1).forEach(j=>{ const k = j.memberId ? 'm:'+j.memberId : 'g:'+j.name;
       if (seen[k]) { if (!seen[k].sources.includes(j.source)) seen[k].sources.push(j.source); if (!seen[k].minutes) seen[k].minutes = j.minutes; return; }
       seen[k] = { id:j.id, memberId:j.memberId, name:j.name, zoomName:j.zoomName, minutes:j.minutes||0, source:j.source, sources:[j.source], at:j.at }; joins.push(seen[k]); });
-    return { course:{ id:c.id, title:c.title, date:c.date, time:c.time, mode:c.mode||'online' }, joins,
-      members: MockDB.members.map(m=>({ id:m.id, name:m.name, color:m.color, avatarUrl:m.avatarUrl||'' })).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')) }; },
+    const must = !!c.mustAttend, due = addDays(c.date, MockDB.activity.noteDays ?? 7);
+    const leaves = must ? (MockDB.leaves||[]).filter(l=>l.courseId===c.id && l.status!=='cancelled').map(l=>{ const at = mockNoteAt(c.id, l.memberId);
+      return { memberId:l.memberId, name:l.name, reason:l.reason, at:l.at, byAdmin:l.by!==l.memberId, noted: !!(at && at>=c.date && at<=due), due }; }) : [];
+    return { course:{ id:c.id, title:c.title, date:c.date, time:c.time, mode:c.mode||'online', must }, joins,
+      members: MockDB.members.map(m=>({ id:m.id, name:m.name, color:m.color, avatarUrl:m.avatarUrl||'' })).sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')),
+      leaves, required: must ? MockDB.members.filter(m=>mockMeetActs(m, c.date).length).map(m=>m.id) : [] }; },
   async adminClassZoom(courseId, text){ await this._wait(); const c = MockDB.courses.find(x=>x.id===courseId); if (!c) throw new Error('NOT_FOUND'); mockClassSeed(c);
     const key = n => String(n||'').replace(/[（(][^）)]*[）)]/g,'').replace(/[^\u3400-\u9fffA-Za-z0-9]/g,'').toLowerCase();
     const lines = String(text||'').replace(/\r/g,'').split('\n'); let head = -1, nc = 0, mc = -1;
@@ -2367,7 +2447,9 @@ const MockApi = {
   async adminDashboard(){
     await this._wait();
     const act = MockDB.activity, T = todayStr();
-    const rows = MockDB.members.filter(m=>mockJoined(m)).map(m => { const pr = computeDays(m.id, act), u = MockDB.byId[m.uplineId]; return { m:{ ...m, up:u?u.name:'', upText:u?'':(m.uplineText||'') }, pr }; });
+    const rows = MockDB.members.filter(m=>mockJoined(m)).map(m => { const pr = computeDays(m.id, act), u = MockDB.byId[m.uplineId];
+      return { m:{ ...m, up:u?u.name:'', upText:u?'':(m.uplineText||'') }, pr, meet: pr.meet ? { attend:pr.meet.attend, leave:pr.meet.leave, open:pr.meet.open, strikes:pr.meet.strikes, max:pr.meet.max, out:pr.meet.out } : null,
+        cases: pr.cases ? { total:pr.cases.total, week:pr.cases.week, month:pr.cases.month, today:pr.cases.today, goal:pr.cases.goal } : null }; });
     const todayLate = new Set(MockDB.posts.filter(p=>p.status==='active' && p.isLate && ymd(new Date(p.postedAt))===T).map(p=>p.authorId));
     const pendingPosts = MockDB.posts.filter(p=>p.status==='active' && p.review==='pending').map(p=>({ id:p.id, authorId:p.authorId,
       authorName:MockDB.byId[p.authorId].name, actionDate:p.actionDate, postedAt:p.postedAt, text:p.text, lateDays:diffDays(p.actionDate, ymd(new Date(p.postedAt))) }));
@@ -2535,6 +2617,8 @@ const GasApi = {
   adminRoster(){ return this.call('admin.roster', {}); },
   adminCourseAll(){ return this.call('admin.course.all', {}); },
   adminCourseSave(c){ return this.call('admin.course.save', c, {retry:0}); },
+  leaveSet(courseId, on, reason){ return this.call('leave.set', { courseId, on, reason }, {retry:1}); },          // 衝刺班週一會議請假（2026-11-28）
+  adminLeaveSet(p){ return this.call('admin.leave.set', p, {retry:1}); },
   adminCourseHide(id, hidden){ return this.call('admin.course.hide', {id, hidden}, {retry:0}); },
   adminLinkAll(){ return this.call('admin.link.all', {}); },
   travelMine(){ return this.call('travel.mine', {}); },                                   // 旅遊收件（2026-11-26）
@@ -2590,7 +2674,7 @@ const api = CONFIG.MODE === 'demo' ? MockApi : GasApi;
 const QC_DROP = {
   'post.create':['growth:me','courses'],   // 我的日誌列表：發文後直接把新的一篇放進去（見 submitPost） 'post.update':['growth:me','courses','myposts'], 'post.delete':['growth:me','courses','myposts'],
   'dream.save':['growth:me'], 'honor.quote':['growth:me','honors'], 'member.avatar':['growth:me','honors','myposts'],
-  'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'],
+  'course.register':['courses','tickets'], 'course.cancel':['courses','tickets'], 'ticket.holder':['courses','tickets'], 'leave.set':['courses','growth:me'],
   'reg.apply':['growth:me'], 'me.tiles.set':[], 'admin.setting.set':[], 'team.addDown':[], 'team.removeDown':[], 'me.badge.set':['honors'],
   'admin.course.save':['courses','admcourses'], 'admin.course.hide':['courses','admcourses'],
   'admin.link.save':['admlinks'], 'admin.link.hide':['admlinks'], 'admin.link.move':['admlinks']
@@ -2682,7 +2766,7 @@ const validName = n => /^[\u3400-\u9fffA-Za-z][\u3400-\u9fffA-Za-z\u00b7\u30fb\u
 /* ---------- 錯誤訊息（白話） ---------- */
 function errText(e){
   const k = e && e.message;
-  return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。',
+  return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。', PHOTO_REQUIRED:'衝刺班打卡要附至少 1 張照片。', NOT_JOINED:'你沒有參加這個衝刺班，這堂不用請假。', LEAVE_CLOSED:'已經開課了，不能自己請假；請直接跟管理員說。',
     FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', MEAL_UNAVAILABLE:'便當系統暫時讀不到，等一下再試。', MANUAL_UNAVAILABLE:'手冊暫時讀不到，等一下再試。', PDFJS:'閱讀工具沒有載入成功，請檢查網路再試一次。', PDF_BAD:'這本手冊打不開，請跟管理員說。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
     PHOTO_BIG:'照片太大了，請換一張。', TOO_MANY_PHOTOS:'每篇最多 3 張照片。', TEXT_TOO_LONG:'字數太多了，請精簡一點。',
     BUSY:'現在使用的人很多，請等幾秒再按一次。', TOO_MANY_POSTS:'今天已經發很多篇了，明天再分享吧。',
@@ -2707,7 +2791,7 @@ const S = {
   calMonth: null, calSel: null,
   role: 'member', admin: { q:'', team:'', today:'', reach:'', pay:'', memberId:null, calMonth:null, calSel:null }
 };
-function newDraft(preset={}){ return { actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
+function newDraft(preset={}){ return { actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', cases:0, courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
 
 /* ---------- 提示 ---------- */
 let toastTimer;
@@ -3825,7 +3909,8 @@ function postHTML(p){
     ${badges.length?`<div class="post-badges">${badges.join('')}</div>`:''}
     <div class="post-text ${long?'clamp':''}"><div class="pt">${esc(p.text)}</div></div>
     ${long?'<button class="show-more" data-act="show-more">顯示更多</button>':''}
-    ${p.photoUrls.length?`<div class="post-imgs n${p.photoUrls.length}">${p.photoUrls.map((u,i)=>`<img src="${u}" alt="${esc(p.author.name)} 的行動照片 ${i+1}" loading="lazy" data-act="photo">`).join('')}</div>`:''}
+    ${p.cases?`<div class="post-cases">💼 談了 <b>${p.cases}</b> 個 CASE</div>`:''}
+    ${p.photoUrls.length?`<div class="post-imgs n${Math.min(p.photoUrls.length, 4)}${p.photoUrls.length>4?' more':''}" data-more="${p.photoUrls.length>4?'+'+(p.photoUrls.length-4):''}">${p.photoUrls.map((u,i)=>`<img src="${u}" alt="${esc(p.author.name)} 的行動照片 ${i+1}" loading="lazy" data-act="photo" data-i="${i}">`).join('')}</div>`:''}
     <div class="post-stats"><span data-k="likes">${rxSummaryHTML(p)}</span><span><span data-k="cmts">${p.commentCount} 則留言</span> ・ <span data-k="reads">已讀 ${p.readCount} 人</span></span></div>
     <div class="post-actions">
       <button data-act="like" class="${p.myReaction?'liked':''}" aria-pressed="${!!p.myReaction}" aria-label="選一個心情">${rxButtonHTML(p)}</button>
@@ -3980,9 +4065,20 @@ if (CONFIG.MODE==='live' && 'serviceWorker' in navigator && window.self===window
 /* =====================================================================
    發布行動日誌
    ===================================================================== */
+/** 這一天的打卡一定要附照片嗎（2026-11-28 使用者：衝刺班「每日打卡（可以補打卡）文字＋照片，照片也一定要」）
+ *  有參加、活動設定 photoReq 的那幾天才要；課後心得不用。後端也會再檢查一次。 */
+function photoNeeded(ymd){
+  const list = (S.acts && S.acts.length) ? S.acts : (S.act ? [{ ...S.act, joined: S.joined }] : []);
+  return list.some(a => a && a.joined && a.photoReq && a.start <= ymd && ymd <= a.end);
+}
+/** 這一天要不要問「今天談了幾個 CASE」：有參加、活動設了 CASE 目標（2026-11-28 使用者：先選日期，接著 CASE 下拉 1～10） */
+function casesAsked(ymd){
+  const list = (S.acts && S.acts.length) ? S.acts : (S.act ? [{ ...S.act, joined: S.joined }] : []);
+  return list.some(a => a && a.joined && a.caseGoal > 0 && a.start <= ymd && ymd <= a.end);
+}
 function renderCompose(main){
   if (!S.draft) S.draft = newDraft();
-  const d = S.draft, T = todayStr(), Y = addDays(T,-1);
+  const d = S.draft, T = todayStr(), Y = addDays(T,-1), needPhoto = !d.courseId && photoNeeded(d.actionDate);
   const late = diffDays(d.actionDate, T);
   const editing = !!S.editing;
   main.innerHTML = `<div class="card compose">
@@ -3997,13 +4093,16 @@ function renderCompose(main){
       <button data-act="date-mode" data-m="other" class="${d.dateMode==='other'?'on':''}">其他日期</button>
     </div>
     <input class="inp mt ${d.dateMode==='other'?'':'hidden'}" type="date" id="c-date" max="${T}" value="${d.actionDate}" aria-label="選擇行動日期">
+    ${casesAsked(d.actionDate) ? `<label class="lbl lbl-row" for="c-cases"><span>💼 這天談了幾個 CASE</span><span class="lbl-side">沒有就選 0</span></label>
+      <select class="inp case-sel" id="c-cases">${Array.from({length:11},(_,i)=>`<option value="${i}"${(+d.cases||0)===i?' selected':''}>${i===0?'0 個（今天沒有）':i+' 個'}</option>`).join('')}</select>` : ''}
     </div>
     ${late>0&&!d.courseId?`<div class="notice late">這是<b>補打卡</b>：行動日期是 ${mdZh(d.actionDate)}，發布時間會記錄為現在。是否計入有效打卡，依活動規則決定。</div>`:''}
 
     <label class="lbl lbl-row" for="c-text"><span>${d.courseId?'這堂課的心得':'今天做了什麼？'}<span class="req">必填</span></span><span class="lbl-side" id="c-count">${d.text.length} 字</span></label>
     <textarea class="inp" id="c-text" maxlength="2000" placeholder="${d.courseId?'例如：今天學到…，我打算這樣用在自己身上…':'例如：今天打電話關心了三位夥伴，也約好下週見面…'}">${esc(d.text)}</textarea>
 
-    <label class="lbl lbl-row"><span>照片<span class="muted small" style="font-weight:400">（可以不放）</span></span><span class="lbl-side">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</span></label>
+    <label class="lbl lbl-row"><span>照片${needPhoto?'<span class="req">必填</span>':'<span class="muted small" style="font-weight:400">（可以不放）</span>'}</span><span class="lbl-side">最多 ${CONFIG.MAX_PHOTOS} 張，目前 ${d.photos.length} 張</span></label>
+    ${needPhoto && !d.photos.length ? '<div class="notice info small photo-need">📷 衝刺班打卡要附<b>至少 1 張照片</b>（補打卡也是）。</div>' : ''}
     ${d.photos.length?`<div class="photo-list">${d.photos.map((u,i)=>`<div class="photo-prev"><img src="${u}" alt="準備上傳的照片 ${i+1}"><button class="rm" data-act="photo-rm" data-i="${i}" aria-label="移除第 ${i+1} 張">✕</button></div>`).join('')}</div>`:''}
     ${d.photos.length < CONFIG.MAX_PHOTOS
       ? `<div class="photo-btns"><button class="btn btn-ghost" data-act="photo-cam">📷 拍照</button><button class="btn btn-ghost" data-act="photo-lib">🖼️ 從相簿選</button></div>`
@@ -4021,6 +4120,7 @@ function renderCompose(main){
   if (d.text) requestAnimationFrame(grow);
   ta.addEventListener('input', grow);
   ta.addEventListener('input', ()=>{ d.text = ta.value; $('#c-count').textContent = ta.value.length+' 字'; $('#c-err').classList.add('hidden'); store('royal_draft', {text:d.text}); });
+  const cs = $('#c-cases'); if (cs) cs.addEventListener('change', () => { d.cases = +cs.value || 0; });
   $('#c-date').addEventListener('change', e=>{
     const v = e.target.value;
     if (!v) return;
@@ -4076,15 +4176,16 @@ async function submitPost(){
   d.text = $('#c-text').value;
   if (!d.text.trim()) { showErr('請先寫下今天做了什麼。'); $('#c-text').focus(); return; }
   if (diffDays(d.actionDate, todayStr()) < 0) { showErr('不能選還沒到的日期。'); return; }
+  if (!d.courseId && !d.photos.length && photoNeeded(d.actionDate)) { showErr('衝刺班打卡要附至少 1 張照片：按「📷 拍照」或「🖼️ 從相簿選」。'); const b = $('[data-act="photo-cam"]'); if (b) b.scrollIntoView({block:'center'}); return; }
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 發布中…';
   $('#c-err').classList.add('hidden');
   try {
     if (S.editing) {
-      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos });
+      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos, ...(casesAsked(d.actionDate) ? { cases:+d.cases||0 } : {}) });
       replacePostEverywhere(p);
       toast('已儲存修改','ok');
     } else {
-      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId });
+      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId, cases: !d.courseId && casesAsked(d.actionDate) ? (+d.cases||0) : 0 });
       S.feed.items.unshift(p); if (S.feed.items.length>1) S.feed.cursor++;
       const mp = QuickCache.get('myposts'); if (mp) QuickCache.put('myposts', { ...mp, items:[p, ...mp.items] });   // 我的日誌馬上看得到
       if (S.myPosts) S.myPosts.unshift(p);
@@ -4220,7 +4321,9 @@ async function drawProgress(main){
         <div class="stat ${pr.todayDone?'ok':'bad'}"><div class="v word">${pr.todayDone?'✓ 已打卡':'還沒打卡'}</div><div class="k">📅 今天</div></div>
       </div>
       ${pr.late||pr.pending?`<div class="hint">${pr.late?`<span class="nw">其中補打卡 ${pr.late} 天</span>`:''}${pr.late&&pr.pending?'<wbr><span class="nw">・</span>':''}${pr.pending?`<span class="nw">待管理員審核 ${pr.pending} 篇</span>`:''}</div>`:''}
+      ${casesHTML(pr.cases)}
       ${notesHTML(pr.notes, act)}
+      ${meetHTML(pr.meet)}
       <div class="hint mt"><span class="nw">補登 ${act.lateDays} 天內算有效；</span><wbr><span class="nw">達標以管理員結算為準。</span></div>
     </div>
     <div id="my-dream"></div>
@@ -4231,6 +4334,29 @@ async function drawProgress(main){
     QuickCache.fetch('growth:me', () => api.getGrowth()).then(show).catch(()=>{}); }
   await loadMyPosts();
   if (S.calSel) drawDayDetail(S.calSel);
+}
+/** 衝刺班 CASE 累計（我的進度、後台夥伴頁共用；2026-11-28 使用者：「至少 60 個 case」） */
+function casesHTML(c, admin){
+  if (!c || !c.goal) return '';
+  const pct = Math.min(100, Math.round(c.total / c.goal * 100));
+  return `<div class="notes-box mt case-box"><div class="notes-head"><b>💼 CASE 累計</b><span class="nw"><b class="big">${c.total}</b> / ${c.goal} 個</span></div>
+    <div class="bar light"><i style="width:${pct}%"></i></div>
+    <div class="case-sum"><span class="pill gray">今天 ${c.today}</span><span class="pill gray">這週 ${c.week}</span><span class="pill gray">這個月 ${c.month}</span>${c.reached?'<span class="pill ok">🎉 已達標</span>':`<span class="pill pend">還差 ${c.left} 個</span>`}</div>
+    ${admin ? '' : '<div class="hint">發日誌時選「這天談了幾個 CASE」，會自動加進來。</div>'}</div>`;
+}
+/** 衝刺班週一會議紀錄（我的進度、後台夥伴頁共用；2026-11-28） */
+const MEET_ST = { attend:['✓ 出席','ok'], leave:['🙋 已請假','pend'], upcoming:['還沒上','gray'], makeup:['✓ 請假已補心得','ok'],
+  open:['請假：要補心得','pend'], nomakeup:['✗ 請假沒補心得','bad'], absent:['✗ 沒來也沒請假','bad'] };
+function meetHTML(mt, admin){
+  if (!mt || !mt.total) return '';
+  return `<div class="notes-box mt meet-box"><div class="notes-head"><b>📅 週一會議</b><span class="nw">違規 <b class="big${mt.strikes?' bad':''}">${mt.strikes}</b> / ${mt.max} 次</span></div>
+    <div class="meet-sum"><span class="pill ok">出席 ${mt.attend}</span><span class="pill pend">請假 ${mt.leave}</span><span class="pill ok">已補課 ${mt.makeup}</span>${mt.open?`<span class="pill pend">要補心得 ${mt.open}</span>`:''}</div>
+    ${mt.out ? `<div class="notice err small mt">已經 ${mt.strikes} 次違規，失去與會及所有獎勵資格。</div>`
+      : `<div class="hint">沒來又沒請假、或請假沒在 ${mt.noteDays} 天內看回放補心得，記 1 次；滿 ${mt.max} 次失去資格。${mt.strikes?`<b style="color:var(--bad)">還剩 ${mt.left} 次機會。</b>`:''}</div>`}
+    ${mt.items.map(it=>`<div class="note-row ${it.status}"><b class="nt">${esc(it.title)}</b><div class="meta">
+      <div class="muted small"><span class="nw">${mdShort(it.date)}</span>${it.reason?`<wbr><span class="nw">・${esc(it.reason)}</span>`:''}${it.status==='open'?`<wbr><span class="nw">・${mdShort(it.due)} 前補</span>`:''}</div>
+      ${it.status==='open'&&!admin?`<button class="btn btn-primary btn-sm" data-act="share-course" data-id="${it.id}" data-title="${esc(it.title)}">補心得</button>`:`<span class="pill ${MEET_ST[it.status][1]}">${MEET_ST[it.status][0]}</span>`}</div></div>`).join('')}
+  </div>`;
 }
 /** 課後心得清單（我的進度、後台夥伴頁共用） */
 const mdShort = d => (+String(d).slice(5,7))+'/'+(+String(d).slice(8,10));
@@ -4269,6 +4395,17 @@ function drawDayDetail(ds){
 /* =====================================================================
    皇家學院：上面「我的學習」、下面切換「線上課程／現場課程」
    ===================================================================== */
+/** 4 個字擠不下時排成 2＋2（2026-11-28 17:07 使用者：「你如果要打四個字但是又擠不進去，可以 2 2 這樣排列」）
+ *  兩半各自不斷行，放得下就一行，放不下就「線上／課程」兩行，不會變成「線上課／程」。 */
+const two2 = t => String(t).length === 4 ? `<span class="t22">${t.slice(0,2)}</span><span class="t22">${t.slice(2)}</span>` : t;
+/** 課已經上完了嗎（2026-11-28 17:08 使用者：「這個課程已結束，可以不用出現在線上課程了」）
+ *  前幾天的課；或今天、而且過了下課時間 15 分鐘（跟首頁「進入教室」消失的時間一樣；沒寫下課時間當作上 2.5 小時；完全沒寫時間就等到明天） */
+function courseOver(c, T){
+  if (c.date < T) return true;
+  if (c.date > T) return false;
+  const { en } = classTimes(c), d = new Date();
+  return en != null && d.getHours()*60 + d.getMinutes() > en + 15;
+}
 const isOnline = c => !c.mode || c.mode==='online' || c.mode==='hybrid';
 const isOnsite = c => c.mode==='onsite' || c.mode==='hybrid';
 function renderAcademy(main){
@@ -4280,11 +4417,11 @@ async function drawAcademy(main, cs){
   const link = (url, cls, label, act, id) => (CONFIG.MODE==='live' && url && url!=='#')
     ? `<a class="btn ${cls}" href="${esc(url)}" target="_blank" rel="noopener"${act==='zoom'?` data-cid="${esc(id)}"`:''}>${label}</a>` : `<button class="btn ${cls}" data-act="${act}" data-id="${id}">${label}</button>`;
   const modeTag = c => c.mode==='hybrid' ? '<span class="pill mode-both">線上＋現場</span>' : isOnsite(c) ? '<span class="pill mode-onsite">📍 現場</span>' : '<span class="pill mode-online">💻 線上</span>';
-  const card = c => { const isUp = c.date >= T, tk = c.myTicket, full = c.capacity && c.taken>=c.capacity;
+  const card = c => { const isUp = !courseOver(c, T), tk = c.myTicket, full = c.capacity && c.taken>=c.capacity;
     const showOnsite = view==='onsite' && isOnsite(c), showOnline = view==='online', tp = teacherPhoto(c.teacher);
     return `<div class="card course">
       <div class="c-head${tp?' has-t':''}">${dateTile(c.date, !isUp)}<div class="c-main">
-        <div class="c-tags">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}</div>
+        <div class="c-tags">${modeTag(c)}${isUp?(c.date===T?'<span class="pill ok">今天上課</span>':'<span class="pill brand">即將開課</span>'):'<span class="pill gray">已結束</span>'}${c.mustMe?'<span class="pill must">📌 衝刺班必到</span>':''}</div>
         <h3 class="c-title">${esc(c.title).replace(/\s*\/\s*/g,'&nbsp;/&nbsp;')}</h3>
         ${c.time?`<div class="c-meta"><span class="k">時間</span><b class="nw">${esc(c.time)}</b></div>`:''}
         ${c.teacher?`<div class="c-meta"><span class="k">講師</span><span>${esc(c.teacher)}</span></div>`:''}</div>${tp}</div>
@@ -4292,6 +4429,7 @@ async function drawAcademy(main, cs){
       ${showOnsite?`<div class="onsite-info"><div>📍 ${esc(c.venue||'地點另行通知')}</div><div>💰 ${c.fee?'單場 NT$'+c.fee.toLocaleString():'免費'}</div>
         <div>👥 已報名 ${c.taken} 人${c.capacity?`（名額 ${c.capacity} 人）`:''}</div></div>`:''}
       ${c.announce?`<div class="announce">📢 ${esc(c.announce)}</div>`:''}
+      ${c.mustMe ? meetCardHTML(c, T) : ''}
       <div class="btns">
         ${showOnsite&&tk?`<button class="btn btn-primary" data-act="my-ticket" data-id="${c.id}">🎫 我的入場 QR${c.myTickets.length>1?`（${c.myTickets.length} 張）`:''}</button>
           <div class="row" style="gap:6px;justify-content:center">${ticketPills(tk)}</div>
@@ -4311,14 +4449,14 @@ async function drawAcademy(main, cs){
       <button class="btn btn-primary btn-sm" data-act="my-ticket" data-id="${c.id}">🎫 入場 QR</button></div>`).join('')
     : ''}</div>`;
   const list = cs.filter(view==='online' ? isOnline : isOnsite);
-  const up = list.filter(c=>c.date>=T).sort((a,b)=>a.date<b.date?-1:1), past = list.filter(c=>c.date<T).sort((a,b)=>a.date<b.date?1:-1);
-  const nOn = cs.filter(c=>isOnline(c) && c.date>=T).length, nSite = cs.filter(c=>isOnsite(c) && c.date>=T).length, nRp = replayList(cs, T).length;
+  const up = list.filter(c=>!courseOver(c, T)).sort((a,b)=>a.date<b.date?-1:1), past = list.filter(c=>courseOver(c, T)).sort((a,b)=>a.date<b.date?1:-1);
+  const nOn = cs.filter(c=>isOnline(c) && !courseOver(c, T)).length, nSite = cs.filter(c=>isOnsite(c) && !courseOver(c, T)).length, nRp = replayList(cs, T).length;
   const empty = view==='online' ? '目前沒有線上課程。' : '目前沒有現場課程，新課程公布後會出現在這裡。';
   const sw = `<div class="acad-switch" role="tablist">
-      <button role="tab" class="${view==='online'?'on':''}" data-act="acad-view" data-v="online"><span class="sw-ic" aria-hidden="true">💻</span>線上課程${nOn?`<small>${nOn} 堂將開課</small>`:''}</button>
-      <button role="tab" class="${view==='onsite'?'on':''}" data-act="acad-view" data-v="onsite"><span class="sw-ic" aria-hidden="true">📍</span>現場課程${nSite?`<small>${nSite} 堂可報名</small>`:''}</button>
-      <button role="tab" class="${view==='month'?'on':''}" data-act="acad-view" data-v="month"><span class="sw-ic" aria-hidden="true">📅</span>本月課表<small>各會場</small></button>
-      <button role="tab" class="${view==='replay'?'on':''}" data-act="acad-view" data-v="replay"><span class="sw-ic" aria-hidden="true">▶️</span>回放專區<small>${nRp?nRp+' 部影片':'會議錄影'}</small></button>
+      <button role="tab" class="${view==='online'?'on':''}" data-act="acad-view" data-v="online"><span class="sw-ic" aria-hidden="true">💻</span>${two2('線上課程')}${nOn?`<small>${nOn} 堂將開課</small>`:''}</button>
+      <button role="tab" class="${view==='onsite'?'on':''}" data-act="acad-view" data-v="onsite"><span class="sw-ic" aria-hidden="true">📍</span>${two2('現場課程')}${nSite?`<small>${nSite} 堂可報名</small>`:''}</button>
+      <button role="tab" class="${view==='month'?'on':''}" data-act="acad-view" data-v="month"><span class="sw-ic" aria-hidden="true">📅</span>${two2('本月課表')}<small>各會場</small></button>
+      <button role="tab" class="${view==='replay'?'on':''}" data-act="acad-view" data-v="replay"><span class="sw-ic" aria-hidden="true">▶️</span>${two2('回放專區')}<small>${nRp?nRp+' 部影片':'會議錄影'}</small></button>
     </div>`;
   const hasTk = cs.some(c=>(c.myTickets||[]).length);
   if (view==='month'){ main.innerHTML = mineHTML + sw + '<div id="sched"><div class="skeleton"></div></div>'; return renderSchedule($('#sched')); }
@@ -4331,6 +4469,37 @@ async function drawAcademy(main, cs){
     ${!list.length?`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`:''}`;
 }
 let ACAD = [];
+/* =====================================================================
+   衝刺班週一會議：請假（2026-11-28 16:21 使用者：「每周一的會議務必參加（可請假，請假機制要幫我做）」）
+   後端規則在 89_Leave.gs：開課前自己請假／取消；請假的人看回放、寫心得就算補課；
+   沒來又沒請假、或請假沒在期限內補心得 → 記 1 次違規，滿 3 次失去資格。
+   ===================================================================== */
+function meetCardHTML(c, T){
+  const up = c.date >= T, due = c.makeupDue || addDays(c.date, 7), lv = c.myLeave;
+  if (c.attended) return `<div class="meet-st ok">✓ 這堂有出席</div>`;
+  if (up) {
+    if (lv) return `<div class="meet-st leave"><b>🙋 已請假</b>${lv.reason?`（${esc(lv.reason)}）`:''}${lv.byAdmin?'・管理員登記':''}
+      <div class="small">上完課後看回放、寫心得就算補課（${mdZh(due)} 前）</div>
+      ${c.leaveOpen && !lv.byAdmin ? `<button class="link-btn" data-act="leave-off" data-id="${esc(c.id)}">取消請假</button>` : ''}</div>`;
+    return c.leaveOpen ? `<button class="btn btn-outline leave-btn" data-act="leave-on" data-id="${esc(c.id)}">🙋 我要請假</button><div class="hint">衝刺班每堂都要到；不能來，請在開課前請假</div>`
+      : `<div class="hint">已經開課了，要請假請直接跟管理員說</div>`;
+  }
+  if (lv) return c.myNoteAt && c.myNoteAt >= c.date && c.myNoteAt <= due ? `<div class="meet-st ok">✓ 請假，已看回放補心得</div>`
+    : T <= due ? `<div class="meet-st leave"><b>🙋 請假</b>：請看回放、寫心得補課（${mdZh(due)} 前）</div>`
+    : `<div class="meet-st bad">⚠️ 請假但沒在期限內補心得，記 1 次違規</div>`;
+  return `<div class="meet-st bad">⚠️ 缺席（沒請假），記 1 次違規</div>`;
+}
+async function leaveAsk(id){
+  const c = (ACAD||[]).find(x=>x.id===id); if (!c) return;
+  const v = await choiceBox(`${mdZh(c.date)}「${c.title}」要請假嗎？請假後記得看回放、寫心得補課。請選原因：`, [
+    { v:'工作', label:'💼 工作', cls:'btn-ghost' }, { v:'家裡有事', label:'🏠 家裡有事', cls:'btn-ghost' },
+    { v:'身體不舒服', label:'🤒 身體不舒服', cls:'btn-ghost' }, { v:'其他', label:'✏️ 其他（自己寫）', cls:'btn-ghost' }]);
+  if (!v) return;
+  let reason = v;
+  if (v === '其他') { reason = await promptBox('請假原因（簡短寫就好）', '', '送出請假', 'text', 60); if (reason == null) return; reason = String(reason).trim() || '其他'; }
+  try { await api.leaveSet(id, true, reason); toast('已請假 ✓ 上完課記得看回放、寫心得補課', 'ok'); renderAcademy($('#main')); }
+  catch(err){ toast(errText(err), 'err'); }
+}
 /* =====================================================================
    回放專區（2026-11-28 15:20 使用者：「補一個區塊是線上會議（課程）的回放專區」）
    ・資料就是課程的「錄影回放連結」欄（後台課程管理貼上），不另外開表。
@@ -5691,7 +5860,7 @@ function drawTeamList(){
     const tag = !r.joined ? `<span class="pill gray">沒參加${TEAM.act?esc(TEAM.act.name):'活動'}</span>` : p.reached ? '<span class="pill ok">🏆 已達標</span>' : !p.reachable ? '<span class="pill bad">⚠️ 快來不及</span>' : '';
     return `<button class="mrow tm-row" data-act="tmember" data-id="${r.m.id}">${avatarHTML(r.m)}
       <div class="tm-info"><div><b>${esc(r.m.name)}</b>${badgeHTML(r.m.id)} ${depthTag(r.m.depth)}</div>
-        <div class="muted small">${r.m.depth>1?`上線 ${esc(r.m.uplineName)}・`:''}${r.joined?`<span class="nw">有效 ${p.valid} 天</span>・<span class="nw">還差 ${p.need} 天</span>`:''}</div>${tag}</div>
+        <div class="muted small">${r.m.depth>1?`上線 ${esc(r.m.uplineName)}・`:''}${r.joined?`<span class="nw">有效 ${p.valid} 天</span>・<span class="nw">還差 ${p.need} 天</span>`:''}</div>${r.joined && p.caseGoal ? `<span class="pill case">💼 CASE ${p.cases}/${p.caseGoal}${p.casesWeek?`・這週 ${p.casesWeek}`:''}</span>` : ''}${tag}</div>
       ${r.joined?`<span class="tm-today ${p.todayDone?'ok':'no'}">${p.todayDone?'✓<small>今天</small>':'✗<small>今天</small>'}</span>`:''}</button>`; }).join('')
     : '<div class="muted mt">沒有符合的夥伴 🎉</div>';
 }
@@ -5733,7 +5902,7 @@ async function renderTeamMember(main){
         <div class="stat"><div class="v">${pr.need}<small>天</small></div><div class="k">🎯 還差幾天</div></div>
         <div class="stat ${pr.todayDone?'ok':'bad'}"><div class="v word">${pr.todayDone?'已打卡':'還沒打卡'}</div><div class="k">📅 今天</div></div>
         <div class="stat ${pr.reached?'ok':pr.reachable?'':'bad'}"><div class="v word">${pr.reached?'已達標':pr.reachable?'追得上':'快來不及'}</div><div class="k">🏆 達標</div></div></div>
-      ${act ? notesHTML(pr.notes, act, true) : ''}
+      ${act ? casesHTML(pr.cases, true) : ''}${act ? notesHTML(pr.notes, act, true) : ''}${act ? meetHTML(pr.meet, true) : ''}
       <div class="mt" id="tm-cal">${calendarHTML(dayMap(pr), act, S.tmMonth, null, 'tmcal')}</div></div>`
       : `<div class="card muted">${act?'沒有參加這次的衝刺班':'目前沒有進行中的衝刺班'}</div>`}
     ${dreamEmpty(TM.dream) ? '' : dreamCardHTML(TM.dream, false, m.name)}
@@ -6361,7 +6530,10 @@ async function renderAdminClass(main){
 function drawAdminClass(main){
   const d = ATT.d; if (!d || S.sub!=='adminClass') return;
   const c = d.course, joins = d.joins, inIds = new Set(joins.filter(j=>j.memberId).map(j=>j.memberId));
-  const absent = d.members.filter(m=>!inIds.has(m.id)), guests = joins.filter(j=>!j.memberId), view = S.attView || 'in';
+  const leaves = c.must ? (d.leaves||[]) : [], lvIds = new Set(leaves.map(l=>l.memberId)), req = c.must ? new Set(d.required||[]) : null;   // 衝刺班必到（2026-11-28）
+  const absent = d.members.filter(m=>!inIds.has(m.id) && !lvIds.has(m.id) && (!req || req.has(m.id))), guests = joins.filter(j=>!j.memberId), view = S.attView || 'in';
+  const lvChip = l => `<button type="button" class="att-p lv" data-act="att-lv" data-m="${esc(l.memberId)}" data-name="${esc(l.name)}"><span class="n">${esc(l.name)}</span>
+    <span class="t">${esc(l.reason||'請假')}${l.byAdmin?'・管理員登記':''}・${l.noted?'✓ 已補心得':'還沒補心得（'+mdShort(l.due)+' 前）'}</span></button>`;
   const chip = j => `<button type="button" class="att-p${j.memberId?'':' guest'}" data-act="att-in" data-id="${esc(j.id)}"><span class="n">${esc(j.name)}</span>
     <span class="t">${j.memberId?'':'沒進 APP・'}${j.sources.map(x=>ATT_SRC[x]||'').join('＋')}${j.minutes?`・${j.minutes} 分鐘`:''}${j.sources.includes('app')?'・'+esc(String(j.at).slice(11,16)):''}</span></button>`;
   const ab = m => `<button type="button" class="att-p off" data-act="att-out" data-m="${esc(m.id)}" data-name="${esc(m.name)}"><span class="n">${esc(m.name)}</span><span class="t">點一下記成有來</span></button>`;
@@ -6370,11 +6542,12 @@ function drawAdminClass(main){
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${joins.length}</div><div class="k">有來</div></div>
         <div class="stat"><div class="v">${joins.filter(j=>j.sources.includes('app')).length}</div><div class="k">APP 自動點名</div></div>
         <div class="stat"><div class="v">${guests.length}</div><div class="k">沒進 APP 的人</div></div>
-        <div class="stat"><div class="v">${absent.length}</div><div class="k">夥伴沒來</div></div></div>
-      <div class="muted small mt">夥伴在 APP 按「進入 Zoom 上課」就自動記到（上課當天才算）。還沒進 APP 的人：下課後把 Zoom 的參加者名單貼到下面。</div></div>
-    <div class="card"><div class="seg" role="group" aria-label="看誰">${[['in','有來 '+joins.length],['out','夥伴沒來 '+absent.length]].map(([k,t])=>`<button data-act="att-view" data-v="${k}" class="${view===k?'on':''}">${t}</button>`).join('')}</div>
-      <div class="att-grid mt">${view==='in' ? (joins.map(chip).join('') || '<div class="muted">還沒有人</div>') : (absent.map(ab).join('') || '<div class="muted">夥伴都到了 🎉</div>')}</div>
-      <button class="btn btn-ghost btn-sm mt" data-act="att-copy" style="width:auto">📋 複製${view==='in'?'有來':'沒來'}的名單</button></div>
+        <div class="stat"><div class="v">${absent.length}</div><div class="k">${c.must?'衝刺班沒來':'夥伴沒來'}</div></div>${c.must?`<div class="stat"><div class="v">${leaves.length}</div><div class="k">請假</div></div>`:''}</div>
+      <div class="muted small mt">夥伴在 APP 按「進入 Zoom 上課」就自動記到（上課當天才算）。還沒進 APP 的人：下課後把 Zoom 的參加者名單貼到下面。</div>
+      ${c.must?'<div class="notice info small mt">📌 這堂是衝刺班必到：「沒來」只列衝刺班的人；沒來又沒請假的人會記 1 次違規。點名字可以「記成有來」或「幫他請假」。</div>':''}</div>
+    <div class="card"><div class="seg" role="group" aria-label="看誰">${[['in','有來 '+joins.length],['out',(c.must?'沒來 ':'夥伴沒來 ')+absent.length]].concat(c.must?[['lv','請假 '+leaves.length]]:[]).map(([k,t])=>`<button data-act="att-view" data-v="${k}" class="${view===k?'on':''}">${t}</button>`).join('')}</div>
+      <div class="att-grid mt">${view==='in' ? (joins.map(chip).join('') || '<div class="muted">還沒有人</div>') : view==='lv' ? (leaves.map(lvChip).join('') || '<div class="muted">沒有人請假</div>') : (absent.map(ab).join('') || '<div class="muted">夥伴都到了 🎉</div>')}</div>
+      ${view==='lv' ? '' : `<button class="btn btn-ghost btn-sm mt" data-act="att-copy" style="width:auto">📋 複製${view==='in'?'有來':'沒來'}的名單</button>`}</div>
     <div class="card"><h3>匯入 Zoom 參加者名單</h3>
       <ol class="steps small"><li>下課後到 Zoom 網站 →「報表」→「使用情況」→ 找到這堂課 → 點「參加者」的人數 →「匯出」</li>
         <li>打開下載的檔案，全部複製貼到下面（或按「選檔案」）</li><li>按「匯入」：名字對到夥伴的自動點名；對不上的照 Zoom 上的名字記下來</li></ol>
@@ -6409,7 +6582,7 @@ async function attJoinMenu(jid){
 function openCourseEdit(base, copy){
   const last = (ADMCS && ADMCS.courses || [])[0] || {};
   S.csDraft = base ? { ...base, id: copy ? '' : base.id, date: copy ? addDays(base.date, 7) : base.date, replayUrl: copy ? '' : (base.replayUrl||''), replayPass: copy ? '' : (base.replayPass||'') }
-    : { id:'', title:'', teacher:'', date:nextMonday(), time:last.time||'', intro:'', zoomUrl:(ADMCS&&ADMCS.lastZoom)||'', replayUrl:'', replayPass:'', mode:'online', venue:'', fee:0, capacity:0 };
+    : { id:'', title:'', teacher:'', date:nextMonday(), time:last.time||'', intro:'', zoomUrl:(ADMCS&&ADMCS.lastZoom)||'', replayUrl:'', replayPass:'', mustAttend:false, mode:'online', venue:'', fee:0, capacity:0 };
   S.csCopy = !!copy;
   go('account', {sub:'adminCourseEdit'});
 }
@@ -6429,6 +6602,7 @@ function renderAdminCourseEdit(main){
     <div id="cs-site" class="${site?'':'hidden'}"><label class="lbl" for="cs-venue">地點</label><input class="inp" id="cs-venue" maxlength="80" placeholder="例如：台北古亭・皇家教室" value="${esc(c.venue)}">
       <div class="cs-two"><div><label class="lbl" for="cs-fee">費用（元）</label><input class="inp" id="cs-fee" type="number" inputmode="numeric" min="0" value="${+c.fee||0}"><div class="hint">0＝免費</div></div>
         <div><label class="lbl" for="cs-cap">名額</label><input class="inp" id="cs-cap" type="number" inputmode="numeric" min="0" value="${+c.capacity||0}"><div class="hint">0＝不限</div></div></div></div>
+    <div class="switch cs-must"><span>📌 衝刺班必到<small>（要點名、可以請假；沒來又沒請假記違規）</small></span><input type="checkbox" id="cs-must" ${c.mustAttend?'checked':''}></div>
     <label class="lbl" for="cs-intro">課程說明<span class="muted small" style="font-weight:400">（可不填）</span></label>
     <textarea class="inp" id="cs-intro" maxlength="600" placeholder="一行寫一件事，例如：&#10;會議 ID：925 7414 0214&#10;密碼：123456">${esc(c.intro)}</textarea>
     <div class="hint">一行寫一件事，按 Enter 換行；夥伴看到的會照你分的行。</div>
@@ -6767,31 +6941,36 @@ function upLineHTML(m, cell){
   const t = m.upText ? `（他寫：${esc(m.upText)}）` : '';
   return cell ? `<span class="up-none">還沒設定</span><span class="muted small">${t}</span>` : `<div class="up-line"><span class="up-none">上線還沒設定</span><span class="muted">${t}</span></div>`;
 }
+/** 週一會議違規（2026-11-28）：有違規才顯示；滿了寫「失去資格」 */
+const meetPill = mt => !mt ? '' : mt.out ? ' <span class="pill bad">❌ 會議違規滿 '+mt.max+' 次・失去資格</span>' : mt.strikes ? ` <span class="pill bad">會議違規 ${mt.strikes}/${mt.max}</span>` : '';
 function drawMemberList(){
   const rows = filteredRows();
   $('#fcount').textContent = `共 ${rows.length} 人`;
   if (isDesk()) {   // 電腦：一人一列的表格，比較好比對
     const th = ADM.act ? ADM.act.threshold : 0;
-    $('#mlist').innerHTML = rows.length ? `<table class="mtable"><thead><tr><th>夥伴</th><th class="col-tw">TW 帳號</th><th>上線</th><th>今天</th><th>有效打卡</th><th>課後心得</th><th>繳費</th><th>狀態</th></tr></thead><tbody>
-      ${rows.map(({m,pr})=>`<tr data-act="admin-member" data-id="${m.id}" tabindex="0">
+    const hasCase = rows.some(r=>r.cases);
+    $('#mlist').innerHTML = rows.length ? `<table class="mtable"><thead><tr><th>夥伴</th><th class="col-tw">TW 帳號</th><th>上線</th><th>今天</th><th>有效打卡</th>${hasCase?'<th>CASE</th>':''}<th>課後心得</th><th>繳費</th><th>狀態</th></tr></thead><tbody>
+      ${rows.map(({m,pr,meet,cases})=>`<tr data-act="admin-member" data-id="${m.id}" tabindex="0">
         <td><div class="who">${avatarHTML(m)}<b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''}</div></td>
         <td class="muted col-tw">${esc(m.royalNo||m.tw)}</td>
         <td>${upLineHTML(m, true)}</td>
         <td>${pr.todayDone?'<span class="pill ok">已打卡</span>':'<span class="pill bad">未打卡</span>'}</td>
         <td><div class="cell-bar"><b>${pr.valid}</b><span class="muted small"> / ${th||'—'}</span><div class="bar light"><i style="width:${th?Math.min(100,Math.round(pr.valid/th*100)):0}%"></i></div></div></td>
+        ${hasCase?`<td>${cases?`<b>${cases.total}</b><span class="muted small"> / ${cases.goal}</span>${cases.today?` <span class="pill gray">今天 +${cases.today}</span>`:''}`:'<span class="muted">—</span>'}</td>`:''}
         <td>${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">${n.done} / ${n.req}</span>`:'<span class="muted">—</span>')(noteSum(pr))}</td>
         <td>${m.paid?'<span class="pill gray">已繳</span>':'<span class="pill pend">未繳</span>'}</td>
-        <td>${pr.reached?'<span class="pill ok">已達標</span>':pr.reachable?'<span class="pill brand">進行中</span>':'<span class="pill bad">無法達標</span>'}${pr.pending?` <span class="pill pend">待審 ${pr.pending}</span>`:''}</td></tr>`).join('')}
+        <td>${pr.reached?'<span class="pill ok">已達標</span>':pr.reachable?'<span class="pill brand">進行中</span>':'<span class="pill bad">無法達標</span>'}${pr.pending?` <span class="pill pend">待審 ${pr.pending}</span>`:''}${meetPill(meet)}</td></tr>`).join('')}
       </tbody></table>` : '<div class="muted">沒有符合的夥伴</div>';
     return;
   }
-  $('#mlist').innerHTML = rows.map(({m,pr})=>`<button class="mrow" data-act="admin-member" data-id="${m.id}">
+  $('#mlist').innerHTML = rows.map(({m,pr,meet,cases})=>`<button class="mrow" data-act="admin-member" data-id="${m.id}">
     ${avatarHTML(m)}
     <div class="info"><b>${esc(m.name)}</b>${badgeHTML(m.id)}${m.role==='staff'?' <span class="pill brand">工作人員</span>':''} <span class="muted small">${esc(m.royalNo||m.tw)}${CONFIG.SHOW_TEAM?'・'+esc(m.team):''}</span>
       <div class="chips">${pr.todayDone?'<span class="pill ok">今天已打卡</span>':'<span class="pill bad">今天未打卡</span>'}
+      ${cases?`<span class="pill case">💼 CASE ${cases.total}/${cases.goal}${cases.today?`（今天 +${cases.today}）`:''}</span>`:''}
       ${m.paid?'<span class="pill gray">已繳費</span>':'<span class="pill pend">未繳費</span>'}
       ${(n=>n.req?`<span class="pill ${n.bad?'bad':n.done===n.req?'ok':'gray'}">心得 ${n.done}/${n.req}</span>`:'')(noteSum(pr))}
-      ${pr.reachable?'':'<span class="pill bad">已無法達標</span>'}${pr.pending?`<span class="pill pend">待審 ${pr.pending}</span>`:''}</div>${upLineHTML(m)}</div>
+      ${pr.reachable?'':'<span class="pill bad">已無法達標</span>'}${pr.pending?`<span class="pill pend">待審 ${pr.pending}</span>`:''}${meetPill(meet)}</div>${upLineHTML(m)}</div>
     <div class="days">${pr.valid}<span class="muted small"> / ${ADM.act?ADM.act.threshold:'—'}</span></div></button>`).join('') || '<div class="muted">沒有符合的夥伴</div>';
 }
 function drawReview(){
@@ -6836,7 +7015,7 @@ async function renderAdminMember(main){
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
       <div class="stat late"><div class="v">${pr.late}</div><div class="k">補打卡</div></div>
-      <div class="stat bad"><div class="v">${pr.missing}</div><div class="k">缺少紀錄</div></div></div>${act?notesHTML(pr.notes, act, true):''}</div>
+      <div class="stat bad"><div class="v">${pr.missing}</div><div class="k">缺少紀錄</div></div></div>${act?casesHTML(pr.cases, true):''}${act?notesHTML(pr.notes, act, true):''}${act?meetHTML(pr.meet, true):''}</div>
     <div class="two-col"><div class="card"><h3>每日打卡日曆</h3>${act?calendarHTML(dayMap(pr), act, S.admin.calMonth, S.admin.calSel, 'acal'):'<div class="muted">目前沒有進行中的活動</div>'}<div id="aday"></div></div>
     <div class="card"><h3>全部日誌（含實際發布時間）</h3><div id="amp"></div></div></div>`;
   $('#amp').innerHTML = d.posts.map(p=>`<div class="review-item"><div class="small"><b class="nw">行動日 ${mdZh(p.actionDate)}</b> <span class="nw">・發布 ${fmtShort(p.postedAt)}</span>
@@ -7286,8 +7465,22 @@ document.addEventListener('click', async e=>{
         ATT.msg = `貼了 ${r.total} 個名字：新對到夥伴 ${r.matched} 位、本來就有的 ${r.kept} 位、沒進 APP 的 ${r.guests} 位${r.guests?`（${esc(r.guestNames.slice(0,8).join('、'))}${r.guests>8?'…':''}）`:''}。`;
         toast('匯入好了','ok'); renderAdminClass($('#main')); }
       catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
-    case 'att-out': { if (!await confirmBox(`把「${el.dataset.name}」記成有來上課？`, '記成有來')) break;
+    case 'att-out': {
+      if (ATT.d && ATT.d.course.must) {   // 衝刺班必到：記成有來，或幫他請假（2026-11-28）
+        const v = await choiceBox(`「${el.dataset.name}」這堂沒有點名紀錄：`, [{ v:'in', label:'✓ 其實有來（記成有來）' }, { v:'lv', label:'🙋 幫他請假', cls:'btn-outline' }]);
+        if (!v) break;
+        try {
+          if (v === 'in') { await api.adminClassMark({ courseId:S.attCourse, memberId:el.dataset.m, on:true }); toast('已點名','ok'); }
+          else { const r = await promptBox(`${el.dataset.name} 請假原因（可不填）`, '', '登記請假', 'text', 60); if (r == null) break;
+            await api.adminLeaveSet({ courseId:S.attCourse, memberId:el.dataset.m, on:true, reason:String(r).trim() }); toast('已幫他請假：看回放、寫心得就算補課','ok'); }
+          renderAdminClass($('#main'));
+        } catch(err){ toast(errText(err),'err'); }
+        break;
+      }
+      if (!await confirmBox(`把「${el.dataset.name}」記成有來上課？`, '記成有來')) break;
       try { await api.adminClassMark({ courseId:S.attCourse, memberId:el.dataset.m, on:true }); toast('已點名','ok'); renderAdminClass($('#main')); } catch(err){ toast(errText(err),'err'); } break; }
+    case 'att-lv': { if (!await confirmBox(`取消「${el.dataset.name}」的請假？取消後他這堂就算沒來。`, '取消請假', true)) break;
+      try { await api.adminLeaveSet({ courseId:S.attCourse, memberId:el.dataset.m, on:false }); toast('已取消請假','ok'); renderAdminClass($('#main')); } catch(err){ toast(errText(err),'err'); } break; }
     case 'att-in': await attJoinMenu(el.dataset.id); break;
     case 'dream-edit': S.dreamBack = S.sub; go(S.tab, {sub:'dreamEdit'}); break;
     case 'dream-tick': dreamTick(+el.dataset.i); break;
@@ -7314,7 +7507,15 @@ document.addEventListener('click', async e=>{
     case 'hon-quote': honorEditQuote(el.dataset.id); break;
     case 'hon-manage': honorManage(el.dataset.id); break;
     case 'show-more': { const t=$('.post-text',postEl); t.classList.remove('clamp'); el.remove(); queueRead(pid); break; }
-    case 'photo': { queueRead(pid); const lb=document.createElement('div'); lb.className='lightbox'; lb.innerHTML=`<img src="${el.src}" alt=""><button>關閉 ✕</button>`; lb.addEventListener('click',()=>lb.remove()); document.body.appendChild(lb); break; }
+    case 'photo': { queueRead(pid);
+      const all = [...(el.closest('.post-imgs') || el.parentNode).querySelectorAll('img')].map(i=>i.getAttribute('src')), at = Math.max(0, +el.dataset.i || 0);
+      const lb=document.createElement('div');
+      if (all.length <= 1) { lb.className='lightbox'; lb.innerHTML=`<img src="${el.src}" alt=""><button>關閉 ✕</button>`; lb.addEventListener('click',()=>lb.remove()); document.body.appendChild(lb); break; }
+      lb.className='lightbox gal'; lb.innerHTML=`<div class="gal-track">${all.map((u,i)=>`<img src="${esc(u)}" alt="照片 ${i+1}">`).join('')}</div><div class="gal-n">${at+1} / ${all.length}</div><button>關閉 ✕</button>`;
+      const tr = lb.querySelector('.gal-track'), n = lb.querySelector('.gal-n');
+      lb.addEventListener('click', e=>{ if (e.target.tagName==='BUTTON' || e.target===lb) lb.remove(); });
+      tr.addEventListener('scroll', ()=>{ n.textContent = (Math.round(tr.scrollLeft / Math.max(1, tr.clientWidth)) + 1) + ' / ' + all.length; }, { passive:true });
+      document.body.appendChild(lb); tr.scrollLeft = at * tr.clientWidth; break; }
     case 'like': openReactionPicker(el, pid); break;
     case 'rx-who': { const p = findPost(el.dataset.pid); if (p) rxWhoSheet(p); break; }
     case 'react': {
@@ -7345,7 +7546,7 @@ document.addEventListener('click', async e=>{
       bg.addEventListener('click', async ev=>{
         const b=ev.target.closest('[data-m]'); if(!b && ev.target!==bg) return; bg.remove(); if(!b) return;
         const p=findPost(pid);
-        if (b.dataset.m==='edit'){ S.editing=p; S.draft=newDraft({actionDate:p.actionDate, dateMode:p.actionDate===todayStr()?'today':p.actionDate===addDays(todayStr(),-1)?'yday':'other', text:p.text, photos:p.photoUrls.slice(), photoInfo:'', courseId:p.course&&p.course.id, courseTitle:p.course&&p.course.title}); go('compose'); }
+        if (b.dataset.m==='edit'){ S.editing=p; S.draft=newDraft({actionDate:p.actionDate, dateMode:p.actionDate===todayStr()?'today':p.actionDate===addDays(todayStr(),-1)?'yday':'other', text:p.text, cases:p.cases||0, photos:p.photoUrls.slice(), photoInfo:'', courseId:p.course&&p.course.id, courseTitle:p.course&&p.course.title}); go('compose'); }
         if (b.dataset.m==='del'){ if(!(await confirmBox('確定要刪除這篇日誌嗎？刪除後這天的打卡會重新計算。','刪除',true))) return;
           try{ await api.deletePost(pid); S.feed.items=S.feed.items.filter(x=>x.id!==pid); S.feed.cursor=Math.max(0,S.feed.cursor-1); if(S.myPosts) S.myPosts=S.myPosts.filter(x=>x.id!==pid); $$(`.post[data-id="${pid}"]`).forEach(x=>x.remove()); await loadHome(); updateCheckinBtn(); toast('已刪除'); }
           catch(err){ toast(errText(err),'err'); } }
@@ -7369,6 +7570,9 @@ document.addEventListener('click', async e=>{
     case 'zoom': api.classJoin(el.dataset.id).catch(()=>{}); toast('正式上線後，這裡會直接開啟 Zoom 會議（同時自動點名）'); break;
     case 'replay': toast('正式上線後，這裡會開啟回放影片'); break;
     case 'replay-open': openReplay(ACAD.find(x=>x.id===el.dataset.id)); break;
+    case 'leave-on': await leaveAsk(el.dataset.id); break;
+    case 'leave-off': { if (!await confirmBox('確定要取消請假嗎？取消後這堂課就要出席。', '取消請假')) break;
+      try { await api.leaveSet(el.dataset.id, false); toast('已取消請假', 'ok'); renderAcademy($('#main')); } catch(err){ toast(errText(err), 'err'); } break; }
     case 'rp-admin': go('account',{sub:'adminCourses'}); break;
     case 'share-course': S.editing=null; S.draft=newDraft({courseId:el.dataset.id, courseTitle:el.dataset.title, text:'', actionDate:todayStr(), dateMode:'today'}); go('compose'); break;
     /* 帳號 */
@@ -7462,12 +7666,12 @@ document.addEventListener('click', async e=>{
       const rpRaw = v('cs-replay'), pickPass = t => { const m = String(t||'').match(/(?:passcode|password|存取密碼|密碼|密码)\s*[:：]\s*(\S+)/i); return m ? m[1] : ''; };
       const rpUrl = pickUrl(rpRaw.split(/\s*(?:passcode|password|存取密碼|密碼|密码)\s*[:：]/i)[0]);
       Object.assign(c, { title:v('cs-title'), teacher:v('cs-teacher'), date:v('cs-date'), time:v('cs-time'), intro:($('#cs-intro')||{}).value||'', zoomUrl:pickUrl(v('cs-zoom')),
-        replayUrl:rpUrl, replayPass: rpUrl ? (v('cs-replay-pass') || pickPass(rpRaw)) : '', venue:v('cs-venue'), fee:+v('cs-fee')||0, capacity:+v('cs-cap')||0 });
+        replayUrl:rpUrl, replayPass: rpUrl ? (v('cs-replay-pass') || pickPass(rpRaw)) : '', mustAttend: !!($('#cs-must')||{}).checked, venue:v('cs-venue'), fee:+v('cs-fee')||0, capacity:+v('cs-cap')||0 });
       if (!c.title) { x.textContent = '請填課程主題。'; x.classList.remove('hidden'); $('#cs-title').focus(); break; }
       if (!c.date) { x.textContent = '請選上課日期。'; x.classList.remove('hidden'); break; }
       if (c.mode!=='onsite' && !c.zoomUrl && !await confirmBox('還沒放 Zoom 連結，夥伴會看不到「進入 Zoom 上課」。先存起來，之後再補嗎？', '先存起來')) break;
       el.disabled = true; el.textContent = '儲存中…';
-      try { await api.adminCourseSave({ id:c.id, title:c.title, teacher:c.teacher, date:c.date, time:c.time, intro:c.intro, zoomUrl:c.zoomUrl, replayUrl:c.replayUrl, replayPass:c.replayPass||'', mode:c.mode, venue:c.venue, fee:c.fee, capacity:c.capacity });
+      try { await api.adminCourseSave({ id:c.id, title:c.title, teacher:c.teacher, date:c.date, time:c.time, intro:c.intro, zoomUrl:c.zoomUrl, replayUrl:c.replayUrl, replayPass:c.replayPass||'', mustAttend:!!c.mustAttend, mode:c.mode, venue:c.venue, fee:c.fee, capacity:c.capacity });
         toast(c.id ? '已儲存' : '✅ 已新增，夥伴在皇家學院就看得到', 'ok'); S.csDraft = null; go('account', {sub:'adminCourses'}); }
       catch(err){ el.disabled = false; el.textContent = c.id ? '儲存修改' : '新增這堂課'; x.textContent = errText(err); x.classList.remove('hidden'); }
       break; }
