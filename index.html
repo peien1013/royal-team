@@ -275,6 +275,28 @@ textarea.inp{min-height:180px;resize:vertical;line-height:1.6}
 .photo-prev{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line);aspect-ratio:1/1}
 .photo-prev img{width:100%;height:100%;object-fit:cover;background:#f3f5f7}
 .photo-prev .rm{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.7);color:#fff;border:0;border-radius:50%;width:44px;height:44px;font-size:22px;line-height:1}
+/* 日誌影片（2026-11-28） */
+.vbox{position:relative;display:flex;gap:12px;align-items:center;border:1px solid var(--line);border-radius:14px;padding:10px;background:#fff;box-shadow:var(--shadow)}
+.vz-media{position:relative;flex:0 0 112px;height:112px;border-radius:10px;overflow:hidden;background:#0F1B2A;display:flex;align-items:center;justify-content:center}
+.vz-media img,.vz-media video,.vz-live video{width:100%;height:100%;object-fit:cover;display:block}
+.vz-live{width:100%;height:100%}
+.vz-ph{font-size:40px}
+.vz-st{flex:1;min-width:0;padding-right:34px}
+.vz-t{font-size:16px;line-height:1.45}
+.vz-st .bar{margin-top:8px}
+.vz-st .bar i{transition:width 300ms var(--ease-out,ease)}
+.ok-t{color:var(--ok);font-weight:700}.err-t{color:var(--bad);font-weight:700}
+.vbox .rm{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.65);color:#fff;border:0;border-radius:50%;width:40px;height:40px;font-size:20px;line-height:1;touch-action:manipulation}
+.pv-dur{position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.62);color:#fff;border-radius:6px;padding:1px 7px;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.post-video{position:relative;margin:10px 0 0;width:100%;aspect-ratio:var(--vr,1.78);background:#0F1B2A;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;touch-action:manipulation}
+.post-video img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pv-play{position:relative;width:68px;height:68px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;padding-left:6px;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:transform 160ms var(--ease-out,ease)}
+.post-video:active .pv-play{transform:scale(.94)}
+.post-video .pv-dur{right:10px;bottom:10px;font-size:14px}
+.lightbox.vplay{flex-direction:column;padding:calc(env(safe-area-inset-top) + 64px) 0 calc(env(safe-area-inset-bottom) + 16px)}
+.vp-box{position:relative;width:min(100vw, calc((100dvh - 150px) * var(--vr,1.78)));aspect-ratio:var(--vr,1.78);background:#000}
+.vp-box iframe,.vp-box video{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vp-hint{color:#ddd;font-size:15px;margin:12px 16px 0;text-align:center;line-height:1.5}
 .course-tag{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#F3ECFF;color:#5A2FA0;border-radius:12px;padding:10px 14px;font-weight:700}
 .course-tag button{border:0;background:none;color:inherit;font-size:22px;min-width:44px;min-height:44px}
 .sticky-submit{position:sticky;bottom:calc(var(--nav-h) + 8px + env(safe-area-inset-bottom));margin-top:16px}
@@ -1556,6 +1578,11 @@ const CONFIG = {
   PHOTO_MAX_EDGE: 1080,    // 照片壓縮後最長邊：手機螢幕看很清楚，不是列印用
   PHOTO_QUALITY: 0.72,
   MAX_PHOTOS: 10,          // 每篇最多幾張照片（2026-11-28 使用者：「照片最多 10 張」，原本 3 張）
+  VIDEO_MAX_SEC: 60,       // 影片（2026-11-28 17:45 使用者：「OK 你幫我整合」）：一篇 1 支、1 分鐘內
+  VIDEO_RAW_OK: 25*1024*1024,   // 25MB 以下直接上傳；比較大的在手機上壓成 720p
+  VIDEO_MAX_RAW: 80*1024*1024,  // 手機不能壓縮時，原檔最多 80MB（後端也檢查）
+  VIDEO_EDGE: 1280,        // 壓縮後最長邊（720p）
+  VIDEO_BPS: 2500000,      // 壓縮後畫質：每秒 2.5Mb（手機看很清楚；1 分鐘約 19MB）
   SHOW_TEAM: false         // 目前不分組：資料保留「團隊」欄，但畫面不顯示
 };
 /** LINE 標誌（登入按鈕）、NU SKIN 噴泉標誌（如新帳號前面）：2026-11-25 16:33 使用者給的圖 */
@@ -1876,6 +1903,7 @@ function mockCases(memberId, act){
     sum.total += n; if (p.actionDate>=wk && p.actionDate<=T) sum.week += n; if (p.actionDate.slice(0,7)===mo) sum.month += n; if (p.actionDate===T) sum.today += n; if (!seen.has(p.actionDate)) { seen.add(p.actionDate); sum.days++; } });
   sum.left = Math.max(0, sum.goal - sum.total); sum.reached = sum.total >= sum.goal; return sum;
 }
+function mockVideo(id, me){ const v = (MockDB.videos||{})[id]; if (!v || v.me !== me.id) throw new Error('VIDEO_EXPIRED'); return { id, ...v }; }
 function mockPhotoReq(m, ymd){ const a = MockDB.activity; return !!(a && a.photoReq && mockJoined(m) && a.start <= ymd && ymd <= a.end); }
 function mockJoined(m){
   if (m.id===MockDB.ME.id && Demo.notJoined) return false;
@@ -1973,6 +2001,7 @@ function publicPost(p, meId){
   const a = MockDB.byId[p.authorId], c = p.courseId ? MockDB.courses.find(x=>x.id===p.courseId) : null;
   return { id:p.id, author:{id:a.id, name:a.name, color:a.color, avatarUrl:a.avatarUrl||''}, actionDate:p.actionDate, postedAt:p.postedAt,
     editedAt:p.editedAt, text:p.text, cases: p.cases || 0, photoUrls: p.photoDatas || (p.photo ? p.photo.scenes.map(demoPhotoUrl) : []),
+    video: p.video ? { id:p.video.id, url:'', local:p.video.local, poster:p.video.poster||'', dur:p.video.dur||0, ratio:p.video.ratio||0 } : null,
     isLate:p.isLate, review:p.review, course: c ? {id:c.id, title:c.title} : null,
     likeCount:p.likes.size, liked:p.likes.has(meId), myReaction:p.likes.get(meId)||'', reactionCounts:mockCounts(p.likes), reactors:mockReactors(p.likes), commentCount:p.comments.length, readCount:p.reads.size, mine:p.authorId===meId };
 }
@@ -2072,7 +2101,7 @@ const MockApi = {
     const items = all.slice(cursor, cursor+limit).map(p=>publicPost(p, me.id));
     return { items, nextCursor: cursor+limit < all.length ? cursor+limit : null };
   },
-  async createPost({actionDate, text, photos=[], courseId, clientRequestId, cases=0}){
+  async createPost({actionDate, text, photos=[], courseId, clientRequestId, cases=0, videoId}){
     // （mockPhotoReq：示範版的衝刺班「打卡一定要附照片」，跟後端 photoRequired_ 一樣）
     if (courseId){ const c = MockDB.courses.find(x=>x.id===courseId); if (c && c.date > todayStr()) throw new Error('COURSE_NOT_YET'); actionDate = todayStr(); }
     if (MockDB.requests.has(clientRequestId)) return MockDB.requests.get(clientRequestId); // 防重複送出
@@ -2082,14 +2111,14 @@ const MockApi = {
     if (diffDays(actionDate, T) < 0) throw new Error('FUTURE_DATE');
     if (photos.length > CONFIG.MAX_PHOTOS) throw new Error('TOO_MANY_PHOTOS');
     if (!courseId && !photos.length && mockPhotoReq(this._me(), actionDate)) throw new Error('PHOTO_REQUIRED');
-    const me = this._me(), late = diffDays(actionDate, T);
-    const p = { id:uid('P'), authorId:me.id, actionDate, postedAt:Date.now(), editedAt:null, editCount:0, text:text.trim(),
+    const me = this._me(), late = diffDays(actionDate, T), mv = videoId ? mockVideo(videoId, me) : null;
+    const p = { id:uid('P'), authorId:me.id, video: mv, actionDate, postedAt:Date.now(), editedAt:null, editCount:0, text:text.trim(),
       photo:null, photoDatas:photos.slice(), isLate: late>0, review: late===0||late<=MockDB.activity.lateDays ? 'auto':'pending',
       activityId:MockDB.activity.id, courseId:courseId||null, status:'active', likes:new Map(), reads:new Set(), comments:[], cases: courseId ? 0 : Math.max(0, Math.min(10, Math.floor(+cases||0))) };
     MockDB.posts.push(p);
     const res = publicPost(p, me.id); MockDB.requests.set(clientRequestId, res); return res;
   },
-  async updatePost(id, {actionDate, text, photos=[], cases}){
+  async updatePost(id, {actionDate, text, photos=[], cases, videoId}){
     await this._wait();
     const p = MockDB.posts.find(x=>x.id===id), me=this._me();
     if (!p || p.authorId!==me.id) throw new Error('FORBIDDEN');
@@ -2103,9 +2132,26 @@ const MockApi = {
     if (photos.length > CONFIG.MAX_PHOTOS) throw new Error('TOO_MANY_PHOTOS');
     p.photo=null; p.photoDatas=photos.slice();
     if (cases !== undefined && !p.courseId) p.cases = Math.max(0, Math.min(10, Math.floor(+cases||0)));
+    if (videoId !== undefined) p.video = videoId ? mockVideo(videoId, me) : null;
     p.editedAt = Date.now(); p.editCount++;
     return publicPost(p, me.id);
   },
+  /* 示範版：日誌影片分段上傳（跟後端 90_Video.gs 同樣的規則；影片留在這支手機的記憶體） */
+  async videoStart({size, dur, mime, poster, w, h}){ await this._wait();
+    if (!/^video\/(mp4|quicktime|webm|x-m4v|3gpp)$/.test(String(mime||'').split(';')[0])) throw new Error('VIDEO_TYPE');
+    if (!(size > 0) || size > CONFIG.VIDEO_MAX_RAW) throw new Error('VIDEO_BIG');
+    if (!(dur > 0) || dur > CONFIG.VIDEO_MAX_SEC + 5) throw new Error('VIDEO_LONG');
+    const id = uid('VU'); (MockDB.vups = MockDB.vups || {})[id] = { size, dur, mime, poster: poster||'', r: w && h ? Math.round(w/h*100)/100 : 0, parts:[], got:0, me:this._me().id };
+    return { uploadId:id, chunk:1048576 }; },
+  async videoChunk({uploadId, offset, data}){
+    const u = (MockDB.vups||{})[uploadId]; if (!u || u.me !== this._me().id) throw new Error('VIDEO_EXPIRED');
+    if (u.vid) return { got:u.size, done:true, videoId:u.vid };
+    if (offset !== u.got) return { got:u.got };
+    const bin = atob(data), arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    u.parts.push(arr); u.got += arr.length; MockDB.videoChunks = (MockDB.videoChunks||0) + 1;
+    if (u.got < u.size) return { got:u.got };
+    u.vid = uid('VID'); (MockDB.videos = MockDB.videos || {})[u.vid] = { me:u.me, local:URL.createObjectURL(new Blob(u.parts, {type:u.mime})), poster:u.poster, dur:Math.round(u.dur), ratio:u.r, mime:u.mime, size:u.size };
+    return { got:u.size, done:true, videoId:u.vid }; },
   async deletePost(id){
     await this._wait();
     const p = MockDB.posts.find(x=>x.id===id), me=this._me();
@@ -2567,6 +2613,8 @@ const GasApi = {
     return this.call('feed.list', {cursor, limit, authorId});
   },
   createPost(p){ return this.call('post.create', p, {retry:2}); },
+  videoStart(p){ return this.call('video.start', p, {retry:1}); },     // 日誌影片分段上傳（2026-11-28）
+  videoChunk(p){ return this.call('video.chunk', p, {retry:0}); },
   updatePost(id, p){ return this.call('post.update', {postId:id, ...p}, {retry:0}); },
   deletePost(id){ return this.call('post.delete', {postId:id}); },
   react(id, type){ return this.call('post.like', {postId:id, type}, {retry:0}); },   // 不重試，避免按一次變兩次
@@ -2777,7 +2825,7 @@ const twOk = tw => /^TW\d{5,9}$/.test(tw);
 /* ---------- 錯誤訊息（白話） ---------- */
 function errText(e){
   const k = e && e.message;
-  return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。', PHOTO_REQUIRED:'衝刺班打卡要附至少 1 張照片。', NOT_JOINED:'你沒有參加這個衝刺班，這堂不用請假。', LEAVE_CLOSED:'已經開課了，不能自己請假；請直接跟管理員說。',
+  return ({ NETWORK:'網路不穩，沒有送出成功。內容已幫你保留，請再按一次。', TEXT_REQUIRED:'請先寫下今天做了什麼。', PHOTO_REQUIRED:'衝刺班打卡要附至少 1 張照片。', VIDEO_TYPE:'這個檔案不是影片，請從相簿選影片。', VIDEO_BIG:'影片太大了（超過 80 MB），請先在相簿剪短一點再選。', VIDEO_LONG:'影片超過 1 分鐘，請先在相簿剪短再選。', VIDEO_FAIL:'影片上傳失敗，請再試一次。', VIDEO_EXPIRED:'影片放太久沒傳完，請按 ✕ 拿掉，再選一次。', VIDEO_READ:'這支影片讀不出來，請換一支試試看。', NOT_JOINED:'你沒有參加這個衝刺班，這堂不用請假。', LEAVE_CLOSED:'已經開課了，不能自己請假；請直接跟管理員說。',
     FUTURE_DATE:'不能選還沒到的日期。', FORBIDDEN:'你沒有權限做這件事。', MEAL_UNAVAILABLE:'便當系統暫時讀不到，等一下再試。', MANUAL_UNAVAILABLE:'手冊暫時讀不到，等一下再試。', PDFJS:'閱讀工具沒有載入成功，請檢查網路再試一次。', PDF_BAD:'這本手冊打不開，請跟管理員說。', PHOTO_READ:'這張照片讀不出來，請換一張，或改用「拍照」。',
     PHOTO_BIG:'照片太大了，請換一張。', TOO_MANY_PHOTOS:'每篇最多 3 張照片。', TEXT_TOO_LONG:'字數太多了，請精簡一點。',
     BUSY:'現在使用的人很多，請等幾秒再按一次。', TOO_MANY_POSTS:'今天已經發很多篇了，明天再分享吧。',
@@ -2802,7 +2850,7 @@ const S = {
   calMonth: null, calSel: null,
   role: 'member', admin: { q:'', team:'', today:'', reach:'', pay:'', memberId:null, calMonth:null, calSel:null }
 };
-function newDraft(preset={}){ return { actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', cases:0, courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
+function newDraft(preset={}){ return { actionDate: todayStr(), dateMode:'today', text:'', photos:[], photoInfo:'', cases:0, video:null, videoChanged:false, courseId:null, courseTitle:null, clientRequestId: uid('REQ'), ...preset }; }
 
 /* ---------- 提示 ---------- */
 let toastTimer;
@@ -3923,6 +3971,7 @@ function postHTML(p){
     <div class="post-text ${long?'clamp':''}"><div class="pt">${esc(p.text)}</div></div>
     ${long?'<button class="show-more" data-act="show-more">顯示更多</button>':''}
     ${p.cases?`<div class="post-cases">💼 談了 <b>${p.cases}</b> 個 CASE</div>`:''}
+    ${p.video?`<div class="post-video" data-act="video-play" role="button" tabindex="0" aria-label="播放 ${esc(p.author.name)} 的影片" style="--vr:${Math.max(0.8, Math.min(1.91, p.video.ratio>0?p.video.ratio:16/9))}"><img src="${esc(p.video.poster||'')}" alt="" loading="lazy" data-vposter><span class="pv-play" aria-hidden="true">▶</span>${p.video.dur?`<span class="pv-dur">${fmtDur(p.video.dur)}</span>`:''}</div>`:''}
     ${p.photoUrls.length?`<div class="post-imgs n${Math.min(p.photoUrls.length, 4)}${p.photoUrls.length>4?' more':''}" data-more="${p.photoUrls.length>4?'+'+(p.photoUrls.length-4):''}">${p.photoUrls.map((u,i)=>`<img src="${u}" alt="${esc(p.author.name)} 的行動照片 ${i+1}" loading="lazy" data-act="photo" data-i="${i}">`).join('')}</div>`:''}
     <div class="post-stats"><span data-k="likes">${rxSummaryHTML(p)}</span><span><span data-k="cmts">${p.commentCount} 則留言</span> ・ <span data-k="reads">已讀 ${p.readCount} 人</span></span></div>
     <div class="post-actions">
@@ -4093,7 +4142,7 @@ function renderCompose(main){
   if (!S.draft) S.draft = newDraft();
   const d = S.draft, T = todayStr(), Y = addDays(T,-1), needPhoto = !d.courseId && photoNeeded(d.actionDate);
   const late = diffDays(d.actionDate, T);
-  const editing = !!S.editing;
+  const editing = !!S.editing, live = $('#vz-live video');   // 正在壓縮的影片：重畫畫面時搬過去，不要中斷
   main.innerHTML = `<div class="card compose">
     <h2>${d.courseId?(editing?'編輯課後心得':'寫課後心得'):(editing?'編輯行動日誌':'發布行動日誌')}</h2>
     ${d.courseId?`<div class="course-tag">📚 課後心得：${esc(d.courseTitle)}${editing?'':'<button data-act="course-clear" aria-label="改成一般行動日誌">✕</button>'}</div>
@@ -4124,6 +4173,10 @@ function renderCompose(main){
     <input type="file" id="f-lib" accept="image/*" multiple class="hidden">
     <div id="c-photo-busy" class="hint hidden">照片處理中…</div>
 
+    <label class="lbl lbl-row"><span>影片<span class="muted small" style="font-weight:400">（可以不放）</span></span><span class="lbl-side">1 支・1 分鐘內</span></label>
+    ${videoBoxHTML(d)}
+    <input type="file" id="f-vid" accept="video/*" class="hidden">
+
     <div id="c-err" class="notice err hidden" role="alert"></div>
     <div class="sticky-submit"><button class="btn btn-primary" data-act="submit" id="c-submit">${editing?'儲存修改':'發布'}</button></div>
     ${editing?'<button class="btn btn-outline mt" data-act="cancel-edit">取消編輯</button><div class="hint">修改日期或內容後，系統會重新計算打卡天數，並保留修改紀錄。</div>':''}
@@ -4141,6 +4194,8 @@ function renderCompose(main){
     d.actionDate = v; renderCompose(main);
   });
   ['f-cam','f-lib'].forEach(id=> $('#'+id).addEventListener('change', e=>{ const fs=Array.from(e.target.files); e.target.value=''; if (fs.length) handlePhotos(fs); }));
+  $('#f-vid').addEventListener('change', e=>{ const f = e.target.files[0]; e.target.value=''; if (f) handleVideo(f); });
+  if (live && $('#vz-live')) $('#vz-live').appendChild(live);
 }
 /* 打卡「🎤 用講的」按鈕：2026-11-27 12:12 使用者決定拿掉（手機鍵盤上本來就有 🎤，直接按鍵盤的就好）。程式在 GitHub 0bcfa37 那一版，要再用可以拿回來。 */
 function showErr(msg){ const el=$('#c-err'); if(!el) return toast(msg,'err'); el.textContent=msg; el.classList.remove('hidden'); el.scrollIntoView({block:'center',behavior:'smooth'}); }
@@ -4184,21 +4239,221 @@ function compressImage(file, maxEdge, quality){
   });
 }
 
+/* =====================================================================
+   日誌影片（2026-11-28 17:45 使用者：「OK 你幫我整合」——照片最多 10 張，也可以上傳影片，要「壓縮容量並保持畫質」）
+   一篇 1 支、1 分鐘內。選好影片：讀長度、抓封面 →
+     25MB 以下：直接上傳（不動畫質）
+     比較大：按「🗜️ 壓縮並上傳」，在手機上把影片安靜地播一次、錄成 720p（每秒 2.5Mb，手機看很清楚，1 分鐘約 19MB）
+       （要按一下才開始：iPhone 規定有按按鈕才能連聲音一起錄）
+     手機不能壓縮：80MB 以下直接傳原檔
+   上傳：每段 1MB 分段送（網路斷掉會從斷掉的地方接著送），後端轉存到雲端硬碟（後端 90_Video.gs）。
+   ===================================================================== */
+const fmtDur = s => { s = Math.round(+s||0); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); };
+function recMime(){
+  if (!window.MediaRecorder || !MediaRecorder.isTypeSupported) return '';
+  return ['video/mp4;codecs=avc1.42E01F,mp4a.40.2','video/mp4;codecs=avc1,mp4a','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']
+    .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch(_) { return false; } }) || '';
+}
+const canCompressVideo = () => !!(recMime() && HTMLCanvasElement.prototype.captureStream);
+function vidMime(f){ const t = String(f.type||'').toLowerCase(); if (t) return t; return /\.mov$/i.test(f.name||'') ? 'video/quicktime' : /\.webm$/i.test(f.name||'') ? 'video/webm' : 'video/mp4'; }
+/** 讀影片長度、寬高，抓一張封面（抓不到封面也沒關係，後端會用雲端硬碟的縮圖） */
+function videoMeta(file){
+  return new Promise((resolve, reject)=>{
+    const url = URL.createObjectURL(file), el = document.createElement('video');
+    el.muted = true; el.playsInline = true; el.setAttribute('playsinline',''); el.preload = 'auto'; el.src = url;
+    let done = false;
+    const t = setTimeout(()=>fin(false, new Error('VIDEO_READ')), 20000);
+    function fin(ok, x){ if (done) return; done = true; clearTimeout(t); if (ok) resolve(x); else { URL.revokeObjectURL(url); reject(x); } }
+    el.onerror = () => fin(false, new Error('VIDEO_READ'));
+    el.onloadedmetadata = async () => {
+      const dur = el.duration;
+      if (!isFinite(dur) || !(dur > 0)) return fin(false, new Error('VIDEO_READ'));
+      let poster = ''; try { poster = await grabPoster(el, dur); } catch(_){}
+      fin(true, { dur, w: el.videoWidth, h: el.videoHeight, poster, url });
+    };
+  });
+}
+function grabPoster(el, dur){
+  return new Promise(resolve=>{
+    let done = false; const t = setTimeout(()=>end(''), 5000);
+    function end(x){ if (done) return; done = true; clearTimeout(t); try { el.pause(); } catch(_){} resolve(x); }
+    el.onseeked = () => { try { const w0 = el.videoWidth, h0 = el.videoHeight; if (!w0) return end('');
+      const r = Math.min(1, 720/Math.max(w0,h0)), cv = document.createElement('canvas'); cv.width = Math.round(w0*r); cv.height = Math.round(h0*r);
+      cv.getContext('2d').drawImage(el, 0, 0, cv.width, cv.height); end(cv.toDataURL('image/jpeg', 0.8)); } catch(_){ end(''); } };
+    const seek = () => { try { el.currentTime = Math.min(0.5, dur/2); } catch(_){ end(''); } };
+    if (el.readyState >= 2) seek();
+    else { el.onloadeddata = seek; const p = el.play(); if (p && p.then) p.then(()=>{ try { el.pause(); } catch(_){} }).catch(()=>{}); }
+  });
+}
+async function handleVideo(file){
+  const d = S.draft; if (!d) return;
+  if ($('#c-text')) d.text = $('#c-text').value;
+  if (!/^video\//i.test(file.type||'') && !/\.(mov|mp4|m4v|webm|3gp)$/i.test(file.name||'')) return showErr(errText(new Error('VIDEO_TYPE')));
+  if (d.video) d.video.cancel = true;
+  const v = d.video = { state:'read', file, size:file.size, mime:vidMime(file), pct:0 };
+  d.videoChanged = true; renderCompose($('#main'));
+  try { Object.assign(v, await videoMeta(file)); }
+  catch(e){ if (S.draft===d && d.video===v) { d.video = null; renderCompose($('#main')); showErr(errText(e)); } return; }
+  if (S.draft!==d || d.video!==v) return;
+  if (v.dur > CONFIG.VIDEO_MAX_SEC + 1.5) {
+    URL.revokeObjectURL(v.url); d.video = null; renderCompose($('#main'));
+    return showErr(`這支影片 ${fmtDur(v.dur)}，超過 1 分鐘。請先在手機相簿把影片剪短（按「編輯」，拉兩邊的黃色框），再選一次。`);
+  }
+  if (v.size <= CONFIG.VIDEO_RAW_OK) return startVideoUpload(d, v, file);
+  if (canCompressVideo()) { v.state = 'big'; return drawVideoBox(); }
+  if (v.size <= CONFIG.VIDEO_MAX_RAW) { v.note = '這支手機不能壓縮影片，直接上傳原檔（會比較久）'; return startVideoUpload(d, v, file); }
+  URL.revokeObjectURL(v.url); d.video = null; renderCompose($('#main')); showErr(errText(new Error('VIDEO_BIG')));
+}
+/** 按「壓縮並上傳」：一定要在按鈕裡直接開始播（iPhone 才會讓聲音一起錄） */
+async function compressVideoNow(){
+  const d = S.draft, v = d && d.video; if (!v || v.state !== 'big') return;
+  v.state = 'compress'; v.pct = 0; drawVideoBox();
+  let out = null;
+  try { out = await compressVideo(v, p => { v.pct = p; drawVideoBox(); }); } catch(_){ out = null; }
+  v.cz = out ? out.size : -1;   // 壓完多大（測試、除錯用）
+  if (S.draft !== d || d.video !== v || v.cancel) return;
+  if (out && out.size > 50000 && out.size < v.size) return startVideoUpload(d, v, out);
+  if (v.size <= CONFIG.VIDEO_MAX_RAW) { v.note = '壓縮沒有成功，改傳原檔（會比較久）'; return startVideoUpload(d, v, v.file); }
+  v.state = 'err'; v.err = errText(new Error('VIDEO_BIG')); drawVideoBox();
+}
+function compressVideo(v, onPct){
+  return new Promise((resolve, reject)=>{
+    const mime = recMime(); if (!mime || !v.w || !v.h) return reject(new Error('NO_REC'));
+    const sc = Math.min(1, CONFIG.VIDEO_EDGE / Math.max(v.w, v.h)), W = Math.max(2, Math.round(v.w*sc/2)*2), H = Math.max(2, Math.round(v.h*sc/2)*2);
+    const el = document.createElement('video'); el.playsInline = true; el.setAttribute('playsinline',''); el.muted = false; el.preload = 'auto'; el.src = v.url;
+    const host = $('#vz-live'); if (host) host.appendChild(el); else { el.style.cssText = 'position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01'; document.body.appendChild(el); }
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
+    const tracks = cv.captureStream(30).getVideoTracks();
+    let ac = null;
+    try {   // 聲音：接到錄影，不從喇叭出來（影片安靜地播）
+      const AC = window.AudioContext || window.webkitAudioContext; ac = new AC();
+      const src = ac.createMediaElementSource(el), dst = ac.createMediaStreamDestination(); src.connect(dst);
+      tracks.push(...dst.stream.getAudioTracks()); if (ac.resume) ac.resume();
+    } catch(_){ ac = null; }
+    let rec, state = 'run', timer = null;
+    const parts = [];
+    const cleanup = () => { clearTimeout(timer); try { el.pause(); } catch(_){} el.removeAttribute('src'); try { el.load(); } catch(_){} el.remove();
+      tracks.forEach(t => { try { t.stop(); } catch(_){} }); if (ac && ac.close) ac.close().catch(()=>{}); };
+    const fail = () => { if (state !== 'run') return; state = 'fail'; try { if (rec && rec.state !== 'inactive') rec.stop(); } catch(_){} cleanup(); reject(new Error('COMPRESS')); };
+    const finish = () => { if (state !== 'run') return; state = 'stop'; try { rec.stop(); } catch(_){ cleanup(); reject(new Error('COMPRESS')); } };
+    try { rec = new MediaRecorder(new MediaStream(tracks), { mimeType: mime, videoBitsPerSecond: CONFIG.VIDEO_BPS, audioBitsPerSecond: 128000 }); }
+    catch(e){ cleanup(); return reject(e); }
+    rec.ondataavailable = e => { if (e.data && e.data.size) parts.push(e.data); };
+    rec.onstop = () => { if (state !== 'stop') return; cleanup(); resolve(new Blob(parts, { type: mime.split(';')[0] })); };
+    const draw = () => { if (state !== 'run') return; if (v.cancel) return fail();
+      try { g.drawImage(el, 0, 0, W, H); } catch(_){}
+      onPct(Math.min(0.99, (el.currentTime || 0) / v.dur)); if (!el.ended) next(); };
+    const next = () => el.requestVideoFrameCallback ? el.requestVideoFrameCallback(draw) : requestAnimationFrame(draw);
+    el.onplaying = () => { if (rec.state === 'inactive') { try { g.drawImage(el, 0, 0, W, H); } catch(_){} rec.start(1000); } };
+    el.onended = () => { try { g.drawImage(el, 0, 0, W, H); } catch(_){} setTimeout(finish, 400); };
+    el.onerror = fail;
+    timer = setTimeout(fail, (v.dur * 2 + 30) * 1000);
+    const p = el.play(); if (p && p.catch) p.catch(fail);
+    next();
+  });
+}
+function startVideoUpload(d, v, blob){
+  v.blob = blob; v.state = 'upload'; v.pct = 0; v.err = ''; v.cancel = false;
+  v.mimeUp = blob === v.file ? v.mime : String(blob.type || v.mime).split(';')[0];
+  drawVideoBox();
+  v.promise = uploadVideo(v).then(() => { v.state = 'done'; v.pct = 1; drawVideoBox(); },
+    e => { if (!v.cancel) { v.state = 'err'; v.err = errText(e); drawVideoBox(); } throw e; });
+  v.promise.catch(()=>{});
+  return v.promise;
+}
+async function uploadVideo(v){
+  const b = v.blob, size = b.size;
+  const st = await api.videoStart({ size, dur: Math.round(v.dur*10)/10, mime: v.mimeUp, poster: v.poster || '', w: v.w || 0, h: v.h || 0 });
+  let off = 0, fails = 0, loops = 0;
+  while (true) {
+    if (v.cancel) throw new Error('VIDEO_CANCEL');
+    if (++loops > Math.ceil(size / st.chunk) * 3 + 20) throw new Error('VIDEO_FAIL');
+    const data = await blobB64(b.slice(off, Math.min(size, off + st.chunk)));
+    try {
+      const r = await api.videoChunk({ uploadId: st.uploadId, offset: off, data });
+      fails = 0; off = r.got;
+      if (r.done) { v.id = r.videoId; v.pct = 1; return; }
+    } catch(e) {
+      if (e.server && e.message !== 'BUSY') throw e;
+      if (++fails > 5) throw e;
+      await sleep(1500 * fails);
+    }
+    v.pct = off / size; drawVideoBox();
+  }
+}
+const blobB64 = b => new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => { const s = String(fr.result); ok(s.slice(s.indexOf(',') + 1)); }; fr.onerror = () => no(new Error('VIDEO_READ')); fr.readAsDataURL(b); });
+function videoBoxHTML(d){
+  const v = d.video;
+  if (!v) return `<div id="vbox"><button class="btn btn-ghost" data-act="video-pick">🎬 加一支影片</button></div>`;
+  const media = v.state === 'compress' ? '<div id="vz-live" class="vz-live"></div>'
+    : v.poster ? `<img src="${esc(v.poster)}" alt="影片封面" data-vposter>` : '<span class="vz-ph" aria-hidden="true">🎬</span>';
+  return `<div id="vbox" class="vbox vz-${v.state}"><div class="vz-media">${media}${v.dur?`<span class="pv-dur">${fmtDur(v.dur)}</span>`:''}</div>
+    <div id="vbox-st" class="vz-st">${videoStHTML(v)}</div>
+    <button class="rm" data-act="video-rm" aria-label="拿掉影片">✕</button></div>`;
+}
+function videoStHTML(v){
+  const bar = p => `<div class="bar light"><i style="width:${Math.round(p*100)}%"></i></div>`;
+  switch (v.state) {
+    case 'read': return '<div class="vz-t">讀取影片中…</div>';
+    case 'big': return `<div class="vz-t">這支影片 <b>${fmtKB(v.size)}</b>，比較大。按下面幫你壓小（畫質一樣清楚），大約要 ${fmtDur(v.dur)}。</div>
+      <button class="btn btn-primary btn-sm mt" data-act="video-compress">🗜️ 壓縮並上傳</button>`;
+    case 'compress': return `<div class="vz-t"><b>壓縮中 ${Math.round(v.pct*100)}%</b></div>${bar(v.pct)}<div class="hint">影片會安靜地播一次，請停在這個畫面，等它播完</div>`;
+    case 'upload': return `<div class="vz-t"><b>上傳中 ${Math.round(v.pct*100)}%</b></div>${bar(v.pct)}<div class="hint">${v.note?esc(v.note)+'。':''}可以先寫字，傳好再按發布</div>`;
+    case 'done': return v.keep ? '<div class="vz-t">✓ 原本的影片</div><div class="hint">要換影片：先按 ✕ 拿掉，再選一支</div>' : '<div class="vz-t ok-t">✓ 影片準備好了</div>';
+    case 'err': return `<div class="vz-t err-t">${esc(v.err || '影片上傳失敗')}</div><button class="btn btn-ghost btn-sm mt" data-act="video-retry">再試一次</button>`;
+  }
+  return '';
+}
+/** 只重畫影片那一塊；壓縮中只改文字和進度條（影片本身不能動，不然會中斷） */
+function drawVideoBox(){
+  const box = $('#vbox'), d = S.draft; if (!box || !d) return;
+  const v = d.video;
+  if (v && v.state === 'compress' && $('#vz-live') && $('#vbox-st')) { $('#vbox-st').innerHTML = videoStHTML(v); return; }
+  box.outerHTML = videoBoxHTML(d);
+}
+/** 動態牆：點影片封面 → 在 APP 裡播（雲端硬碟的播放器） */
+function openVideo(p){
+  if (!p || !p.video) return;
+  const r = p.video.ratio > 0 ? p.video.ratio : 16/9, fresh = Date.now() - (p.postedAt || 0) < 15*60000;
+  const lb = document.createElement('div'); lb.className = 'lightbox vplay';
+  lb.innerHTML = `<div class="vp-box" style="--vr:${r}">${p.video.local ? `<video src="${esc(p.video.local)}" controls autoplay playsinline></video>`
+      : `<iframe src="${esc(p.video.url)}" title="${esc(p.author.name)} 的影片" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`}</div>
+    ${fresh && !p.video.local ? '<div class="vp-hint">剛上傳的影片，雲端硬碟要幾分鐘整理；還不能播的話，等一下再點開</div>' : ''}<button>關閉 ✕</button>`;
+  lb.addEventListener('click', e => { if (e.target.tagName === 'BUTTON' || e.target === lb) lb.remove(); });
+  document.body.appendChild(lb);
+}
+/* 影片封面讀不到（雲端硬碟還沒做好縮圖）：先顯示深色底＋▶。雲端硬碟的縮圖第一次失敗時，上面的 error 處理會先換備用網址再試一次，那次也失敗才藏起來 */
+document.addEventListener('error', e => { const t = e.target; if (!t || t.tagName !== 'IMG' || !t.hasAttribute('data-vposter')) return;
+  if (t.dataset.fb === '1' && !t.dataset.vfb) { t.dataset.vfb = '1'; return; }
+  t.style.visibility = 'hidden'; }, true);
+
 async function submitPost(){
   const d = S.draft, btn = $('#c-submit');
   d.text = $('#c-text').value;
   if (!d.text.trim()) { showErr('請先寫下今天做了什麼。'); $('#c-text').focus(); return; }
   if (diffDays(d.actionDate, todayStr()) < 0) { showErr('不能選還沒到的日期。'); return; }
   if (!d.courseId && !d.photos.length && photoNeeded(d.actionDate)) { showErr('衝刺班打卡要附至少 1 張照片：按「📷 拍照」或「🖼️ 從相簿選」。'); const b = $('[data-act="photo-cam"]'); if (b) b.scrollIntoView({block:'center'}); return; }
+  const v = d.video;
+  if (v && !v.keep && v.state !== 'done') {   // 影片還沒傳好：上傳中就等它，其他情況請他處理
+    if (v.state === 'upload' && v.promise) {
+      btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 等影片上傳好…';
+      try { await v.promise; } catch(e){ btn.disabled = false; btn.textContent = S.editing ? '儲存修改' : '發布'; return showErr(errText(e)); }
+      if (S.draft !== d || d.video !== v) return;
+    }
+    else if (v.state === 'big') return showErr('影片比較大，請先按「🗜️ 壓縮並上傳」。');
+    else if (v.state === 'compress' || v.state === 'read') return showErr('影片還在處理，請等它跑完再按發布。');
+    else return showErr((v.err || '影片上傳失敗') + '：請按「再試一次」，或按 ✕ 拿掉影片。');
+  }
+  const videoId = d.video && d.video.id ? d.video.id : '';
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 發布中…';
   $('#c-err').classList.add('hidden');
   try {
     if (S.editing) {
-      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos, ...(casesAsked(d.actionDate) ? { cases:+d.cases||0 } : {}) });
+      const p = await api.updatePost(S.editing.id, { actionDate:d.actionDate, text:d.text, photos:d.photos, ...(casesAsked(d.actionDate) ? { cases:+d.cases||0 } : {}), ...(d.videoChanged ? { videoId } : {}) });
       replacePostEverywhere(p);
       toast('已儲存修改','ok');
     } else {
-      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId, cases: !d.courseId && casesAsked(d.actionDate) ? (+d.cases||0) : 0 });
+      const p = await api.createPost({ actionDate:d.actionDate, text:d.text, photos:d.photos, courseId:d.courseId, clientRequestId:d.clientRequestId, cases: !d.courseId && casesAsked(d.actionDate) ? (+d.cases||0) : 0, ...(videoId ? { videoId } : {}) });
       S.feed.items.unshift(p); if (S.feed.items.length>1) S.feed.cursor++;
       const mp = QuickCache.get('myposts'); if (mp) QuickCache.put('myposts', { ...mp, items:[p, ...mp.items] });   // 我的日誌馬上看得到
       if (S.myPosts) S.myPosts.unshift(p);
@@ -7565,7 +7820,8 @@ document.addEventListener('click', async e=>{
       bg.addEventListener('click', async ev=>{
         const b=ev.target.closest('[data-m]'); if(!b && ev.target!==bg) return; bg.remove(); if(!b) return;
         const p=findPost(pid);
-        if (b.dataset.m==='edit'){ S.editing=p; S.draft=newDraft({actionDate:p.actionDate, dateMode:p.actionDate===todayStr()?'today':p.actionDate===addDays(todayStr(),-1)?'yday':'other', text:p.text, cases:p.cases||0, photos:p.photoUrls.slice(), photoInfo:'', courseId:p.course&&p.course.id, courseTitle:p.course&&p.course.title}); go('compose'); }
+        if (b.dataset.m==='edit'){ S.editing=p; S.draft=newDraft({actionDate:p.actionDate, dateMode:p.actionDate===todayStr()?'today':p.actionDate===addDays(todayStr(),-1)?'yday':'other', text:p.text, cases:p.cases||0, photos:p.photoUrls.slice(), photoInfo:'', courseId:p.course&&p.course.id, courseTitle:p.course&&p.course.title,
+          video: p.video ? { keep:true, state:'done', id:p.video.id, poster:p.video.poster, dur:p.video.dur } : null}); go('compose'); }
         if (b.dataset.m==='del'){ if(!(await confirmBox('確定要刪除這篇日誌嗎？刪除後這天的打卡會重新計算。','刪除',true))) return;
           try{ await api.deletePost(pid); S.feed.items=S.feed.items.filter(x=>x.id!==pid); S.feed.cursor=Math.max(0,S.feed.cursor-1); if(S.myPosts) S.myPosts=S.myPosts.filter(x=>x.id!==pid); $$(`.post[data-id="${pid}"]`).forEach(x=>x.remove()); await loadHome(); updateCheckinBtn(); toast('已刪除'); }
           catch(err){ toast(errText(err),'err'); } }
@@ -7577,6 +7833,13 @@ document.addEventListener('click', async e=>{
       renderCompose($('#main')); if (m==='other') { const i=$('#c-date'); i.focus(); try{ i.showPicker && i.showPicker(); }catch(_){} } break; }
     case 'photo-cam': S.draft.text=$('#c-text').value; $('#f-cam').click(); break;
     case 'photo-lib': S.draft.text=$('#c-text').value; $('#f-lib').click(); break;
+    case 'video-pick': S.draft.text=$('#c-text').value; $('#f-vid').click(); break;
+    case 'video-compress': compressVideoNow(); break;
+    case 'video-retry': { const v = S.draft && S.draft.video; if (v && (v.blob || v.file)) startVideoUpload(S.draft, v, v.blob || v.file); break; }
+    case 'video-rm': { const d = S.draft; if (!d) break; d.text = $('#c-text').value;
+      if (d.video) { d.video.cancel = true; const u = !d.video.keep && d.video.url; if (u) setTimeout(()=>URL.revokeObjectURL(u), 2000); }
+      d.video = null; d.videoChanged = true; renderCompose($('#main')); break; }
+    case 'video-play': { if (pid) queueRead(pid); openVideo(findPost(pid)); break; }
     case 'photo-rm': S.draft.text=$('#c-text').value; S.draft.photos.splice(Number(el.dataset.i),1); S.draft.photoInfo=''; renderCompose($('#main')); break;
     case 'course-clear': S.draft.text=$('#c-text').value; S.draft.courseId=null; S.draft.courseTitle=null; renderCompose($('#main')); break;
     case 'submit': submitPost(); break;
