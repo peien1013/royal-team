@@ -888,6 +888,13 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .acad-h{margin:16px 4px 10px}
 /* 衝刺班週一會議（2026-11-28） */
 .pill.must{background:#FFF1D6;color:#8A5300;border:1px solid #F3C97A}
+/* 還沒到的課：收起來只留日期開頭（2026-11-28） */
+.course-fold{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;padding:14px 16px;touch-action:manipulation;transition:transform 160ms cubic-bezier(.23,1,.32,1)}
+.course-fold:active{transform:scale(.98)}
+.cf-when{display:flex;flex-direction:column;min-width:92px;line-height:1.3}.cf-when b{font-size:17px;white-space:nowrap}.cf-when small{color:var(--muted);font-size:14px;white-space:nowrap}
+.cf-title{flex:1;min-width:0;font-weight:700;font-size:17px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cf-plus{font-size:24px;font-weight:700;color:var(--brand);flex:none}
+.cf-close{display:block;margin:10px auto 0}
 .pill.case{background:#FFF4DC;color:#7A4E00}
 .case-sum{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
 .case-sel{font-size:20px;font-weight:700}
@@ -1019,6 +1026,7 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .big-check input{width:28px;height:28px;flex:none}
 .big-check.on{border-color:var(--ok);background:var(--ok-soft)}
 .scope-seg{grid-template-columns:1fr 1fr;margin:2px 0 12px}
+.team-pick{margin:0 0 12px}.team-pick .lbl{margin:0 0 6px}.team-pick select{font-size:18px}
 .team-sum{border-top:4px solid var(--brand)}
 .team-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .tt{border:2px solid var(--line);background:#fff;border-radius:14px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:76px}
@@ -1813,7 +1821,8 @@ const MockDB = (() => {
     { id:'L4', kind:'hsr', title:'高鐵車票登記・查詢', note:'登記車票、查車廂座位', url:'https://peien1013.github.io/thsr-ticket/', hidden:true },
     { id:'L5', kind:'meal', title:'週一便當登記', note:'本週：滷排骨佐蔬食', url:'https://reurl.cc/mp5pq7', hidden:false },
     { id:'L6', kind:'notice', title:'12/1（一）18:45 BOM 線上課，按「皇家學院」進教室', note:'老師：王俐涵、林孝恩\n不用輸入密碼', url:'', hidden:false },
-    { id:'L7', kind:'notice', title:'泰精彩之旅 12/19 出發，護照記得帶', note:'', url:'https://peien1013.github.io/thailand-2026/', hidden:false } ];
+    { id:'L7', kind:'notice', title:'泰精彩之旅 12/19 出發，護照記得帶', note:'', url:'https://peien1013.github.io/thailand-2026/', hidden:false },
+    { id:'L8', kind:'rules', title:'衝刺班活動辦法', note:'', url:'https://www.canva.com/design/DEMO0000000/demo-view-token/view', hidden:true } ];   // 活動辦法（2026-11-28；示範先藏著，跟正式版一樣要貼了連結才開）
   return { T, members, byId, ME, activity, courses, posts, SCENES, pendingApplicants, requests:new Map(), audit:[], tickets, newTicket, honors,
     dreams, pastActs, links, ...(() => {   // 上下線示範：我（王小美）→ 3 位直接下線 → 再往下兩代
       const up = (i, j) => { if (members[i] && members[j]) members[i].uplineId = members[j].id; };
@@ -1937,10 +1946,10 @@ function mockJoined(m){
   const r = MockDB.reg; return r.ids.has(m.id) || (m.tw && r.tws.has(m.tw));
 }
 function mockRegStatus(m){
-  const a = MockDB.activity, T = todayStr(), open = a.joinMode!=='all' && T<=a.end && (!a.regDeadline || T<=a.regDeadline);
+  const a = MockDB.activity, T = todayStr(), soon = !!a.regStart && T < a.regStart, open = a.joinMode!=='all' && !soon && T<=a.end && (!a.regDeadline || T<=a.regDeadline);   // regStart：幾號才開放報名（2026-11-28）
   if (mockJoined(m)) return { status:'joined', canApply:false, deadline:a.regDeadline||'' };
   if (MockDB.reg.pending.has(m.id)) return { status:'pending', canApply:false, deadline:a.regDeadline||'', mine:MockDB.reg.pending.get(m.id) };
-  return { status: MockDB.reg.rejected.has(m.id) ? 'rejected' : 'none', canApply:open, deadline:a.regDeadline||'', fee:a.fee||0, payInfo:'請轉帳到：○○銀行（012）帳號 1234-5678-9012，或把現金交給管理員。管理員確認收到後就會核准報名。' };
+  return { status: MockDB.reg.rejected.has(m.id) ? 'rejected' : 'none', canApply:open, deadline:a.regDeadline||'', opensOn: soon && a.joinMode!=='all' ? a.regStart : '', fee:a.fee||0, payInfo:'請轉帳到：○○銀行（012）帳號 1234-5678-9012，或把現金交給管理員。管理員確認收到後就會核准報名。' };
 }
 function mockDream(id){ const d = MockDB.dreams[id]; return d ? { ...d, list:d.list.map(x=>({...x})) } : null; }
 function mockDreamsHome(){
@@ -2012,7 +2021,7 @@ function mockClassSeed(c){
   ['蘇小姐（朋友）','訪客 Amy'].forEach((n,i)=>MockDB.classJoins.push({ id:'CJG'+c.id+i, courseId:c.id, memberId:'', name:n, zoomName:n, minutes:60+i, source:'zoom', at:c.date+' 21:30:00', status:'' }));
 }
 function mockMe(m){
-  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined, card:'RM1.'+m.id+'.DEMO000000', mealView: S.role==='admin' || !!m.mealView, travelRecv: MockDB.travelRecvOn==='Y', manualOn: MockDB.manualOn==='Y', events: m.events || [],
+  return { ...m, twStatus:'confirmed', role: S.role, joined:m.joined, card:'RM1.'+m.id+'.DEMO000000', mealView: S.role==='admin' || !!m.mealView, teamPick: S.role==='admin' || !!m.teamPick, travelRecv: MockDB.travelRecvOn==='Y', manualOn: MockDB.manualOn==='Y', events: m.events || [],
     sameTw: MockDB.members.filter(x=>x.tw===m.tw && x.id!==m.id).map(x=>x.name) };
 }
 
@@ -2067,7 +2076,16 @@ const MockApi = {
     if (!d && S.role!=='admin') throw new Error('FORBIDDEN'); const m = MockDB.byId[id], act = MockDB.activity, j = mockJoined(m);
     return { m:{ id, name:m.name, avatarUrl:m.avatarUrl||'', color:m.color, depth:d?d.depth:0, uplineName:(MockDB.byId[m.uplineId]||{}).name||'' }, activity:act, joined:j,
       progress: j ? computeDays(id, act) : null, dream: mockDream(id) }; },
-  async getTeamFeed({cursor=0, limit=CONFIG.PAGE_SIZE}={}){ await this._wait(); const me = this._me(), set = new Set(mockDownline(me.id).map(d=>d.id));
+  async teamHeads(){ await this._wait(); const me = this._me(); if (!(S.role==='admin' || me.teamPick)) throw new Error('FORBIDDEN');
+    const kids = id => MockDB.members.filter(m=>m.uplineId===id && m.status==='approved').sort((a,b)=>a.name.localeCompare(b.name,'zh-Hant')), out = [], seen = new Set();
+    const walk = (id, depth) => kids(id).forEach(k=>{ if (seen.has(k.id)) return; seen.add(k.id); if (kids(k.id).length) { out.push({ id:k.id, name:k.name, depth, n:mockDownline(k.id).length }); walk(k.id, depth+1); } });
+    if (S.role==='admin') { MockDB.members.filter(m=>m.status==='approved' && !(m.uplineId && MockDB.byId[m.uplineId]) && kids(m.id).length).sort((a,b)=>mockDownline(b.id).length-mockDownline(a.id).length)
+      .forEach(r=>{ seen.add(r.id); out.push({ id:r.id, name:r.name, depth:0, n:mockDownline(r.id).length }); walk(r.id, 1); }); return { heads: out, mine: 0 }; }
+    seen.add(me.id); walk(me.id, 1); return { heads: out, mine: mockDownline(me.id).length }; },
+  async adminTeamPicker(memberId, on){ await this._wait(); const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND'); m.teamPick = !!on; return { ok:true, on:!!on }; },
+  async getTeamFeed({cursor=0, limit=CONFIG.PAGE_SIZE, rootId=''}={}){ await this._wait(); const me = this._me();
+    if (rootId && rootId !== me.id && !(S.role==='admin' || (me.teamPick && mockDownline(me.id).some(d=>d.id===rootId)))) throw new Error('FORBIDDEN');
+    const set = new Set(rootId && rootId !== me.id ? [rootId, ...mockDownline(rootId).map(d=>d.id)] : mockDownline(me.id).map(d=>d.id));
     const all = MockDB.posts.filter(p=>p.status==='active' && set.has(p.authorId)).sort((a,b)=>b.postedAt-a.postedAt);
     return { items: all.slice(cursor, cursor+limit).map(p=>publicPost(p, me.id)), nextCursor: cursor+limit < all.length ? cursor+limit : null }; },
   async adminSetUpline(memberId, uplineId){ await this._wait(); const m = MockDB.byId[memberId]; if (!m) throw new Error('NOT_FOUND');
@@ -2219,7 +2237,8 @@ const MockApi = {
     return MockDB.courses.filter(c=>!c.hidden).map(c=>({ mode:'online', venue:'', fee:0, capacity:0, ...c,
       ...(c.replay ? (u => u < T ? { replayUntil:u, replayGone:true, replay: admin ? c.replay : '', replayPass: admin ? (c.replayPass||'') : '' } : { replayUntil:u })(addDays(c.date, 14)) : {}),
       ...(c.mustAttend && mockMeetActs(me, c.date).length ? (lv => ({ must:true, mustMe:true, myLeave: lv ? { reason:lv.reason, at:lv.at, byAdmin: lv.by !== me.id } : null,
-        leaveOpen: mockNowHm() < mockClassStart(c), attended: mockAttended(c.id, me.id), makeupDue: addDays(c.date, MockDB.activity.noteDays ?? 7) }))(mockLeaveOf(c.id, me.id)) : { must: !!c.mustAttend, mustMe:false }),
+        leaveOpen: mockNowHm() < mockClassStart(c), attended: mockAttended(c.id, me.id), makeupDue: addDays(c.date, MockDB.activity.noteDays ?? 7) }))(mockLeaveOf(c.id, me.id))
+        : { must: !!c.mustAttend, mustMe:false, ...(c.mustAttend && !admin && S.role!=='staff' && (a => a && a.meetReq && a.start <= c.date && c.date <= a.end)(MockDB.activity) ? { zoom:'', replay:'', replayPass:'', sprintOnly:true } : {}) }),
       shareCount: new Set(MockDB.posts.filter(p=>p.courseId===c.id && p.status==='active').map(p=>p.authorId)).size,
       myNoteAt: MockDB.posts.filter(p=>p.courseId===c.id && p.authorId===me.id && p.status==='active').map(p=>ymd(new Date(p.postedAt))).sort()[0] || '',
       taken: MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length,
@@ -2497,7 +2516,8 @@ const MockApi = {
     return { today:T, from, rows }; },
   async adminLinkSave(p){ await this._wait();
     const t = String(p.title||'').trim(), u = String(p.url||'').trim(); if (!t) throw new Error('LINK_TITLE_REQUIRED'); if (!u && p.kind!=='notice') throw new Error('LINK_URL_REQUIRED'); if (u && !/^https:\/\/\S+$/i.test(u)) throw new Error('LINK_BAD_URL');
-    const kind = ['hsr','meal','notice'].includes(p.kind) ? p.kind : 'travel';
+    if (/canva\.com\/design\/[^\/?#]+\/[^\/?#]+\/edit/i.test(u)) throw new Error('CANVA_EDIT_LINK');
+    const kind = ['hsr','meal','notice','rules'].includes(p.kind) ? p.kind : 'travel';
     if (p.id) { const x = MockDB.links.find(y=>y.id===p.id); if (!x) throw new Error('NOT_FOUND');
       if (x.kind!==kind) { MockDB.links.splice(MockDB.links.indexOf(x), 1); MockDB.links.push(x); } Object.assign(x, { kind, title:t, note:p.note||'', url:u }); return { ok:true, id:p.id }; }
     const id = uid('L'); MockDB.links.push({ id, kind, title:t, note:p.note||'', url:u, hidden:false }); return { ok:true, id }; },
@@ -2574,7 +2594,7 @@ const MockApi = {
     const m = MockDB.byId[id], act = MockDB.activity;
     const posts = MockDB.posts.filter(p=>p.authorId===id && p.status!=='deleted').sort((a,b)=>b.postedAt-a.postedAt).map(p=>publicPost(p, this._me().id));
     const rn = mockTwSib(m), me2 = rn.find(x=>x.id===id);
-    return { m:{ ...m, royalNo: me2 ? me2.royalNo : m.tw, mealView:!!m.mealView, title:m.title||'', feeNow:(m.role==='admin'||m.title)?'exempt':'none', uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length,
+    return { m:{ ...m, royalNo: me2 ? me2.royalNo : m.tw, mealView:!!m.mealView, teamPick:!!m.teamPick, title:m.title||'', feeNow:(m.role==='admin'||m.title)?'exempt':'none', uplineId:m.uplineId||'', uplineName:(MockDB.byId[m.uplineId]||{}).name||'', teamCount:mockDownline(id).length,
       twSiblings: rn.length > 1 ? rn : [], events: m.events || [] }, activity:act, progress:computeDays(id, act), posts };
   },
   async adminReview(postId, decision){
@@ -2663,7 +2683,9 @@ const GasApi = {
   teamRemoveDown(memberId){ return this.call('team.removeDown', {memberId}, {retry:0}); },
   getProgress(activityId){ return this.call('progress.get', activityId ? {activityId} : {}); },
   getTeamMember(memberId){ return this.call('team.member', {memberId}); },
-  getTeamFeed({cursor=0, limit=CONFIG.PAGE_SIZE}={}){ return this.call('team.feed', {cursor, limit}); },
+  getTeamFeed({cursor=0, limit=CONFIG.PAGE_SIZE, rootId=''}={}){ return this.call('team.feed', {cursor, limit, rootId}); },
+  teamHeads(){ return this.call('team.heads', {}); },                                     // 首頁選團隊看（2026-11-28）
+  adminTeamPicker(memberId, on){ return this.call('admin.teamPicker', {memberId, on}); },
   adminSetUpline(memberId, uplineId){ return this.call('admin.setUpline', {memberId, uplineId}, {retry:0}); },
   adminRename(memberId, name){ return this.call('admin.rename', {memberId, name}, {retry:0}); },
   adminSetTw(memberId, tw){ return this.call('admin.member.tw', {memberId, tw}, {retry:0}); },
@@ -2864,7 +2886,7 @@ function errText(e){
     CODE_WRONG:'驗證碼不對，請再輸入一次。', CODE_EXPIRED:'驗證碼過期了，請重新寄一次。', CODE_LOCKED:'錯太多次了，請重新寄驗證碼。',
     APPLY_EXPIRED:'申請頁停留太久，請重新登入一次再填。', NAME_REQUIRED:'請填寫姓名。', BAD_TW:'TW 帳號只要輸入後面的數字（5～9 碼），例如 1234567。',
     NOT_FOUND:'找不到這筆資料，可能已經被刪除。', BAD_AMOUNT:'退費金額不能超過實際收到的錢。', COURSE_NOT_YET:'這堂課還沒上，上完課再來寫心得喔。', NOT_ONSITE:'這堂課沒有開放現場報名。', COURSE_ENDED:'這堂課已經結束了。',
-    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', HAS_UPLINE:'這位夥伴已經有上線了，要換上線請洽管理員。', BAD_DOWNLINE:'這位不能加成你的下線（可能是你的上線）。', BAD_UPLINE:'這位不能當上線，請選別人。', FEE_REQUIRED:'這個月的月費還沒繳。', BAD_MONTH:'只能繳這個月或下個月。', NOT_REACHED:'他還沒達標，保證金不能退。', COURSE_TITLE_REQUIRED:'請填課程主題。', BAD_URL:'連結要用 https:// 開頭，請直接從 Zoom 複製邀請連結貼上。', BAD_DATE:'請選上課日期。', LINK_TITLE_REQUIRED:'請填名稱，例如：2027 上海創心之旅。', LINK_URL_REQUIRED:'請貼上網址。', LINK_BAD_URL:'網址要用 https:// 開頭，請從網址列整個複製貼上。', CARD_NO:'細項看起來有卡號，這裡不要寫卡號。', BAD_AMOUNT:'金額請填數字。', DUP:'這位夥伴已經對到名單上的另一個人了。' }[k]) || '發生問題，請稍後再試一次。';
+    COURSE_FULL:'名額已經滿了，請洽管理員。', TICKET_LOCKED:'已經繳費或已經入場，不能自己取消，請洽管理員。', NOT_SETUP:'系統還沒設定完成，請洽管理員。', TITLE_REQUIRED:'請寫上榮譽內容，例如：新晉鑽石。', TOO_MANY:'一次太多筆了，請分批貼上。', REG_CLOSED:'報名已經截止了，有問題請洽管理員。', BAD_NAME:'請填真實姓名（中文或英文全名），不要用暱稱或表情符號。', AGREE_REQUIRED:'請先勾選同意活動規則。', PAY_REQUIRED:'請選擇繳費方式。', BAD_LAST5:'匯款帳號後五碼要填 5 個數字。', TW_REQUIRED:'請填如新 TW 帳號（夫妻、家人共用同一個沒關係）。', UPLINE_LOOP:'不能這樣設：這位是他自己的下線。', HAS_UPLINE:'這位夥伴已經有上線了，要換上線請洽管理員。', BAD_DOWNLINE:'這位不能加成你的下線（可能是你的上線）。', BAD_UPLINE:'這位不能當上線，請選別人。', FEE_REQUIRED:'這個月的月費還沒繳。', BAD_MONTH:'只能繳這個月或下個月。', NOT_REACHED:'他還沒達標，保證金不能退。', COURSE_TITLE_REQUIRED:'請填課程主題。', BAD_URL:'連結要用 https:// 開頭，請直接從 Zoom 複製邀請連結貼上。', BAD_DATE:'請選上課日期。', LINK_TITLE_REQUIRED:'請填名稱，例如：2027 上海創心之旅。', LINK_URL_REQUIRED:'請貼上網址。', LINK_BAD_URL:'網址要用 https:// 開頭，請從網址列整個複製貼上。', CANVA_EDIT_LINK:'這是 Canva 的「編輯」連結，不能放（拿到的人可能可以改你的簡報）。請到 Canva：分享 → 更多 → 公開檢視連結 → 複製，網址結尾是 /view。', CARD_NO:'細項看起來有卡號，這裡不要寫卡號。', BAD_AMOUNT:'金額請填數字。', DUP:'這位夥伴已經對到名單上的另一個人了。' }[k]) || '發生問題，請稍後再試一次。';
 }
 
 /* =====================================================================
@@ -3780,7 +3802,7 @@ function go(tab, opts={}){
   S.tab = tab; S.sub = opts.sub || null; S.navSeq = (S.navSeq || 0) + 1;
   setNav(); window.scrollTo(0,0);
   document.body.classList.toggle('play-on', ['play','walk','walkAdmin'].includes(S.sub));   // 健康遊樂場的頁面：換成遊樂園背景
-  document.body.classList.toggle('fv-on', ['catalog','manualView'].includes(S.sub));   // 目錄、手冊閱讀：滿版（上面標題列、下面導覽列先藏起來）
+  document.body.classList.toggle('fv-on', ['catalog','manualView','rulesView'].includes(S.sub));   // 目錄、手冊閱讀：滿版（上面標題列、下面導覽列先藏起來）
   const main = $('#main');
   if (S.sub==='admin') return renderAdmin(main);
   if (S.sub==='adminMember') return renderAdminMember(main);
@@ -3797,6 +3819,7 @@ function go(tab, opts={}){
   if (S.sub==='walkAdmin') return renderWalkAdmin(main);
   if (S.sub==='play') return renderPlay(main);
   if (S.sub==='catalog') return renderCatalog(main);
+  if (S.sub==='rulesView') return renderRulesView(main);
   if (S.sub==='manual') return renderManual(main);
   if (S.sub==='manualCat') return renderManualCat(main);
   if (S.sub==='manualView') return renderManualView(main);
@@ -3888,7 +3911,7 @@ function todayClass(cs){
   const T = todayStr(), d = new Date(), now = d.getHours()*60 + d.getMinutes();
   return (cs||[]).filter(c => c.date===T && c.zoom && c.zoom!=='#' && c.mode!=='onsite')
     .map(c => ({ c, ...classTimes(c), now })).filter(x => (x.st==null || now >= x.st - 15) && (x.en==null || now <= x.en + 15))   // 上課前 15 分鐘才出現（11/28 00:18 使用者：「太早出來啦，大約前 15 分鐘再開啟就好」）、下課 15 分鐘後收起來
-    .sort((a,b) => (a.st??0) - (b.st??0))[0] || null;
+    .sort((a,b) => ((a.en!=null && a.now > a.en) - (b.en!=null && b.now > b.en)) || (a.st??0) - (b.st??0))[0] || null;   // 週一 20:15～20:30：BOM 下課了就換衝刺班（2026-11-28）
 }
 function classBannerHTML(cs){
   const x = todayClass(cs); if (!x) return '';
@@ -3918,6 +3941,25 @@ async function fillClassBanner(){
   } catch(_){ return; }
   const b = $('#class-banner'); if (b && S.tab==='home' && !S.sub) b.innerHTML = classBannerHTML(cs);
 }
+/* 首頁「我的團隊」選團隊看（2026-11-28 19:10 使用者：王人美可以看以頭為單位的各個團隊；選許怡節＝她和她底下所有人的動態）
+   誰有選單：管理員、後台夥伴頁打開「可以選團隊看動態」的人（王人美、王昱程）。選單只列有下線的人（團隊的頭），照樹狀縮排。 */
+const teamPickOn = () => !!(S.me && (S.me.teamPick || isAdminMe()));
+const teamRootOther = () => !!(S.teamRoot && S.me && S.teamRoot !== S.me.id);
+function feedScopeKey(){ return (S.teamCount > 0 || teamPickOn()) && S.scope==='team' ? 'team:' + (S.teamRoot || '') : 'all'; }
+async function drawTeamPick(){
+  let d; try { d = await qget('team:heads', () => api.teamHeads()); } catch(e){ const b = $('#team-pick'); if (b) b.innerHTML = `<div class="notice err">${esc(errText(e))}</div>`; return; }
+  const box = $('#team-pick'); if (!box) return;
+  const heads = d.heads || [], admin = isAdminMe() && !S.teamCount;
+  if (admin && !S.teamRoot && heads.length) { S.teamRoot = heads[0].id; loadFeed(true); }
+  if (S.teamRoot && S.teamRoot !== (S.me && S.me.id) && !heads.some(h=>h.id===S.teamRoot)) { S.teamRoot = admin && heads.length ? heads[0].id : ''; loadFeed(true); }
+  const ind = n => '\u3000'.repeat(Math.max(0, n - (admin ? 0 : 1)));
+  const opts = (admin ? '' : `<option value="">我的整條線（${d.mine} 人）</option>`) + heads.map(h=>`<option value="${esc(h.id)}" ${S.teamRoot===h.id?'selected':''}>${ind(h.depth)}${h.depth>(admin?0:1)?'└ ':''}${esc(h.name)}（${h.n} 人）</option>`).join('');
+  const cur = heads.find(h=>h.id===S.teamRoot);
+  box.innerHTML = heads.length ? `<label class="lbl" for="tp-sel">👀 看誰的團隊</label><select class="inp" id="tp-sel">${opts}</select>
+    ${cur ? `<div class="hint">正在看：<b>${esc(cur.name)}</b>和他底下 ${cur.n} 人的動態</div>` : ''}`
+    : `<div class="muted small">${admin ? '還沒有人設定上線，所以還沒有團隊可以選。' : '你的下線還沒有人有自己的下線；有了就會出現在這裡。'}</div>`;
+  const sel = $('#tp-sel'); if (sel) sel.addEventListener('change', e=>{ S.teamRoot = e.target.value; S.feed = { items:[], cursor:0, done:false, loading:false }; renderHome($('#main')); });
+}
 function renderHome(main){
   if (S.feeLocked) {   // 沒繳月費（場地費）：只看得到全部動態（2026-11-28 18:41 使用者）
     main.innerHTML = `${feeLockBannerHTML()}<div class="feed-head" style="margin-top:4px"><h2>全部動態</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
@@ -3926,14 +3968,16 @@ function renderHome(main){
     if (!S.feed.items.length || S.feed.scope !== 'all') loadFeed(true); else drawFeed();
     return;
   }
-  const team = S.teamCount > 0 && S.scope==='team';
-  main.innerHTML = `<div id="class-banner">${classBannerHTML(CONFIG.MODE==='live' ? QuickCache.get('courses') : null)}</div>${applyBannerHTML()}${feeBannerHTML()}${S.teamCount>0?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 我的團隊 ${S.teamCount}</button></div>`:''}
-    ${team?'<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>':''}
+  const canTeam = S.teamCount > 0 || teamPickOn(), team = canTeam && S.scope==='team';
+  main.innerHTML = `<div id="class-banner">${classBannerHTML(CONFIG.MODE==='live' ? QuickCache.get('courses') : null)}</div>${applyBannerHTML()}${feeBannerHTML()}${canTeam?`<div class="seg scope-seg"><button class="${team?'':'on'}" data-act="scope" data-s="all">全部動態</button><button class="${team?'on':''}" data-act="scope" data-s="team">👥 ${S.teamCount>0?'我的團隊 '+S.teamCount:'各團隊'}</button></div>`:''}
+    ${team && teamPickOn() ? '<div id="team-pick" class="team-pick"><div class="skeleton" style="height:58px"></div></div>' : ''}
+    ${team && !teamRootOther() ? '<div id="team-sum"><div class="skeleton" style="height:110px"></div></div>' : ''}
     <div class="feed-head" style="margin-top:4px"><h2>${team?'我的團隊動態':'團隊動態'}</h2><button class="btn btn-ghost btn-sm" data-act="feed-refresh">↻ 更新</button></div>
     <div id="feed"></div><div id="feed-foot"></div>`;
   fillClassBanner();
-  if (team) drawTeamSummary();
-  if (!S.feed.items.length || S.feed.scope !== (team?'team':'all')) loadFeed(true); else { drawFeed(); }
+  if (team && teamPickOn()) { drawTeamPick(); if (isAdminMe() && !S.teamCount && !S.teamRoot) return; }   // 管理員自己沒有線：等選單拿到第一個團隊再載動態
+  if (team && !teamRootOther()) drawTeamSummary();
+  if (!S.feed.items.length || S.feed.scope !== feedScopeKey()) loadFeed(true); else { drawFeed(); }
 }
 /* 往下拉更新（2026-11-27 12:01 使用者：「除了按更新可以更新之外，讓使用者可以往下拉來進行更新，就像蘋果手機…」）
    首頁動態牆在最上面時，手指往下拉 → 出現「往下拉更新」→ 拉夠了變「放開就更新」→ 放開就跟按「↻ 更新」一樣。 */
@@ -3976,12 +4020,12 @@ document.addEventListener('touchend', () => {
 document.addEventListener('touchcancel', () => { PTR.on = false; PTR.y0 = null; if (!PTR.busy) { PTR.d = 0; ptrDraw(); } });
 async function loadFeed(reset=false){
   if (S.feed.loading) return;
-  const scope = S.teamCount > 0 && S.scope==='team' ? 'team' : 'all';
+  const scope = feedScopeKey();
   if (reset) S.feed = { items:[], cursor:0, done:false, loading:false, scope };
   if (S.feed.done) return;
   S.feed.loading = true; drawFeedFoot();
   try {
-    const r = scope==='team' ? await api.getTeamFeed({ cursor:S.feed.cursor }) : await api.getFeed({ cursor:S.feed.cursor });
+    const r = scope!=='all' ? await api.getTeamFeed({ cursor:S.feed.cursor, rootId: S.teamRoot || '' }) : await api.getFeed({ cursor:S.feed.cursor });
     if (S.feed.scope !== scope) { S.feed.loading = false; return; }
     S.feed.items.push(...r.items); S.feed.cursor = r.nextCursor ?? S.feed.cursor; S.feed.done = r.nextCursor===null;
     S.feed.loading = false;
@@ -4793,7 +4837,8 @@ async function drawAcademy(main, cs){
           ${isUp&&!full?`<button class="btn btn-outline btn-sm" data-act="course-register" data-id="${c.id}">＋ 加買同行票</button>`:''}`:''}
         ${showOnsite&&!tk&&isUp?(full?'<button class="btn btn-ghost" disabled>名額已滿</button>':`<button class="btn btn-primary" data-act="course-register" data-id="${c.id}">🙋 我要報名現場上課</button>`):''}
         ${showOnline&&isUp&&c.zoom?link(c.zoom,'btn-primary','進入 Zoom 上課','zoom',c.id):''}
-        ${showOnline?(c.replayGone?'<div class="hint">回放已下架（影片只保留 14 天）</div>':c.replay?`<button class="btn btn-ghost" data-act="replay-open" data-id="${esc(c.id)}">▶ 觀看回放</button><div class="hint">保留到 ${mdZh(rpUntil(c))}</div>`:(isUp?'':'<div class="hint">回放整理中</div>')):''}
+        ${c.sprintOnly?`<div class="notice info small">🔒 衝刺班專屬：有報名衝刺班的夥伴才進得去${S.reg&&S.reg.canApply?'<br><button class="link-btn" data-act="reg-apply">我要報名衝刺班 ›</button>':''}</div>`:''}
+        ${showOnline&&!c.sprintOnly?(c.replayGone?'<div class="hint">回放已下架（影片只保留 14 天）</div>':c.replay?`<button class="btn btn-ghost" data-act="replay-open" data-id="${esc(c.id)}">▶ 觀看回放</button><div class="hint">保留到 ${mdZh(rpUntil(c))}</div>`:(isUp?'':'<div class="hint">回放整理中</div>')):''}
         ${c.date > T ? '' : c.myNoteAt ? `<div class="row" style="justify-content:center"><span class="pill ok">✓ 已交課後心得（${mdZh(c.myNoteAt)}）</span></div>`
           : `<button class="btn ${showOnline && (!c.mode||c.mode==='online') ? 'btn-primary' : 'btn-outline'}" data-act="share-course" data-id="${c.id}" data-title="${esc(c.title)}">✍️ 寫課後心得</button>`}
       </div>
@@ -4807,7 +4852,13 @@ async function drawAcademy(main, cs){
     : ''}</div>`;
   const list = cs.filter(view==='online' ? isOnline : isOnsite);
   // 上完的課不放在這裡（2026-11-28 18:38 使用者：「過去式的課程就不用出現在這一區了，放到回放專區，強調已經結束、可以補課後心得，補完就不用再出現」）
-  const up = list.filter(c=>!courseOver(c, T)).sort((a,b)=>a.date<b.date?-1:1);
+  const up = list.filter(c=>!courseOver(c, T)).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:(classTimes(a).st??0)-(classTimes(b).st??0));   // 最近的在最上面；同一天照時間（BOM 19:00 → 衝刺班 20:30）
+  // 還沒到的課先收起來，只留日期開頭（2026-11-28 20:22 使用者）：最近那一天的課打開，其他的點一下才展開
+  const firstDay = up.length ? up[0].date : '', open = S.acadOpen || (S.acadOpen = new Set());
+  const fold = c => `<button class="card course-fold" data-act="acad-fold" data-id="${esc(c.id)}" aria-expanded="false">
+      <span class="cf-when"><b>${mdZh(c.date)}</b>${c.time?`<small>${esc(c.time)}</small>`:''}</span>
+      <span class="cf-title">${esc(c.title)}${c.mustMe?' <span class="pill must">📌 必到</span>':c.sprintOnly?' <span class="pill gray">衝刺班</span>':''}</span><span class="cf-plus" aria-hidden="true">＋</span></button>`;
+  const item = c => c.date===firstDay ? card(c) : open.has(c.id) ? card(c).replace(/<\/div>$/, `<button class="link-btn cf-close" data-act="acad-fold" data-id="${esc(c.id)}">－ 收起來</button></div>`) : fold(c);
   const nOn = cs.filter(c=>isOnline(c) && !courseOver(c, T)).length, nSite = cs.filter(c=>isOnsite(c) && !courseOver(c, T)).length, nRp = replayList(cs, T).length, nNote = noteTodo(cs, T).length;
   const empty = view==='online' ? '目前沒有即將開課的線上課程。' : '目前沒有現場課程，新課程公布後會出現在這裡。';
   const sw = `<div class="acad-switch" role="tablist">
@@ -4822,7 +4873,7 @@ async function drawAcademy(main, cs){
   main.innerHTML = `${mineHTML}
     ${sw}
     ${view==='onsite'&&hasTk&&!mine.length?'<button class="link-btn" data-act="my-tickets">🎫 我的票券 ›</button>':''}
-    ${up.length?up.map(card).join(''):`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`}
+    ${up.length?up.map(item).join(''):`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`}
     ${view==='online' ? `<button class="link-btn rp-more" data-act="acad-view" data-v="replay">${nNote?`📝 上過的課在「回放專區」：還有 ${nNote} 堂可以補課後心得 ›`:'▶️ 上過的課、錄影都在「回放專區」 ›'}</button>` : ''}`;
 }
 let ACAD = [];
@@ -5159,8 +5210,10 @@ const TRIP_KIND = {
   hsr:    { icon:'🚄', name:'我的高鐵', sub:'登記車票、查車廂座位', empty:'目前沒有開放登記', add:'＋ 新增高鐵連結', hint:'有搭高鐵的活動、要開放登記時，<br>按「開放」夥伴就看得到。' },
   notice: { icon:'📢', name:'跑馬燈公告', sub:'', empty:'目前沒有公告', add:'＋ 新增一則公告', hint:'會在 APP 最上面一直跑。<br>夥伴點一下，可以看完整內容。<br>過期了按「隱藏」就不跑了。' },
   meal:   { icon:'🍽️', name:'週一便當', sub:'登記星期一上課的便當', empty:'目前沒有開放登記', add:'＋ 貼上週一便當的網址', hint:'星期一上課的便當登記網頁。<br>每週換菜色，<br>按「修改」改小字說明就好。<br>選「每週一自動打開」，<br>星期一 APP 就看得到，時間到自動關。<br>（LINE 的連結照舊，不受影響）' } };
+TRIP_KIND.rules = { icon:'📜', name:'衝刺班活動辦法', sub:'活動規則與辦法', empty:'還沒放活動辦法', add:'＋ 貼上 Canva 公開檢視連結',
+  hint:'功能選單的「活動辦法」：打開就是你的 Canva 簡報。<br>在 Canva 改內容，這裡自動跟著變。<br>要貼「公開檢視連結」（結尾 /view），<br>不要貼「編輯」連結。' };   // 2026-11-28 19:54 使用者：「直接連接到我的 Canva 連結，新增修改直接在 Canva 就好」
 const TRIP_ORDER = ['travel','hsr','meal'];
-const LINK_ADMIN_ORDER = ['notice', ...TRIP_ORDER];   // 後台：跑馬燈公告放最上面
+const LINK_ADMIN_ORDER = ['notice', ...TRIP_ORDER, 'rules'];   // 後台：跑馬燈公告放最上面
 const tripShort = t => String(t||'').replace(/^\s*\d{4}\s*/, '').replace(/(之旅|查詢|登記)$/, '').trim();
 function tripLinks(kind){ const all = (S.links||[]).filter(l=>l.kind===kind); return { open: all.filter(l=>!l.hidden), all }; }
 /** 我的高鐵（2026-11-25 使用者：「讓夥伴直覺式的使用，登記入口、查詢入口」）
@@ -5269,7 +5322,7 @@ const TILE_IMG = { dreams:'tiles/dreams.jpg', honors:'tiles/honors.jpg', travel:
 /** 身分（2026-11-25 10:50 使用者：公司專員、皇家CEO，這兩個不用繳錢） */
 const MEMBER_TITLES = { company:'公司專員', ceo:'皇家CEO' };
 const FEE_NOW_ZH = { paid:'這個月月費已繳', pending:'這個月月費等確認', none:'這個月月費未繳', exempt:'不用繳月費', trial:'試用期（不用繳）' };
-const TILE_DEFAULT = ['dreams','honors','travel','hsr','meal','nushop','catalog','manual','play','team','tickets','card','settings'];
+const TILE_DEFAULT = ['dreams','honors','rules','travel','hsr','meal','nushop','catalog','manual','play','team','tickets','card','settings'];   // rules：衝刺班活動辦法（2026-11-28）
 /** 如新「新享購」APP（2026-11-25 08:53 使用者：「還要一個串到如新新享購 APP，傳到他自己的新享購」）
  *  打開手機裡的新享購 APP，每個人登入的就是自己的帳號。iPhone 到 App Store、安卓到 Google Play：有裝就按「打開」，沒裝就下載。 */
 const NUSHOP_URL = () => /Android/i.test(navigator.userAgent) ? 'https://play.google.com/store/apps/details?id=com.nuskin.shoppingcart' : 'https://apps.apple.com/tw/app/id1448081635';
@@ -5284,6 +5337,30 @@ function manualTile(){
  *  打不開的手機：上面「用瀏覽器開」。sandbox 不給 allow-top-navigation：目錄頁不能把整個 APP 換掉。 */
 const CATALOG_URL = 'https://nuskin-ebook.com.tw/';
 function catalogTile(){ return { act:'catalog-open', ic:'📖', t:'目錄', c:'#FBEFDB' }; }
+/** 📜 衝刺班活動辦法（2026-11-28 19:53 使用者：「功能選單再幫我多一個衝刺班活動辦法，點開可以看到活動規則與辦法」；19:54「直接連接到我的 Canva 連結」）
+ *  連結放在後台「公告・入口設定」的「衝刺班活動辦法」（Links kind＝rules）。還沒放連結：夥伴看不到，管理員看到「未開放」。
+ *  在 APP 裡滿版打開 Canva（嵌入模式，可以左右滑），右上角 ↗ 用瀏覽器開（字小可以放大）。 */
+const rulesLink = () => { const { open, all } = tripLinks('rules'); return open[0] || (isAdminMe() ? all[0] : null) || null; };
+function rulesTile(){
+  const { open, all } = tripLinks('rules'), admin = isAdminMe();
+  if (!open.length && !admin) return null;
+  return { act: open.length || all.length ? 'rules-open' : 'admin-links', ic:'📜', t:'活動辦法', c:'#FFF1D6', off: !open.length };
+}
+/** Canva 公開檢視連結 → 嵌入用網址（加 ?embed）；其他網址照用 */
+function rulesEmbedUrl(u){
+  u = String(u||'');
+  const m = u.match(/^(https:\/\/www\.canva\.com\/design\/[^\/?#]+\/[^\/?#]+\/view)/i);
+  return m ? m[1] + '?embed' : u;
+}
+function renderRulesView(main){
+  const l = rulesLink(); if (!l) { go('account'); return; }
+  const src = rulesEmbedUrl(l.url);
+  main.innerHTML = `<div class="fv" id="fv"><div class="fv-box cat-box" id="cat-box"><div class="cat-wait">活動辦法載入中…</div><iframe id="cat-frame" src="${esc(src)}" title="${esc(l.title||'衝刺班活動辦法')}" allow="fullscreen" allowfullscreen
+        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms" referrerpolicy="no-referrer"></iframe></div>
+      <button class="fv-btn fv-back" data-act="back" aria-label="回到上一頁">‹ 返回</button>
+      <a class="fv-btn fv-ext" href="${esc(l.url)}" target="_blank" rel="noopener" aria-label="用瀏覽器開">↗</a></div>`;
+  fvWire();
+}
 /* 滿版閱讀（2026-11-27 20:07 使用者：「產品目錄可以滿版嗎？要不然看不到在翻什麼」「按鍵做浮水印的感覺，還有退回鍵」「手冊也一樣滿版，上下頁、返回 APP 也是浮水印」）
    整個畫面都給內容；返回、翻頁、放大縮小是半透明的按鈕浮在上面，一陣子沒碰就更淡，一碰就變清楚。 */
 function fvWire(){
@@ -5626,7 +5703,7 @@ function appTilesHTML(){
     travel: tripTile('travel'), hsr: tripTile('hsr'), meal: tripTile('meal'),
     team:{ act:'team', ic:'👥', t:'團隊', c:'#E2F5EE' }, tickets:{ act:'my-tickets', ic:'🎫', t:'票券', c:'#FCE9F1' },
     card:{ act:'member-card', ic:'🪪', t:'會員卡', c:'#E6ECF8' }, settings:{ act:'acct-settings', ic:'⚙️', t:'設定', c:'#EDF0F3' },
-    catalog: catalogTile(), manual: manualTile(), play: playTile() };
+    catalog: catalogTile(), manual: manualTile(), play: playTile(), rules: rulesTile() };
   return tileOrder().filter(k=>T[k]).map(k=>appTile({ ...T[k], key:k, img: TILE_IMG[k] || T[k].img })).join('');
 }
 /** 💪 健康遊樂場（2026-11-27 14:53 使用者：「這是遊樂區還是休閒區？幫我想個名稱，我不只這個遊戲而已」→ 選「健康遊樂場」；15:04 給了 GPT 做的摩天輪圖示）
@@ -6072,11 +6149,13 @@ function regCardHTML(){
   if (r.status==='pending') return `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}
     <div class="notice ok mt">✅ 已送出報名，等管理員審核。<br>通過後，底部按鈕會變成「我的進度」。</div>
     ${r.mine&&r.mine.fee?`<div class="hint">${fw} NT$${r.mine.fee.toLocaleString()}・${r.mine.payMethod==='cash'?'現金（請交給管理員）':'轉帳・後五碼 '+esc(r.mine.last5)}</div>`:''}</div>`;
+  const rulesBtn = rulesLink() ? '<button class="btn btn-ghost mt" data-act="rules-open">📜 看活動辦法</button>' : '';   // 2026-11-28：活動辦法＝使用者的 Canva
+  if (r.opensOn) return `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}<div class="notice info mt">📅 <b>${mdZh(r.opensOn)} 開放報名</b>，到時候這裡會出現「我要報名參加」。</div>${rulesBtn}</div>`;
   if (!r.canApply) return r.status==='rejected' ? `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}<div class="notice err mt">這次的報名沒有通過，有問題請洽管理員。</div></div>` : '';
   return `<div class="card reg-card"><h3>🏁 ${esc(a.name)}</h3>${when}
     ${r.status==='rejected'?'<div class="notice err mt">上次的報名沒有通過，有問題請洽管理員；也可以再報名一次。</div>':''}
-    <button class="btn btn-primary mt" data-act="reg-apply">${r.status==='rejected'?'重新報名':'我要報名參加'}</button>
-    <div class="hint">按下報名後，管理員確認就會加入；加入後會開始計算打卡天數和達標。</div></div>`;
+    <button class="btn btn-primary mt" data-act="reg-apply">${r.status==='rejected'?'重新報名':'我要報名參加'}</button>${rulesBtn}
+    <div class="hint">${a.start > T ? `按下報名後，管理員確認${a.fee?'收到'+fw:''}就會加入；<br>加入後可以先暖身，${mdZh(a.start)} 起正式計算。` : '按下報名後，管理員確認就會加入；加入後會開始計算打卡天數和達標。'}</div></div>`;
 }
 /** 衝刺班報名頁：一次一步（看規則、勾同意 → 繳費方式 → 確認送出） */
 function renderRegApply(main){
@@ -6091,11 +6170,15 @@ function renderRegApply(main){
   if (R.step===1) body = `<div class="card"><h2 class="act-name">🏁 ${esc(a.name)}</h2>
       <div class="muted small"><span class="nw">${mdZh(a.start)} ～ ${mdZh(a.end)}</span>${r.deadline?`<wbr><span class="nw">・報名截止 ${mdZh(r.deadline)}</span>`:''}</div>
       <h3 class="mt">活動規則</h3><ol class="rg-rules">
-        <li>活動期間，有效打卡滿 <b>${a.threshold} 天</b>就達標</li>
-        <li>每天發行動日誌就算打卡；忘了發，<b>${a.lateDays} 天內</b>補發還算數</li>
+        ${a.threshold>0?`<li>活動期間，有效打卡滿 <b>${a.threshold} 天</b>就達標</li>`:''}
+        ${String(a.note||'').split(/\n+/).map(x=>x.trim()).filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('')}
+        <li>每天發行動日誌就算打卡${a.photoReq?'（<b>要附照片</b>）':''}；忘了發，<b>${a.lateDays} 天內</b>補發還算數</li>
+        ${a.caseGoal>0?`<li>發文時選「這天談了幾個 CASE」，活動期間累計 <b>${a.caseGoal} 個</b></li>`:''}
+        ${a.meetReq?`<li>每週一的衝刺班會議一定要參加；不能來，請在<b>開課前請假</b>，請假的人 <b>${a.noteDays} 天內</b>看回放、寫心得補課</li>
+          <li>沒請假又缺席、或請假沒補心得，累計 <b>${a.strikeMax} 次</b>就失去資格</li>`:''}
         ${a.courseNotes?`<li>活動期間每一堂<b>線上課</b>，上完 <b>${a.noteDays} 天內</b>要交課後心得</li>`:''}
-        ${fee?(a.feeMode==='deposit'?`<li>保證金 <b>NT$${fee.toLocaleString()}</b>：<b>達標就全額退還</b>（退了還是在班上，可以繼續激勵夥伴）；沒達標不退</li>`:`<li>報名費 <b>NT$${fee.toLocaleString()}</b></li>`):''}
-        ${a.note?`<li>${esc(a.note)}</li>`:''}</ol>
+        ${fee?(a.feeMode==='deposit'?`<li>保證金 <b>NT$${fee.toLocaleString()}</b>：<b>達標就全額退還</b>（退了還是在班上，可以繼續激勵夥伴）；沒達標不退</li>`:`<li>報名費 <b>NT$${fee.toLocaleString()}</b></li>`):''}</ol>
+      ${rulesLink()?'<button class="btn btn-ghost" data-act="rules-open">📜 看完整活動辦法</button>':''}
       <label class="big-check ${R.agree?'on':''}"><input type="checkbox" id="rg-agree" ${R.agree?'checked':''}><span>我已看完，同意以上活動規則</span></label>
       ${nav(fee?'next':'confirm','下一步')}</div>`;
   else if (R.step===2 && fee) body = `<div class="card"><h2 class="act-name">${fw} NT$${fee.toLocaleString()}</h2>
@@ -6471,9 +6554,9 @@ async function renderAdminLinks(main){
   main.innerHTML = `<div class="card"><h2 style="margin:0 0 4px">📢 公告・旅遊・高鐵・便當</h2>
       <div class="muted">最上面的跑馬燈公告，<br>和「功能選單」裡的旅遊、高鐵、便當，<br>都在這裡設定。改完馬上生效。</div></div>${LINK_ADMIN_ORDER.map(sec).join('')}`;
 }
-const LN_NOTE_EG = { travel:'例如：12/19 出發', hsr:'例如：登記車票、查車廂座位', meal:'例如：本週：滷排骨佐蔬食', notice:'例如：老師：王俐涵、林孝恩' };
+const LN_NOTE_EG = { travel:'例如：12/19 出發', hsr:'例如：登記車票、查車廂座位', meal:'例如：本週：滷排骨佐蔬食', notice:'例如：老師：王俐涵、林孝恩', rules:'例如：2027/1/1～3/31' };
 function openLinkEdit(base, kind){
-  S.lnDraft = base ? { ...base } : { id:'', kind: TRIP_KIND[kind] ? kind : 'travel', title: kind==='meal' ? '週一便當登記' : '', note:'', url:'' };
+  S.lnDraft = base ? { ...base } : { id:'', kind: TRIP_KIND[kind] ? kind : 'travel', title: kind==='meal' ? '週一便當登記' : kind==='rules' ? '衝刺班活動辦法' : '', note:'', url:'' };
   go('account', {sub:'adminLinkEdit'});
 }
 function renderAdminLinkEdit(main){
@@ -7383,6 +7466,9 @@ async function renderAdminMember(main){
       <div class="lbl" style="margin:14px 0 6px">週一便當份數</div>
       <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><button class="btn ${m.mealView?'btn-outline':'btn-ghost'} btn-sm" data-act="meal-viewer" data-id="${m.id}" data-on="${m.mealView?'0':'1'}">${m.mealView?'取消（不讓他看）':'🍽️ 讓他看週一便當份數'}</button>
         <span class="muted small">${m.mealView?'✅ 他點「便當」就看得到這週誰訂了幾份。':'打開後，他點「便當」就看得到這週誰訂了幾份。'}</span></div>
+      <div class="lbl" style="margin:14px 0 6px">首頁選團隊看動態</div>
+      <div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><button class="btn ${m.teamPick?'btn-outline':'btn-ghost'} btn-sm" data-act="team-picker" data-id="${m.id}" data-on="${m.teamPick?'0':'1'}">${m.teamPick?'取消（不能選）':'👀 讓他可以選團隊看'}</button>
+        <span class="muted small">${m.teamPick?'✅ 他在首頁「我的團隊」可以選線上的各個團隊，看那個人和他底下所有人的動態。':'打開後，他在首頁「我的團隊」可以選線上的各個團隊（例如王人美、王昱程）。'}</span></div>
       <div class="row mt"><button class="btn btn-sm del-btn" data-act="member-del" data-id="${m.id}" data-name="${esc(m.name)}" data-up="${esc(m.uplineName||'')}" style="width:auto">🗑 刪除這位夥伴</button></div>`}
       <div class="stat-grid mt"><div class="stat ok"><div class="v">${pr.valid}</div><div class="k">有效打卡</div></div>
       <div class="stat"><div class="v">${pr.need}</div><div class="k">還差</div></div>
@@ -7766,6 +7852,7 @@ document.addEventListener('click', async e=>{
       if (S.sub==='walk') { go('account',{sub:'play'}); break; }   // 走路 → 回遊樂場
       if (S.sub==='walkAdmin') { go('account',{sub:'walk'}); break; }
       if (S.sub==='manualView') { go('account',{sub:'manualCat'}); break; }   // 手冊：閱讀 → 這一類 → 手冊 → 功能選單
+      if (S.sub==='rulesView' && S.rulesBack) { const b = S.rulesBack; S.rulesBack = null; go(b.tab, b.sub ? {sub:b.sub} : {}); break; }   // 活動辦法：回到打開它的地方（報名卡、功能選單）
       if (S.sub==='manualCat') { go('account',{sub:'manual'}); break; }
       if (S.sub==='person' && (S.personBack==='honors' || S.personBack==='dreams')){ go(S.tab,{sub:S.personBack}); break; } if (S.sub==='dreamEdit' && S.dreamBack){ go(S.tab,{sub:S.dreamBack==='person'?'honors':S.dreamBack}); break; }
       if (S.sub==='adminMember' && S.memBack==='roster') { S.memBack = null; go('account',{sub:'adminRoster'}); break; }
@@ -7875,6 +7962,7 @@ document.addEventListener('click', async e=>{
     case 'dep-refund': { const on = el.dataset.on === '1';
       if (on && !await confirmBox(`確定已經把保證金 NT$${(+el.dataset.fee).toLocaleString()} 退給「${el.dataset.name}」了嗎？\n退了之後他還是在班上，照常打卡。`, '已退')) break;
       el.disabled = true; try { await api.adminDepositRefund(el.dataset.aid, el.dataset.id, on); toast(on?'已標記退還':'已取消退還','ok'); QuickCache.dropPrefix('adm'); renderAdmin($('#main')); } catch(err){ el.disabled = false; toast(errText(err),'err'); } break; }
+    case 'acad-fold': { const o = S.acadOpen || (S.acadOpen = new Set()), id = el.dataset.id; if (o.has(id)) o.delete(id); else o.add(id); drawAcademy($('#main'), ACAD); break; }
     case 'reg-apply': S.rg = { step:1, agree:false, payMethod:'transfer', last5:'' }; go(S.tab, {sub:'regApply'}); break;
     case 'rename': { const v = await promptBox('改成真實姓名', el.dataset.name, '儲存'); if (v === null || v === el.dataset.name) break;
       if (!validName(v)) { toast(errText(new Error('BAD_NAME')),'err'); break; }
@@ -8000,6 +8088,7 @@ document.addEventListener('click', async e=>{
     case 'man-refresh': { const b = $('#man-cats'); if (b) b.innerHTML = '<div class="card center muted">重新整理中…</div>'; manLoad(isAdminMe()); break; }
     case 'play-open': go('account', {sub:'play'}); break;
     case 'catalog-open': go('account', {sub:'catalog'}); break;
+    case 'rules-open': if (rulesLink()) { S.rulesBack = { tab:S.tab, sub:S.sub }; go('account', {sub:'rulesView'}); } break;
     case 'walk-open': go('account', {sub:'walk'}); break;
     case 'walk-start': walkStart(); break;
     case 'walk-stop': walkStop(); break;
@@ -8121,6 +8210,10 @@ document.addEventListener('click', async e=>{
     case 'set-staff': { const on = el.dataset.on==='1';
       if (!await confirmBox(on?'設成工作人員？\n他可以在「功能選單」用掃描入場，看不到後台其他資料。':'取消他的工作人員身分？', on?'設成工作人員':'取消工作人員', !on)) break;
       try { await api.adminSetRole(el.dataset.id, on?'staff':'member'); toast(on?'已設成工作人員':'已取消工作人員','ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
+      break; }
+    case 'team-picker': {
+      const on = el.dataset.on === '1';
+      try { await api.adminTeamPicker(el.dataset.id, on); toast(on ? '已打開，他在首頁「我的團隊」可以選團隊看' : '已取消', 'ok'); renderAdminMember($('#main')); } catch(e){ toast(errText(e),'err'); }
       break; }
     case 'meal-viewer': {
       const on = el.dataset.on === '1';
