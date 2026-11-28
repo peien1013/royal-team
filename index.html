@@ -832,8 +832,61 @@ body:has(.sheet-bg) .toast,body:has(.scan-bg) .toast{top:calc(16px + env(safe-ar
 .acad-switch button small{display:block;font-size:13px;font-weight:600;opacity:.8;margin-top:2px}
 .acad-switch button.on{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 6px 18px rgba(11,114,196,.25)}
 .acad-h{margin:16px 4px 10px}
-.acad-switch{grid-template-columns:1fr 1fr 1fr;gap:8px}
-.acad-switch button{font-size:16px;padding:10px 4px}
+/* 回放專區（2026-11-28） */
+.rp-more{display:block;margin:-4px 4px 10px}
+.rp-intro{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.rp-intro-t{min-width:0}
+.rp-grid{display:grid;gap:14px}
+@media (min-width:700px){.rp-grid{grid-template-columns:1fr 1fr}}
+.rp-card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 12px rgba(21,40,74,.10)}
+.rp-th{position:relative;display:block;width:100%;border:0;padding:0;margin:0;aspect-ratio:16/9;background:linear-gradient(135deg,#15284A 0%,#1F3E6E 55%,#0B72C4 100%);overflow:hidden;cursor:pointer;touch-action:manipulation;font:inherit;transition:filter 160ms ease}
+.rp-th:active{filter:brightness(.88)}
+.rp-th:active .rp-play{transform:scale(.92)}
+.rp-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.rp-ph{position:absolute;left:18px;right:18px;bottom:14px;color:#fff;font-weight:800;font-size:20px;line-height:1.35;text-shadow:0 1px 6px rgba(0,0,0,.3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rp-play{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-36px 0 0 -32px;border-radius:50%;background:rgba(255,255,255,.94);color:#0B72C4;display:flex;align-items:center;justify-content:center;font-size:26px;padding-left:5px;box-sizing:border-box;box-shadow:0 6px 20px rgba(0,0,0,.28);transition:transform 160ms cubic-bezier(.23,1,.32,1)}
+.rp-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;flex-wrap:wrap}
+.rp-keep{font-size:15px;color:#4B5B73;font-weight:600}
+.rp-keep.soon{color:#B45309}
+.rp-note{min-height:48px}
+.rp-noted{font-size:14px}
+.rp-meta .rp-noted{display:inline-flex;margin-top:12px}
+.rp-until{margin-top:10px;font-size:16px;color:#FFE7A3}
+.rp-note-b{display:flex;align-items:center;justify-content:center;width:100%;margin-top:14px;min-height:56px}
+.rp-gone{opacity:.92}
+.rp-novid{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;color:#fff;font-size:18px;line-height:1.5;padding:26px 22px;margin:0 14px;border-radius:20px;background:linear-gradient(135deg,#15284A,#1F3E6E 55%,#0B72C4)}
+.rp-novid .rp-ic{font-size:44px;line-height:1}
+.rp-pass{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,213,74,.35)}
+.rp-pk{flex-basis:100%;color:#FFE7A3;font-size:16px;font-weight:700}
+.rp-pv{font-size:24px;letter-spacing:.06em;font-variant-numeric:tabular-nums;user-select:all;-webkit-user-select:all;color:#fff;flex:1;min-width:0;word-break:break-all}
+.rp-copy{min-height:48px;padding:0 16px;border-radius:12px;border:0;background:#FFD54A;color:#15284A;font-size:17px;font-weight:800;touch-action:manipulation}
+.rp-copy:active{transform:scale(.97)}
+.rp-open.main{background:#0B72C4;color:#fff}
+.rp-seen,.rp-ext{position:absolute;top:10px;background:rgba(0,0,0,.62);color:#fff;font-size:14px;font-weight:700;border-radius:999px;padding:4px 10px}
+.rp-seen{right:10px}.rp-ext{left:10px}
+.rp-info{padding:12px 16px 14px}
+.rp-title{display:block;font-size:19px;line-height:1.35}
+.rp-sub{font-size:15px;color:var(--muted,#6b7280);margin-top:2px}
+.rp-wait b{display:block;margin-bottom:6px}
+.rp-w{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid rgba(21,40,74,.08);font-size:16px}
+.rp-bg{position:fixed;inset:0;z-index:70;background:#070D1A;overflow:auto;overscroll-behavior:contain;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);animation:rp-in 200ms cubic-bezier(.23,1,.32,1)}
+@keyframes rp-in{from{opacity:0}to{opacity:1}}
+.rp-box{max-width:960px;margin:0 auto}
+.rp-top{display:flex;justify-content:flex-end;padding:10px 12px}
+.rp-x{min-height:48px;padding:0 20px;border-radius:999px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:18px;font-weight:800;touch-action:manipulation}
+.rp-x:active{transform:scale(.97)}
+.rp-video{position:relative;width:min(100%, calc((100dvh - 90px) * 16 / 9));aspect-ratio:16/9;margin:0 auto;background:#000}
+.rp-video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.rp-meta{padding:16px 18px 28px;color:#fff}
+.rp-meta h3{margin:0 0 4px;font-size:21px;line-height:1.35}
+.rp-meta .rp-sub{color:rgba(255,255,255,.72)}
+.rp-ann{background:rgba(255,213,74,.14);color:#FFE7A3;border-radius:12px;padding:10px 12px;margin-top:12px;font-size:16px}
+.rp-open{display:flex;align-items:center;justify-content:center;width:100%;margin-top:14px;min-height:56px;border-radius:16px;background:#fff;color:#15284A;font-weight:800;text-decoration:none}
+.rp-hint{color:rgba(255,255,255,.6);font-size:14px;margin-top:8px;text-align:center}
+.acad-switch{grid-template-columns:repeat(4,1fr);gap:6px}   /* 2026-11-28 多了「回放專區」：四個一排，圖示放上面 */
+.acad-switch button{font-size:16px;padding:8px 2px;line-height:1.25}
+.acad-switch .sw-ic{display:block;font-size:22px;line-height:1.15;margin-bottom:2px}
+.acad-switch button small{font-size:12px}
 .sched-head{margin:14px 4px 10px}.sched-head h2{margin:0}
 .sched{padding:0;overflow:hidden}
 .sched-title{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 16px;color:#fff;font-size:18px}
@@ -1557,9 +1610,9 @@ const MockDB = (() => {
 
   const courses = [
     {id:'C001', title:'如何用一句話打開話題', teacher:'林老師（外聘講師）', date:addDays(T,-12), time:'20:00–21:30',
-      intro:'從日常寒暄到真誠關心，練習自然開啟對話的方法。', zoom:'#', replay:'#', announce:'回放已上傳，請勿轉傳給團隊以外的人。'},
+      intro:'從日常寒暄到真誠關心，練習自然開啟對話的方法。', zoom:'#', replay:'https://us02web.zoom.us/rec/share/DEMO-replay-0001', replayPass:'Ab3#2026', announce:'回放已上傳，請勿轉傳給團隊以外的人。'},
     {id:'C002', title:'行動日誌怎麼寫最有力量', teacher:'陳老師（外聘講師）', date:addDays(T,-4), time:'20:00–21:00',
-      intro:'寫下行動、看見進步：記錄的三個小技巧。', zoom:'#', replay:'#', announce:''},
+      intro:'寫下行動、看見進步：記錄的三個小技巧。', zoom:'#', replay:'https://youtu.be/DEMOreplay1', announce:''},
     {id:'C003', title:'年終衝刺：照顧好自己的節奏', teacher:'張老師（外聘講師）', date:addDays(T,3), time:'20:00–21:30',
       intro:'忙碌季節裡的時間安排與身心照顧。', zoom:'#', replay:'', announce:'當天 19:50 開放進場，請先更新 Zoom。'},
     {id:'C004', title:'實體課：年終行動力工作坊', teacher:'林老師（外聘講師）', date:addDays(T,5), time:'14:00–17:00', mode:'onsite',
@@ -2017,8 +2070,9 @@ const MockApi = {
   },
   async getCourses(){
     await this._wait();
-    const me = this._me();
+    const me = this._me(), T = todayStr(), admin = S.role==='admin';
     return MockDB.courses.filter(c=>!c.hidden).map(c=>({ mode:'online', venue:'', fee:0, capacity:0, ...c,
+      ...(c.replay ? (u => u < T ? { replayUntil:u, replayGone:true, replay: admin ? c.replay : '', replayPass: admin ? (c.replayPass||'') : '' } : { replayUntil:u })(addDays(c.date, 14)) : {}),
       shareCount: new Set(MockDB.posts.filter(p=>p.courseId===c.id && p.status==='active').map(p=>p.authorId)).size,
       myNoteAt: MockDB.posts.filter(p=>p.courseId===c.id && p.authorId===me.id && p.status==='active').map(p=>ymd(new Date(p.postedAt))).sort()[0] || '',
       taken: MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length,
@@ -2159,7 +2213,7 @@ const MockApi = {
   async adminFeeSet(id, month, to){ await this._wait(); const F = this._fee = this._fee || {}, f = F[id] = F[id] || {}, ms = Array.isArray(month) ? month : [month];
     ms.forEach(k=>{ if (to==='none') delete f[k]; else f[k] = to; }); return { ok:true, state:to, states:Object.fromEntries(ms.map(k=>[k, to])) }; },
   async adminCourseAll(){ await this._wait();
-    const list = MockDB.courses.map(c=>({ id:c.id, title:c.title, teacher:c.teacher||'', date:c.date, time:c.time||'', intro:c.intro||'', zoomUrl:c.zoom||'', replayUrl:c.replay||'',
+    const list = MockDB.courses.map(c=>({ id:c.id, title:c.title, teacher:c.teacher||'', date:c.date, time:c.time||'', intro:c.intro||'', zoomUrl:c.zoom||'', replayUrl:c.replay||'', replayPass:c.replayPass||'',
       mode:c.mode||'online', venue:c.venue||'', fee:c.fee||0, capacity:c.capacity||0, hidden:!!c.hidden, taken:MockDB.tickets.filter(t=>t.courseId===c.id && t.status==='active').length }))
       .sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:0);
     return { courses:list, lastZoom:(list.find(c=>c.zoomUrl && c.zoomUrl!=='#')||{}).zoomUrl||'' }; },
@@ -2167,7 +2221,7 @@ const MockApi = {
     const t = String(p.title||'').trim(); if (!t) throw new Error('COURSE_TITLE_REQUIRED'); if (!/^\d{4}-\d{2}-\d{2}$/.test(p.date||'')) throw new Error('BAD_DATE');
     for (const u of [p.zoomUrl, p.replayUrl]) if (u && !/^https:\/\/\S+$/i.test(u)) throw new Error('BAD_URL');
     const mode = ['online','onsite','hybrid'].includes(p.mode) ? p.mode : 'online';
-    const c = { title:t, teacher:p.teacher||'', date:p.date, time:p.time||'', intro:p.intro||'', zoom:mode==='onsite'?'':(p.zoomUrl||''), replay:p.replayUrl||'', mode,
+    const c = { title:t, teacher:p.teacher||'', date:p.date, time:p.time||'', intro:p.intro||'', zoom:mode==='onsite'?'':(p.zoomUrl||''), replay:p.replayUrl||'', replayPass:p.replayUrl?String(p.replayPass||'').slice(0,40):'', mode,
       venue:mode==='online'?'':(p.venue||''), fee:mode==='online'?0:(+p.fee||0), capacity:mode==='online'?0:(+p.capacity||0) };
     if (p.id) { const x = MockDB.courses.find(y=>y.id===p.id); if (!x) throw new Error('NOT_FOUND'); Object.assign(x, c); return { ok:true, id:p.id }; }
     const id = uid('C'); MockDB.courses.push({ id, announce:'', ...c }); return { ok:true, id }; },
@@ -4244,7 +4298,7 @@ async function drawAcademy(main, cs){
           ${isUp&&!full?`<button class="btn btn-outline btn-sm" data-act="course-register" data-id="${c.id}">＋ 加買同行票</button>`:''}`:''}
         ${showOnsite&&!tk&&isUp?(full?'<button class="btn btn-ghost" disabled>名額已滿</button>':`<button class="btn btn-primary" data-act="course-register" data-id="${c.id}">🙋 我要報名現場上課</button>`):''}
         ${showOnline&&isUp&&c.zoom?link(c.zoom,'btn-primary','進入 Zoom 上課','zoom',c.id):''}
-        ${showOnline?(c.replay?link(c.replay,'btn-ghost','▶ 觀看回放','replay',c.id):(isUp?'':'<div class="hint">回放整理中</div>')):''}
+        ${showOnline?(c.replayGone?'<div class="hint">回放已下架（影片只保留 14 天）</div>':c.replay?`<button class="btn btn-ghost" data-act="replay-open" data-id="${esc(c.id)}">▶ 觀看回放</button><div class="hint">保留到 ${mdZh(rpUntil(c))}</div>`:(isUp?'':'<div class="hint">回放整理中</div>')):''}
         ${c.date > T ? '' : c.myNoteAt ? `<div class="row" style="justify-content:center"><span class="pill ok">✓ 已交課後心得（${mdZh(c.myNoteAt)}）</span></div>`
           : `<button class="btn ${showOnline && (!c.mode||c.mode==='online') ? 'btn-primary' : 'btn-outline'}" data-act="share-course" data-id="${c.id}" data-title="${esc(c.title)}">✍️ 寫課後心得</button>`}
       </div>
@@ -4258,23 +4312,113 @@ async function drawAcademy(main, cs){
     : ''}</div>`;
   const list = cs.filter(view==='online' ? isOnline : isOnsite);
   const up = list.filter(c=>c.date>=T).sort((a,b)=>a.date<b.date?-1:1), past = list.filter(c=>c.date<T).sort((a,b)=>a.date<b.date?1:-1);
-  const nOn = cs.filter(c=>isOnline(c) && c.date>=T).length, nSite = cs.filter(c=>isOnsite(c) && c.date>=T).length;
+  const nOn = cs.filter(c=>isOnline(c) && c.date>=T).length, nSite = cs.filter(c=>isOnsite(c) && c.date>=T).length, nRp = replayList(cs, T).length;
   const empty = view==='online' ? '目前沒有線上課程。' : '目前沒有現場課程，新課程公布後會出現在這裡。';
   const sw = `<div class="acad-switch" role="tablist">
-      <button role="tab" class="${view==='online'?'on':''}" data-act="acad-view" data-v="online">💻 線上課程${nOn?`<small>${nOn} 堂即將開課</small>`:''}</button>
-      <button role="tab" class="${view==='onsite'?'on':''}" data-act="acad-view" data-v="onsite">📍 現場課程${nSite?`<small>${nSite} 堂可報名</small>`:''}</button>
-      <button role="tab" class="${view==='month'?'on':''}" data-act="acad-view" data-v="month">📅 本月課表<small>各會場每週課</small></button>
+      <button role="tab" class="${view==='online'?'on':''}" data-act="acad-view" data-v="online"><span class="sw-ic" aria-hidden="true">💻</span>線上課程${nOn?`<small>${nOn} 堂將開課</small>`:''}</button>
+      <button role="tab" class="${view==='onsite'?'on':''}" data-act="acad-view" data-v="onsite"><span class="sw-ic" aria-hidden="true">📍</span>現場課程${nSite?`<small>${nSite} 堂可報名</small>`:''}</button>
+      <button role="tab" class="${view==='month'?'on':''}" data-act="acad-view" data-v="month"><span class="sw-ic" aria-hidden="true">📅</span>本月課表<small>各會場</small></button>
+      <button role="tab" class="${view==='replay'?'on':''}" data-act="acad-view" data-v="replay"><span class="sw-ic" aria-hidden="true">▶️</span>回放專區<small>${nRp?nRp+' 部影片':'會議錄影'}</small></button>
     </div>`;
   const hasTk = cs.some(c=>(c.myTickets||[]).length);
   if (view==='month'){ main.innerHTML = mineHTML + sw + '<div id="sched"><div class="skeleton"></div></div>'; return renderSchedule($('#sched')); }
+  if (view==='replay'){ main.innerHTML = mineHTML + sw + replayHTML(cs, T); return; }
   main.innerHTML = `${mineHTML}
     ${sw}
     ${view==='onsite'&&hasTk&&!mine.length?'<button class="link-btn" data-act="my-tickets">🎫 我的票券 ›</button>':''}
     ${up.length?up.map(card).join(''):''}
-    ${past.length?`<h2 class="acad-h">${view==='online'?'課程回放':'過去的課程'}</h2>${past.map(card).join('')}`:''}
+    ${past.length?`<h2 class="acad-h">過去的課程</h2>${view==='online'&&nRp?'<button class="link-btn rp-more" data-act="acad-view" data-v="replay">▶️ 全部錄影都在「回放專區」 ›</button>':''}${past.map(card).join('')}`:''}
     ${!list.length?`<div class="card center"><div style="font-size:40px">🎓</div><div class="muted">${empty}</div></div>`:''}`;
 }
 let ACAD = [];
+/* =====================================================================
+   回放專區（2026-11-28 15:20 使用者：「補一個區塊是線上會議（課程）的回放專區」）
+   ・資料就是課程的「錄影回放連結」欄（後台課程管理貼上），不另外開表。
+   ・有連結、而且已經上過（日期 ≤ 今天）的課都會出現；線上、現場、會議都算。
+   ・YouTube、Google 雲端硬碟的影片在 APP 裡直接播；其他連結（Zoom 錄影等）另開。
+   ・「看過了」只記在這支手機（localStorage），不回傳後端。
+   ・15:23 使用者：「留存最多 14 天」「提示這個影片最久到幾月幾號就刪除」→ 後端算 replayUntil（上課日＋14 天，設定分頁 replayDays 可改）；
+     過期後端就不給夥伴連結（replayGone），卡片上寫「保留到幾月幾號」，剩 3 天變橘色提醒。
+   ・15:24 使用者：「這個會議他需要回覆心得，還有回放功能」→ 每部影片下面直接有「✍️ 寫心得」，播放畫面也有「看完寫心得」。
+   ・連結只給登入的夥伴看到；但影片本身是「知道連結就能看」，所以課程公告可以寫「請勿轉傳」，播放時會顯示。
+   ===================================================================== */
+function replayKind(u){
+  u = String(u||'');
+  let m = u.match(/^https:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:[^#]*&)?v=|live\/|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/i);
+  if (m) return { k:'yt', id:m[1], embed:`https://www.youtube-nocookie.com/embed/${m[1]}?rel=0&playsinline=1&modestbranding=1`, thumb:`https://i.ytimg.com/vi/${m[1]}/hqdefault.jpg`, open:'改用 YouTube 看', app:'YouTube' };
+  m = u.match(/^https:\/\/drive\.google\.com\/(?:file\/d\/|open\?(?:[^#]*&)?id=|uc\?(?:[^#]*&)?id=)([\w-]{20,})/i);
+  if (m) return { k:'drive', id:m[1], embed:`https://drive.google.com/file/d/${m[1]}/preview`, thumb:'', open:'改用雲端硬碟看', app:'雲端硬碟' };
+  return { k:'link', embed:'', thumb:'', open: /zoom\.us\//i.test(u) ? '打開 Zoom 錄影' : '打開回放', app:'' };
+}
+const replayList = (cs, T) => (cs||[]).filter(c => c.replay && !c.replayGone && c.date <= T).sort((a,b) => a.date<b.date ? 1 : a.date>b.date ? -1 : 0);
+/** 影片保留到哪天（後端給 replayUntil；舊資料沒有就用上課日＋14 天） */
+const rpUntil = c => c.replayUntil || addDays(c.date, 14);
+function rpKeepHTML(c, T){
+  const u = rpUntil(c), left = diffDays(T, u);
+  if (left <= 0) return `<div class="rp-keep soon">⏳ 今天是最後一天，明天就刪除</div>`;
+  if (left <= 3) return `<div class="rp-keep soon">⏳ 剩 ${left} 天・${mdZh(u)} 之後刪除</div>`;
+  return `<div class="rp-keep">🗓 保留到 ${mdZh(u)}，之後刪除</div>`;
+}
+const rpNoteHTML = (c, big) => c.myNoteAt ? `<span class="pill ok rp-noted">✓ 已交心得（${mdZh(c.myNoteAt)}）</span>`
+  : `<button class="btn btn-primary ${big?'rp-note-b':'btn-sm rp-note'}" data-act="share-course" data-id="${esc(c.id)}" data-title="${esc(c.title)}">✍️ ${big?'看完寫心得':'寫心得'}</button>`;
+const RP_KEY = () => 'rp:' + ((S.session && S.session.memberId) || (S.me && S.me.id) || '');
+const rpSeen = () => new Set(store(RP_KEY()) || []);
+function rpMark(id){ const s = rpSeen(); if (s.has(id)) return; s.add(id); store(RP_KEY(), [...s].slice(-300)); }
+function replayHTML(cs, T){
+  const vids = replayList(cs, T), seen = rpSeen(), admin = isAdminNow();
+  const wait = (cs||[]).filter(c => !c.replay && !c.replayGone && isOnline(c) && c.date <= T && diffDays(c.date, T) <= 14).sort((a,b) => a.date<b.date ? 1 : -1);
+  const gone = admin ? (cs||[]).filter(c => c.replayGone).sort((a,b) => a.date<b.date ? 1 : -1) : [];
+  const card = c => { const k = replayKind(c.replay), sn = seen.has(c.id);
+    return `<div class="rp-card" data-id="${esc(c.id)}">
+      <button class="rp-th" data-act="replay-open" data-id="${esc(c.id)}" aria-label="播放回放：${esc(c.title)}"><span class="rp-ph">${esc(c.title)}</span>${k.thumb?`<img src="${esc(k.thumb)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()">`:''}
+        <span class="rp-play" aria-hidden="true">▶</span>${sn?'<span class="rp-seen">✓ 看過了</span>':''}${k.k==='link'?'<span class="rp-ext">另開</span>':''}</button>
+      <div class="rp-info"><b class="rp-title">${esc(c.title)}</b><div class="rp-sub">${mdZh(c.date)}${c.time?' '+esc(c.time):''}${c.teacher?`・${esc(c.teacher)}`:''}</div>
+        <div class="rp-row">${rpKeepHTML(c, T)}${rpNoteHTML(c)}</div></div></div>`; };
+  let html = '', lastM = '';
+  vids.forEach(c => { const m = c.date.slice(0,7);
+    if (m !== lastM) { html += `${lastM?'</div>':''}<h2 class="acad-h">${+m.slice(0,4)} 年 ${+m.slice(5)} 月</h2><div class="rp-grid">`; lastM = m; }
+    html += card(c); });
+  if (lastM) html += '</div>';
+  const top = `<div class="card rp-intro"><div class="rp-intro-t"><b>▶️ 回放專區</b><div class="muted small">上過的線上會議、課程錄影，點一下就能看；看完記得寫心得。影片只保留 14 天。</div></div>
+    ${admin?'<button class="btn btn-outline btn-sm" data-act="rp-admin">✏️ 貼回放連結</button>':''}</div>`;
+  const waitHTML = wait.length ? `<div class="card rp-wait"><b>⏳ 回放整理中</b>${wait.map(c=>`<div class="rp-w"><span>${esc(c.title)}</span><span class="muted nw">${mdZh(c.date)}</span></div>`).join('')}
+    <div class="hint">管理員貼上錄影連結後，就會出現在上面。</div></div>` : '';
+  const empty = vids.length ? '' : `<div class="card center"><div style="font-size:40px">🎬</div><div class="muted">還沒有回放影片。</div>
+    <div class="hint">${admin?'到後台「課程管理」打開上過的課，貼上「錄影回放連結」就會出現在這裡。':'上完線上課，管理員貼上錄影後就會出現在這裡。'}</div></div>`;
+  const goneHTML = gone.length ? `<div class="card rp-wait rp-gone"><b>🗑️ 已從 APP 下架（夥伴已經看不到）</b>${gone.map(c=>`<div class="rp-w"><span>${esc(c.title)}</span><span class="muted nw">${mdZh(addDays(c.date, 30))} 之後可以刪</span></div>`).join('')}
+    <div class="hint">只有管理員看得到這一區。錄影檔留一個月（上課日＋30 天），之後再自己到 Zoom 刪掉。</div></div>` : '';
+  return top + waitHTML + html + empty + goneHTML;
+}
+function openReplay(c){
+  if (!c || !c.replay) return;
+  if (c.replay === '#') { toast('正式上線後，這裡會開啟回放影片'); return; }
+  rpMark(c.id);
+  const mark = () => { const b = document.querySelector(`.rp-card[data-id="${CSS.escape(c.id)}"] .rp-th`); if (b && !b.querySelector('.rp-seen')) b.insertAdjacentHTML('beforeend', '<span class="rp-seen">✓ 看過了</span>'); };
+  const k = replayKind(c.replay), pass = String(c.replayPass||''), zoom = /zoom\.us\//i.test(c.replay);
+  const passHTML = pass ? `<div class="rp-pass"><span class="rp-pk">🔑 錄影密碼</span><b class="rp-pv">${esc(pass)}</b><button class="rp-copy" data-copy>複製密碼</button></div>` : '';
+  const openBtn = `<a class="btn rp-open${k.embed?'':' main'}" href="${esc(c.replay)}" target="_blank" rel="noopener" data-go>${k.open}</a>`;
+  const bg = document.createElement('div'); bg.className = 'rp-bg'; bg.id = 'rp-player';
+  bg.innerHTML = `<div class="rp-box" role="dialog" aria-modal="true" aria-label="回放：${esc(c.title)}">
+    <div class="rp-top"><button class="rp-x" data-x>✕ 關閉</button></div>
+    ${k.embed ? `<div class="rp-video"><iframe src="${esc(k.embed)}" title="${esc(c.title)}" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe></div>`
+      : `<div class="rp-novid"><div class="rp-ic" aria-hidden="true">🎬</div><div>這部錄影在${zoom?' Zoom ':'別的網站'}上，按下面的按鈕打開${pass?'；<b>先複製密碼</b>，打開後貼上':''}</div></div>`}
+    <div class="rp-meta"><h3>${esc(c.title)}</h3><div class="rp-sub">${fullZh(c.date)}${c.teacher?`・${esc(c.teacher)}`:''}</div>
+      <div class="rp-until">🗓 這部影片保留到 ${fullZh(rpUntil(c))}，之後就會刪除</div>
+      ${k.embed ? '' : passHTML + openBtn}
+      ${c.announce?`<div class="rp-ann">📢 ${esc(c.announce)}</div>`:''}
+      ${rpNoteHTML(c, true)}
+      ${k.embed ? passHTML + openBtn + `<div class="rp-hint">影片轉不出來的話，按上面的按鈕改用${k.app}看。</div>` : ''}</div></div>`;
+  const close = () => { bg.remove(); document.removeEventListener('keydown', onKey); mark(); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  bg.addEventListener('click', e => {
+    if (e.target.closest('[data-copy]')) { const done = () => toast('密碼已複製，打開錄影後貼上就好', 'ok');
+      try { navigator.clipboard.writeText(pass).then(done, () => toast('請長按密碼，選「拷貝」', 'err')); } catch(_) { toast('請長按密碼，選「拷貝」', 'err'); } return; }
+    if (e.target.closest('[data-go]')) { mark(); return; }
+    if (e.target === bg || e.target.closest('[data-x]') || e.target.closest('[data-act="share-course"]')) close(); });
+  document.addEventListener('keydown', onKey);
+  document.body.appendChild(bg);
+  const x = bg.querySelector('.rp-x'); if (x) x.focus({ preventScroll:true });
+}
 /** 講師去背照（2026-11-27 12:06 使用者：「講師的照片去背，不用太大放在課程那邊」）：課卡右上角一張小小的。
  *  老師欄有這個名字就會出現；新增講師：去背後縮成約 168×240 的 webp 放進 assets/teachers，再加一行。 */
 const TEACHER_IMG = { '邱芙蓉':'teachers/qiu-furong.webp' };
@@ -6264,8 +6408,8 @@ async function attJoinMenu(jid){
 /** 新增／修改表單。base：要修改的課（或要複製的課）；copy：複製到下星期 */
 function openCourseEdit(base, copy){
   const last = (ADMCS && ADMCS.courses || [])[0] || {};
-  S.csDraft = base ? { ...base, id: copy ? '' : base.id, date: copy ? addDays(base.date, 7) : base.date, replayUrl: copy ? '' : (base.replayUrl||'') }
-    : { id:'', title:'', teacher:'', date:nextMonday(), time:last.time||'', intro:'', zoomUrl:(ADMCS&&ADMCS.lastZoom)||'', replayUrl:'', mode:'online', venue:'', fee:0, capacity:0 };
+  S.csDraft = base ? { ...base, id: copy ? '' : base.id, date: copy ? addDays(base.date, 7) : base.date, replayUrl: copy ? '' : (base.replayUrl||''), replayPass: copy ? '' : (base.replayPass||'') }
+    : { id:'', title:'', teacher:'', date:nextMonday(), time:last.time||'', intro:'', zoomUrl:(ADMCS&&ADMCS.lastZoom)||'', replayUrl:'', replayPass:'', mode:'online', venue:'', fee:0, capacity:0 };
   S.csCopy = !!copy;
   go('account', {sub:'adminCourseEdit'});
 }
@@ -6288,7 +6432,9 @@ function renderAdminCourseEdit(main){
     <label class="lbl" for="cs-intro">課程說明<span class="muted small" style="font-weight:400">（可不填）</span></label>
     <textarea class="inp" id="cs-intro" maxlength="600" placeholder="一行寫一件事，例如：&#10;會議 ID：925 7414 0214&#10;密碼：123456">${esc(c.intro)}</textarea>
     <div class="hint">一行寫一件事，按 Enter 換行；夥伴看到的會照你分的行。</div>
-    ${isNew ? '' : `<label class="lbl" for="cs-replay">錄影回放連結<span class="muted small" style="font-weight:400">（上完課再貼）</span></label><input class="inp" id="cs-replay" inputmode="url" placeholder="https://…" value="${esc(c.replayUrl)}">`}
+    <label class="lbl" for="cs-replay">錄影回放連結<span class="muted small" style="font-weight:400">（上完課再貼；Zoom 分享錄影的整段文字直接貼進來也可以）</span></label><textarea class="inp" id="cs-replay" rows="2" placeholder="https://…">${esc(c.replayUrl||'')}</textarea>
+    <label class="lbl" for="cs-replay-pass">錄影密碼<span class="muted small" style="font-weight:400">（Zoom 錄影有密碼才填；整段貼上會自動抓）</span></label><input class="inp" id="cs-replay-pass" autocomplete="off" autocapitalize="off" spellcheck="false" value="${esc(c.replayPass||'')}">
+    <div class="hint">貼上後會出現在皇家學院的「▶️ 回放專區」，保留 14 天（上課日＋14 天）就自動從 APP 下架。連結和密碼只有登入 APP 的夥伴看得到；Zoom 錄影建議打開「密碼保護」、關掉「允許下載」。</div>
     <div id="cs-err" class="notice err hidden mt"></div>
     <button class="btn btn-primary mt" data-act="cs-save">${isNew ? '新增這堂課' : '儲存修改'}</button>
     <button class="btn btn-outline" data-act="back">取消</button>
@@ -7222,6 +7368,8 @@ document.addEventListener('click', async e=>{
     /* 學院 */
     case 'zoom': api.classJoin(el.dataset.id).catch(()=>{}); toast('正式上線後，這裡會直接開啟 Zoom 會議（同時自動點名）'); break;
     case 'replay': toast('正式上線後，這裡會開啟回放影片'); break;
+    case 'replay-open': openReplay(ACAD.find(x=>x.id===el.dataset.id)); break;
+    case 'rp-admin': go('account',{sub:'adminCourses'}); break;
     case 'share-course': S.editing=null; S.draft=newDraft({courseId:el.dataset.id, courseTitle:el.dataset.title, text:'', actionDate:todayStr(), dateMode:'today'}); go('compose'); break;
     /* 帳號 */
     case 'bind': toast('正式上線後，這裡會引導你用 LINE 或 Email 驗證後綁定'); break;
@@ -7310,13 +7458,16 @@ document.addEventListener('click', async e=>{
       x.classList.add('hidden');
       // 連結：整段 Zoom 邀請文字貼進來也可以，自動抓出 https 連結；少打 https:// 也幫忙補
       const pickUrl = t => { const m = String(t||'').match(/https:\/\/[^\s<>"'，。）)]+/i); return m ? m[0] : /^(www\.|us\d+web\.)?zoom\.us\//i.test(t) ? 'https://' + t : t; };
+      // 回放：Zoom「分享錄影」複製的整段（主題、日期、連結、密碼）貼進來也行（2026-11-28）
+      const rpRaw = v('cs-replay'), pickPass = t => { const m = String(t||'').match(/(?:passcode|password|存取密碼|密碼|密码)\s*[:：]\s*(\S+)/i); return m ? m[1] : ''; };
+      const rpUrl = pickUrl(rpRaw.split(/\s*(?:passcode|password|存取密碼|密碼|密码)\s*[:：]/i)[0]);
       Object.assign(c, { title:v('cs-title'), teacher:v('cs-teacher'), date:v('cs-date'), time:v('cs-time'), intro:($('#cs-intro')||{}).value||'', zoomUrl:pickUrl(v('cs-zoom')),
-        replayUrl:$('#cs-replay') ? pickUrl(v('cs-replay')) : (c.replayUrl||''), venue:v('cs-venue'), fee:+v('cs-fee')||0, capacity:+v('cs-cap')||0 });
+        replayUrl:rpUrl, replayPass: rpUrl ? (v('cs-replay-pass') || pickPass(rpRaw)) : '', venue:v('cs-venue'), fee:+v('cs-fee')||0, capacity:+v('cs-cap')||0 });
       if (!c.title) { x.textContent = '請填課程主題。'; x.classList.remove('hidden'); $('#cs-title').focus(); break; }
       if (!c.date) { x.textContent = '請選上課日期。'; x.classList.remove('hidden'); break; }
       if (c.mode!=='onsite' && !c.zoomUrl && !await confirmBox('還沒放 Zoom 連結，夥伴會看不到「進入 Zoom 上課」。先存起來，之後再補嗎？', '先存起來')) break;
       el.disabled = true; el.textContent = '儲存中…';
-      try { await api.adminCourseSave({ id:c.id, title:c.title, teacher:c.teacher, date:c.date, time:c.time, intro:c.intro, zoomUrl:c.zoomUrl, replayUrl:c.replayUrl, mode:c.mode, venue:c.venue, fee:c.fee, capacity:c.capacity });
+      try { await api.adminCourseSave({ id:c.id, title:c.title, teacher:c.teacher, date:c.date, time:c.time, intro:c.intro, zoomUrl:c.zoomUrl, replayUrl:c.replayUrl, replayPass:c.replayPass||'', mode:c.mode, venue:c.venue, fee:c.fee, capacity:c.capacity });
         toast(c.id ? '已儲存' : '✅ 已新增，夥伴在皇家學院就看得到', 'ok'); S.csDraft = null; go('account', {sub:'adminCourses'}); }
       catch(err){ el.disabled = false; el.textContent = c.id ? '儲存修改' : '新增這堂課'; x.textContent = errText(err); x.classList.remove('hidden'); }
       break; }
